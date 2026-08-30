@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON LOGO SENAMHI
+# app.py - VERSIÓN COMPLETA CON IMÁGENES PEQUEÑAS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -163,21 +163,16 @@ st.markdown("""
 # ============================================================
 # MOSTRAR LOGO SENAMHI
 # ============================================================
-# Función para mostrar el logo desde el entorno
 def mostrar_logo_senamhi():
     """Muestra el logo de SENAMHI en la esquina superior izquierda"""
     
-    # Ruta de la imagen (debe estar en el entorno)
     ruta_logo = "fotosenamhi.png"
     
-    # Verificar si existe la imagen
     if os.path.exists(ruta_logo):
         try:
-            # Leer la imagen y codificar en base64
             with open(ruta_logo, "rb") as f:
                 imagen_base64 = base64.b64encode(f.read()).decode()
             
-            # Mostrar la imagen con HTML
             st.markdown(f"""
             <img src="data:image/png;base64,{imagen_base64}" 
                  class="logo-senamhi" 
@@ -186,7 +181,6 @@ def mostrar_logo_senamhi():
             """, unsafe_allow_html=True)
             
         except Exception as e:
-            # Si hay error, mostrar texto alternativo
             st.markdown("""
             <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
                         background: rgba(255,255,255,0.9); padding: 6px 12px; 
@@ -196,7 +190,6 @@ def mostrar_logo_senamhi():
             </div>
             """, unsafe_allow_html=True)
     else:
-        # Si no existe la imagen, mostrar texto alternativo
         st.markdown("""
         <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
                     background: rgba(255,255,255,0.9); padding: 6px 12px; 
@@ -360,7 +353,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA (VERSIÓN RESPONSIVE)
+# FUNCIÓN PARA CREAR LA GRÁFICA CON IMÁGENES PEQUEÑAS
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -465,11 +458,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 hovertemplate='<b>⚠️ Abortos:</b> %{customdata:02.0f}<extra></extra>'
             ))
 
-    # IMÁGENES (solo en PC para no saturar celular)
+    # ============================================================
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
+    # ============================================================
     images_plotly = []
     y_offset = 0.2
 
     if not es_movil:
+        # IMAGEN ENFERMA - Tamaño 8
         if img_enferma is not None and len(enfermos_smooth) > 0:
             for idx in [0, -1]:
                 images_plotly.append({
@@ -478,13 +474,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                     'yref': 'y2',
                     'x': fecha_smooth[idx],
                     'y': float(enfermos_smooth[idx]),
-                    'sizex': 14,
-                    'sizey': 14,
+                    'sizex': 8,
+                    'sizey': 8,
                     'xanchor': 'center',
                     'yanchor': 'middle',
                     'layer': 'above'
                 })
 
+        # IMAGEN MUERTA - Tamaño 8
         if img_muerta is not None and 'Muertos' in df.columns:
             df_muertos_varios = df[df['Muertos'] >= 3].copy()
             if not df_muertos_varios.empty:
@@ -495,13 +492,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                         'yref': 'y2',
                         'x': row['fecha'],
                         'y': y_offset,
-                        'sizex': 14,
-                        'sizey': 14,
+                        'sizex': 8,
+                        'sizey': 8,
                         'xanchor': 'center',
                         'yanchor': 'middle',
                         'layer': 'above'
                     })
 
+        # IMAGEN ABORTO - Tamaño 8
         if img_aborto is not None and 'Abortos' in df.columns:
             df_abortos_pos = df[df['Abortos'] > 0].copy()
             if not df_abortos_pos.empty:
@@ -513,8 +511,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                             'yref': 'y2',
                             'x': df_abortos_pos['fecha'].iloc[idx],
                             'y': y_offset,
-                            'sizex': 14,
-                            'sizey': 14,
+                            'sizex': 8,
+                            'sizey': 8,
                             'xanchor': 'center',
                             'yanchor': 'middle',
                             'layer': 'above'
