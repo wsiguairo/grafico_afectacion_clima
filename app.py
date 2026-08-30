@@ -21,19 +21,23 @@ st.set_page_config(
 )
 
 # ============================================================
-# TÍTULO REDUCIDO MANUALMENTE
+# MAIN - APLICACIÓN STREAMLIT
 # ============================================================
-st.markdown(
-    """
-    <h2 style='font-size: 26px; font-weight: bold; margin-bottom: 5px; color: #31333F;'>
-        🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas
-    </h2>
-    """, 
-    unsafe_allow_html=True
-)
-# 💡 MODIFICACIÓN: Cambia '26px' por otro número para ajustar el tamaño (ej: 22px).
+def main():
+    # 🌟 TÍTULO REDUCIDO MANUALMENTE (Reemplazó al st.title viejo)
+    st.markdown(
+        """
+        <h2 style='font-size: 26px; font-weight: bold; margin-bottom: 5px; color: #31333F;'>
+            🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas
+        </h2>
+        """, 
+        unsafe_allow_html=True
+    )
+    # 💡 MODIFICACIÓN: Cambia '26px' por otro número para ajustar el tamaño.
 
-st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+    st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+
+    # Aquí continúa el resto de tu código...
 
 
 # ============================================================
