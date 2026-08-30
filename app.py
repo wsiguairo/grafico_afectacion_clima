@@ -12,44 +12,35 @@ import os
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# CONFIGURACIÓN DE PÁGINA
-# ============================================================
-st.set_page_config(
-    page_title="Gráfica Alpacas Interactiva",
-    page_icon="🦙",
-    layout="wide"
-)
-
-# ============================================================
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # 🌟 TEXTOS EN TAMAÑO MICRO (TÍTULO Y SUBTÍTULO ULTRA COMPACTOS)
+    # 🌟 TEXTOS EN TAMAÑO AJUSTABLE (OBLIGATORIO)
     st.markdown(
         """
         <style>
             /* --- ESTILOS PARA COMPUTADORA (PC) --- */
             .titulo-micro {
-                font-weight: bold; 
-                margin-bottom: 0px; 
-                color: #31333F;
-                font-size: 10px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN PC */
+                font-weight: bold !important; 
+                margin-bottom: 0px !important; 
+                color: #31333F !important;
+                font-size: 16px !important; /* 👈 CAMBIA ESTE NÚMERO (Ej: 18px, 20px) */
             }
             
             .subtitulo-micro {
-                color: #555555;
-                margin-top: 1px;
-                margin-bottom: 10px;
-                font-size: 11px; /* 👈 CAMBIA ESTE NÚMERO PARA EL SUBTÍTULO EN PC */
+                color: #555555 !important;
+                margin-top: 1px !important;
+                margin-bottom: 10px !important;
+                font-size: 13px !important; /* 👈 CAMBIA ESTE NÚMERO (Ej: 12px, 14px) */
             }
             
             /* --- ESTILOS PARA CELULAR --- */
             @media (max-width: 768px) {
                 .titulo-micro {
-                    font-size: 11px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN CELULAR */
+                    font-size: 12px !important; /* 👈 CAMBIA ESTE NÚMERO EN CELULAR */
                 }
                 .subtitulo-micro {
-                    font-size: 9px;  /* 👈 CAMBIA ESTE NÚMERO PARA EL SUBTÍTULO EN CELULAR */
+                    font-size: 10px !important; /* 👈 CAMBIA ESTE NÚMERO EN CELULAR */
                 }
             }
         </style>
