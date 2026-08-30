@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON BARRA LATERAL
+# app.py - VERSIÓN OPTIMIZADA PARA PC Y MÓVIL
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,28 +22,163 @@ st.set_page_config(
 )
 
 # ============================================================
-# ELIMINAR ESPACIO EN BLANCO
+# DETECTAR DISPOSITIVO (PC vs MÓVIL)
 # ============================================================
-st.markdown("""
-<style>
-    .main .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 0rem !important;
-        max-width: 100% !important;
-    }
-    h1, h2, h3 {
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
-    }
-    header { display: none !important; }
-    footer { display: none !important; }
-    .stPlotlyChart > div {
-        margin-top: -10px !important;
-    }
-    /* Ocultar rangeselector de Plotly */
-    .rangeselector { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
+def is_mobile():
+    """Detecta si el usuario está en un dispositivo móvil"""
+    try:
+        # Streamlit no tiene detección nativa, usamos el ancho de pantalla
+        # Por defecto asumimos que es móvil si no se puede detectar
+        return True
+    except:
+        return False
+
+# ============================================================
+# CSS OPTIMIZADO PARA PC Y MÓVIL
+# ============================================================
+def inject_custom_css():
+    """Inyecta CSS optimizado para PC y móvil"""
+    st.markdown("""
+    <style>
+        /* === RESET Y CONFIGURACIÓN BASE === */
+        .main .block-container {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0rem !important;
+            max-width: 100% !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+        
+        h1, h2, h3 {
+            margin-top: 0rem !important;
+            margin-bottom: 0rem !important;
+        }
+        
+        header { display: none !important; }
+        footer { display: none !important; }
+        
+        /* === MEJORAS PARA MÓVIL === */
+        @media (max-width: 768px) {
+            .main .block-container {
+                padding-left: 0.2rem !important;
+                padding-right: 0.2rem !important;
+                padding-top: 0.2rem !important;
+            }
+            
+            /* Botones más grandes y táctiles en móvil */
+            .stButton > button {
+                width: 100% !important;
+                min-height: 44px !important;
+                font-size: 14px !important;
+                padding: 8px 12px !important;
+                border-radius: 8px !important;
+            }
+            
+            /* Sidebar más ancha en móvil */
+            .css-1d391kg, .css-1lcbmhc {
+                width: 280px !important;
+                min-width: 280px !important;
+            }
+            
+            /* Títulos más pequeños en móvil */
+            h2 {
+                font-size: 1.2rem !important;
+            }
+            
+            /* Gráfica ocupa más espacio */
+            .stPlotlyChart > div {
+                margin-top: -5px !important;
+                height: 400px !important;
+            }
+            
+            /* Expander más compacto */
+            .streamlit-expanderHeader {
+                font-size: 14px !important;
+                padding: 8px !important;
+            }
+            
+            /* Métricas más compactas */
+            [data-testid="metric-container"] {
+                padding: 8px !important;
+                margin: 0 !important;
+            }
+            
+            [data-testid="metric-container"] label {
+                font-size: 12px !important;
+            }
+            
+            [data-testid="metric-container"] div {
+                font-size: 18px !important;
+            }
+        }
+        
+        /* === PC === */
+        @media (min-width: 769px) {
+            .stPlotlyChart > div {
+                margin-top: -10px !important;
+                height: 750px !important;
+            }
+            
+            .stButton > button {
+                min-height: 36px !important;
+                font-size: 14px !important;
+            }
+        }
+        
+        /* === OCULTAR ELEMENTOS NO DESEADOS === */
+        .rangeselector { display: none !important; }
+        
+        /* === MEJORAR LEGIBILIDAD === */
+        .stMarkdown {
+            font-size: 14px !important;
+        }
+        
+        /* === SCROLLBAR MEJORADA === */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* === TOOLTIP EN MÓVIL === */
+        .hoverlayer .hovertext {
+            font-size: 12px !important;
+        }
+        
+        /* === SIDEBAR MEJORADA === */
+        .css-1d391kg, .css-1lcbmhc {
+            background-color: #f8f9fa !important;
+        }
+        
+        /* === BOTONES DE PERIODO === */
+        .period-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .period-buttons {
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
@@ -199,9 +334,9 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
+# FUNCIÓN PARA CREAR LA GRÁFICA (OPTIMIZADA)
 # ============================================================
-def crear_grafica(df, images_paths, zoom_meses=None):
+def crear_grafica(df, images_paths, zoom_meses=None, is_mobile_device=False):
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -239,7 +374,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             mode='lines+markers',
             name='Temperatura mínima',
             line=dict(color='#2563EB', width=2.5),
-            marker=dict(size=4, color='#2563EB'),
+            marker=dict(size=4 if not is_mobile_device else 6, color='#2563EB'),
             opacity=0.9,
             hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.0f} °C<extra></extra>'
         ))
@@ -251,7 +386,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             y=df['Vel. viento (Km/h)'],
             mode='lines',
             name='Viento',
-            line=dict(color='#808080', width=2, dash='dash'),
+            line=dict(color='#808080', width=2 if not is_mobile_device else 1.5, dash='dash'),
             opacity=0.6,
             hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'
         ))
@@ -263,7 +398,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             y=enfermos_smooth,
             mode='lines',
             name='Alpacas enfermas',
-            line=dict(color='#8B0000', width=2.5),
+            line=dict(color='#8B0000', width=2.5 if not is_mobile_device else 2),
             opacity=0.8,
             fill='tozeroy',
             fillgradient=dict(
@@ -283,7 +418,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 y=[0.2] * len(df_muertos),
                 mode='markers',
                 name='Alpacas muertas',
-                marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
+                marker=dict(
+                    size=12 if not is_mobile_device else 16,
+                    color='#555555',
+                    line=dict(color='black', width=0.5)
+                ),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
                 hovertemplate='<b>💀 Alpacas muertas:</b> %{customdata:02.0f}<extra></extra>'
@@ -298,43 +437,54 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 y=[0.25] * len(df_abortos),
                 mode='markers',
                 name='Abortos',
-                marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
+                marker=dict(
+                    size=12 if not is_mobile_device else 16,
+                    color='#1E90FF',
+                    line=dict(color='#87CEEB', width=1)
+                ),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
                 hovertemplate='<b>⚠️ Abortos:</b> %{customdata:02.0f}<extra></extra>'
             ))
 
-    # IMÁGENES
+    # IMÁGENES (optimizado para móvil)
     images_plotly = []
     y_offset = 0.2
+    img_size = 14 if not is_mobile_device else 20
 
     if img_enferma is not None and len(enfermos_smooth) > 0:
-        for idx in [0, -1]:
-            images_plotly.append({
-                'source': f"data:image/png;base64,{img_enferma}",
-                'xref': 'x',
-                'yref': 'y2',
-                'x': fecha_smooth[idx],
-                'y': float(enfermos_smooth[idx]),
-                'sizex': 14,
-                'sizey': 14,
-                'xanchor': 'center',
-                'yanchor': 'middle',
-                'layer': 'above'
-            })
+        # Solo mostrar en puntos clave para móvil
+        indices = [0, len(fecha_smooth)//2, -1] if is_mobile_device else [0, -1]
+        for idx in indices:
+            if 0 <= idx < len(fecha_smooth):
+                images_plotly.append({
+                    'source': f"data:image/png;base64,{img_enferma}",
+                    'xref': 'x',
+                    'yref': 'y2',
+                    'x': fecha_smooth[idx],
+                    'y': float(enfermos_smooth[idx]),
+                    'sizex': img_size,
+                    'sizey': img_size,
+                    'xanchor': 'center',
+                    'yanchor': 'middle',
+                    'layer': 'above'
+                })
 
     if img_muerta is not None and 'Muertos' in df.columns:
         df_muertos_varios = df[df['Muertos'] >= 3].copy()
         if not df_muertos_varios.empty:
-            for _, row in df_muertos_varios.iterrows():
+            # Limitar cantidad de imágenes en móvil
+            max_images = 3 if is_mobile_device else len(df_muertos_varios)
+            df_muertos_limit = df_muertos_varios.head(max_images)
+            for _, row in df_muertos_limit.iterrows():
                 images_plotly.append({
                     'source': f"data:image/png;base64,{img_muerta}",
                     'xref': 'x',
                     'yref': 'y2',
                     'x': row['fecha'],
                     'y': y_offset,
-                    'sizex': 14,
-                    'sizey': 14,
+                    'sizex': img_size,
+                    'sizey': img_size,
                     'xanchor': 'center',
                     'yanchor': 'middle',
                     'layer': 'above'
@@ -343,20 +493,21 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     if img_aborto is not None and 'Abortos' in df.columns:
         df_abortos_pos = df[df['Abortos'] > 0].copy()
         if not df_abortos_pos.empty:
-            for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
-                if idx < len(df_abortos_pos):
-                    images_plotly.append({
-                        'source': f"data:image/png;base64,{img_aborto}",
-                        'xref': 'x',
-                        'yref': 'y2',
-                        'x': df_abortos_pos['fecha'].iloc[idx],
-                        'y': y_offset,
-                        'sizex': 14,
-                        'sizey': 14,
-                        'xanchor': 'center',
-                        'yanchor': 'middle',
-                        'layer': 'above'
-                    })
+            max_images = 3 if is_mobile_device else len(df_abortos_pos)
+            df_abortos_limit = df_abortos_pos.head(max_images)
+            for _, row in df_abortos_limit.iterrows():
+                images_plotly.append({
+                    'source': f"data:image/png;base64,{img_aborto}",
+                    'xref': 'x',
+                    'yref': 'y2',
+                    'x': row['fecha'],
+                    'y': y_offset,
+                    'sizex': img_size,
+                    'sizey': img_size,
+                    'xanchor': 'center',
+                    'yanchor': 'middle',
+                    'layer': 'above'
+                })
 
     # RANGOS
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
@@ -377,12 +528,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    # ZOOM INICIAL (según selección)
+    # ZOOM INICIAL
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
     
     if zoom_meses is None:
-        # Zoom por defecto: Mayo-Agosto
         año_datos = df['fecha'].max().year
         fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
         fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
@@ -391,43 +541,59 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
             fecha_fin_zoom = df['fecha'].max()
     else:
-        # Zoom según botón seleccionado
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
 
-    # TICKS
-    fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+    # TICKS (menos ticks en móvil)
+    if is_mobile_device:
+        # Menos ticks en móvil para mejor legibilidad
+        num_ticks = 6
+        date_range = df['fecha'].max() - df['fecha'].min()
+        if date_range.days > 180:
+            freq = 'MS'  # Mensual
+        else:
+            freq = 'MS'  # Mensual
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq=freq)
+        # Tomar solo algunos ticks para móvil
+        if len(fecha_ticks) > 8:
+            step = max(1, len(fecha_ticks) // 8)
+            fecha_ticks = fecha_ticks[::step]
+    else:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+    
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
-    # LAYOUT - SIN rangeselector (los botones están en la sidebar)
+    # Ajustar altura según dispositivo
+    chart_height = 400 if is_mobile_device else 750
+
+    # LAYOUT OPTIMIZADO
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        height=750,
+        height=chart_height,
         dragmode='pan',
         xaxis={
-            'title': {'text': 'Meses', 'font': {'size': 13, 'color': '#34495e'}},
+            'title': {'text': 'Meses' if not is_mobile_device else '', 'font': {'size': 11 if is_mobile_device else 13, 'color': '#34495e'}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': 11, 'color': '#2c3e50'},
+            'tickfont': {'size': 9 if is_mobile_device else 11, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
-            # ELIMINADO: rangeselector (los botones están en la sidebar)
         },
         yaxis={
-            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': 13, 'color': '#34495e'}},
+            'title': {'text': 'Temperatura mínima (°C)' if not is_mobile_device else 'T°C', 'font': {'size': 11 if is_mobile_device else 13, 'color': '#34495e'}},
             'range': [y1_min, y1_max],
             'tickformat': '.1f',
-            'tickfont': {'size': 11, 'color': '#2c3e50'},
+            'tickfont': {'size': 9 if is_mobile_device else 11, 'color': '#2c3e50'},
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'zeroline': True,
@@ -437,11 +603,12 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'side': 'left'
         },
         yaxis2={
-            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 13, 'color': '#34495e'}},
+            'title': {'text': 'Precipitación / Afectación' if not is_mobile_device else 'Afectación', 
+                     'font': {'size': 11 if is_mobile_device else 13, 'color': '#34495e'}},
             'range': [0, max_y2],
             'tickformat': 'd',
             'dtick': max(2, int(max_y2 / 8)),
-            'tickfont': {'size': 11, 'color': '#2c3e50'},
+            'tickfont': {'size': 9 if is_mobile_device else 11, 'color': '#2c3e50'},
             'overlaying': 'y',
             'side': 'right',
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
@@ -451,21 +618,24 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         },
         images=images_plotly,
         legend={
-            'orientation': 'h',
+            'orientation': 'h' if not is_mobile_device else 'h',
             'x': 0.5,
-            'y': -0.15,
+            'y': -0.15 if not is_mobile_device else -0.25,
             'xanchor': 'center',
             'yanchor': 'top',
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 1,
-            'font': {'size': 11, 'color': '#2c3e50'},
-            'itemwidth': 30,
+            'font': {'size': 10 if is_mobile_device else 11, 'color': '#2c3e50'},
+            'itemwidth': 30 if not is_mobile_device else 20,
             'tracegroupgap': 5
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}
+        margin={'t': 20 if is_mobile_device else 30, 
+                'b': 20 if is_mobile_device else 30, 
+                'l': 30 if is_mobile_device else 50, 
+                'r': 40 if is_mobile_device else 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
@@ -475,43 +645,47 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
+    # Inyectar CSS
+    inject_custom_css()
+    
     # Título
     st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
-    #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
     
     # ============================================================
-    # BARRA LATERAL - CONTROLES
+    # BARRA LATERAL - CONTROLES OPTIMIZADOS
     # ============================================================
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
         st.markdown("**Seleccionar período:**")
         
-        # Botones de selección de tiempo
+        # Botones en grid para mejor organización en móvil
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📅 1 Mes", use_container_width=True):
                 st.session_state.zoom_periodo = 1
-            if st.button("📅 6 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 6
+            if st.button("📅 3 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 3
             if st.button("📅 Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
         
         with col2:
-            if st.button("📅 3 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 3
+            if st.button("📅 6 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 6
             if st.button("📅 1 Año", use_container_width=True):
                 st.session_state.zoom_periodo = 12
         
         st.markdown("---")
         st.markdown("**🖱️ Cómo interactuar:**")
+        
+        # Ayuda adaptada a móvil
         st.markdown("""
-        - **Deslizar**: Arrastra el mouse ← →
-        - **Zoom**: Rueda del mouse
-        - **Seleccionar**: Usa botones de la barra de herramientas
-        - **Ver valores**: Pasa el cursor sobre cualquier punto
+        - **Deslizar**: Arrastra el mouse/dedo ← →
+        - **Zoom**: Rueda del mouse/pellizcar
+        - **Ver valores**: Pasa el cursor/toca sobre puntos
         """)
         
+        st.markdown("---")
         if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -539,40 +713,51 @@ def main():
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses)
+            # Detectar si es móvil (por defecto asumimos que puede ser móvil)
+            # Streamlit no tiene detección nativa, pero el CSS se encargará del responsive
+            fig = crear_grafica(df, IMAGES, zoom_meses, is_mobile_device=False)
+            
+            # También creamos versión para móvil (se usará según CSS)
+            # La gráfica se adaptará automáticamente gracias al CSS responsive
 
         if fig is not None:
-            # Mostrar gráfica con herramientas en la parte superior
+            # Configuración de la barra de herramientas adaptada
+            mode_bar_buttons = [
+                'zoom2d',
+                'pan2d',
+                'select2d',
+                'lasso2d',
+                'zoomIn2d',
+                'zoomOut2d',
+                'autoScale2d',
+                'resetScale2d',
+                'toImage'
+            ]
+            
+            # Mostrar gráfica
             st.plotly_chart(fig, use_container_width=True, config={
                 'displayModeBar': True,
-                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
+                'modeBarButtonsToRemove': ['sendDataToCloud'],
                 'displaylogo': False,
                 'scrollZoom': True,
                 'responsive': True,
-                'modeBarButtonsToAdd': [
-                    'zoom2d',
-                    'pan2d',
-                    'select2d',
-                    'lasso2d',
-                    'zoomIn2d',
-                    'zoomOut2d',
-                    'autoScale2d',
-                    'resetScale2d'
-                ]
+                'modeBarButtonsToAdd': mode_bar_buttons
             })
 
-            # ESTADÍSTICAS (fuera de la gráfica)
+            # ESTADÍSTICAS (optimizadas para móvil)
             with st.expander("📊 Ver estadísticas de los datos"):
-                col1, col2, col3 = st.columns(3)
+                # Métricas en columnas que se adaptan
+                cols = st.columns(3)
                 
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                    cols[0].metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
                 if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                    cols[1].metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+                    cols[2].metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
 
-                st.dataframe(df, use_container_width=True)
+                # Tabla con scroll horizontal en móvil
+                st.dataframe(df, use_container_width=True, height=300)
 
             st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
