@@ -1,4 +1,4 @@
-# app.py - ACTUALIZACIÓN AUTOMÁTICA CON GOOGLE SHEETS API
+# app.py - ACTUALIZACIÓN AUTOMÁTICA CON API
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -117,13 +117,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT AUTO-REFRESH CADA 20 SEGUNDOS
+# AUTO-REFRESH CADA 15 SEGUNDOS
 # ============================================================
 st.components.v1.html("""
 <script>
     setInterval(function() {
         location.reload();
-    }, 20000);
+    }, 15000);
 </script>
 """, height=0)
 
@@ -156,7 +156,6 @@ def image_to_base64(filepath):
 def conectar_google_sheets():
     """Conecta a Google Sheets usando credenciales de secrets"""
     try:
-        # Cargar credenciales desde secrets
         creds_dict = {
             "type": st.secrets["gcp_service_account"]["type"],
             "project_id": st.secrets["gcp_service_account"]["project_id"],
@@ -176,11 +175,10 @@ def conectar_google_sheets():
         return client
     except Exception as e:
         st.error(f"❌ Error de conexión: {e}")
-        st.error("⚠️ Verifica que las credenciales estén configuradas en Secrets")
         return None
 
 # ============================================================
-# FUNCIÓN PARA CARGAR DATOS EN TIEMPO REAL
+# CARGAR DATOS EN TIEMPO REAL
 # ============================================================
 def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
     """Carga datos EN TIEMPO REAL desde Google Sheets"""
@@ -202,7 +200,7 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
         data_temperaturas = sheet_temp.get_all_values()
         df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
         
-        # Procesar datos
+        # PROCESAR DATOS
         def encontrar_columna_fecha(df):
             for col in df.columns:
                 col_lower = col.lower().strip()
@@ -313,8 +311,6 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-        
-        # Guardar timestamp
         df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
         df.attrs['fecha_carga'] = datetime.datetime.now().strftime("%d/%m/%Y")
         df.attrs['registros'] = len(df)
@@ -602,11 +598,10 @@ def main():
     hora_actual = now.strftime("%H:%M:%S")
     fecha_actual = now.strftime("%d/%m/%Y")
     
-    # Título con timestamp
     st.markdown(f"""
     ## 🦙 Monitoreo Diario - Actualización Automática
     <div class="timestamp"><span></span> 📊 Datos cargados: {fecha_actual} {hora_actual}</div>
-    <div class="refresh-status">🔄 Auto-actualización cada 20 segundos</div>
+    <div class="refresh-status">🔄 Auto-actualización cada 15 segundos</div>
     """, unsafe_allow_html=True)
     
     with st.sidebar:
@@ -644,8 +639,9 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
+    # IMPORTANTE: Hoja correcta es "Sintomas_graf"
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'sintomas'
+    SHEET_NAME_SINTOMAS = 'Sintomas_graf'  # ← ¡ESTE ES EL NOMBRE CORRECTO!
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
     os.makedirs('imagenes', exist_ok=True)
@@ -693,7 +689,7 @@ def main():
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos. Verifica que las credenciales estén configuradas correctamente.")
+        st.error("❌ No se pudieron cargar los datos. Verifica que la hoja 'Sintomas_graf' exista y esté compartida con el email.")
 
 if __name__ == "__main__":
     main()
