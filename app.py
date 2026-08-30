@@ -1,4 +1,4 @@
-# app.py - VERSIÓN RESPONSIVE (CELULAR Y PC)
+# app.py - VERSIÓN CON LOGO SENAMHI
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# ESTILOS RESPONSIVE PARA CELULAR Y PC
+# ESTILOS RESPONSIVE CON LOGO SENAMHI
 # ============================================================
 st.markdown("""
 <style>
@@ -51,69 +51,77 @@ st.markdown("""
     /* OCULTAR RANGESELECTOR DE PLOTLY */
     .rangeselector { display: none !important; }
     
-    /* MEJORAS PARA CELULAR */
+    /* ============================================
+       LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
+       ============================================ */
+    .logo-senamhi {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 999999;
+        width: 80px;
+        height: auto;
+        opacity: 0.9;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: rgba(255, 255, 255, 0.85);
+        padding: 4px;
+    }
+    
+    .logo-senamhi:hover {
+        opacity: 1;
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    /* Ajuste para celular */
     @media only screen and (max-width: 768px) {
+        .logo-senamhi {
+            width: 55px;
+            top: 5px;
+            left: 5px;
+            padding: 3px;
+            border-radius: 6px;
+        }
+        
         .main .block-container {
             padding-left: 0.2rem !important;
             padding-right: 0.2rem !important;
             padding-top: 0.2rem !important;
         }
         
-        /* Títulos más pequeños en celular */
-        h1 {
-            font-size: 1.5rem !important;
-        }
-        h2 {
-            font-size: 1.2rem !important;
-        }
-        h3 {
-            font-size: 1rem !important;
-        }
+        h1 { font-size: 1.5rem !important; }
+        h2 { font-size: 1.2rem !important; }
+        h3 { font-size: 1rem !important; }
         
-        /* Botones más grandes para touch */
         .stButton button {
             font-size: 14px !important;
             padding: 8px 12px !important;
-            min-height: 44px !important;  /* Tamaño mínimo para touch */
+            min-height: 44px !important;
         }
         
-        /* Sidebar más estrecha en celular */
-        .css-1d391kg {
-            width: 280px !important;
-        }
+        .css-1d391kg { width: 280px !important; }
         
-        /* Tarjetas de métricas más pequeñas */
-        .stMetric {
-            font-size: 14px !important;
-        }
-        .stMetric label {
-            font-size: 12px !important;
-        }
-        .stMetric .stMetricValue {
-            font-size: 18px !important;
-        }
+        .stMetric { font-size: 14px !important; }
+        .stMetric label { font-size: 12px !important; }
+        .stMetric .stMetricValue { font-size: 18px !important; }
         
-        /* Ajustar tabla en celular */
-        .stDataFrame {
-            font-size: 12px !important;
-        }
-        .stDataFrame table {
-            font-size: 11px !important;
-        }
+        .stDataFrame { font-size: 12px !important; }
+        .stDataFrame table { font-size: 11px !important; }
         
-        /* Spinner más pequeño */
-        .stSpinner > div {
-            font-size: 14px !important;
-        }
-        
-        /* Ajustar columnas en celular */
-        .row-widget.stColumns {
-            gap: 0.2rem !important;
-        }
+        .stSpinner > div { font-size: 14px !important; }
+        .row-widget.stColumns { gap: 0.2rem !important; }
     }
     
-    /* MEJORAS PARA TABLET */
+    /* Ajuste para tablet */
     @media only screen and (min-width: 769px) and (max-width: 1024px) {
+        .logo-senamhi {
+            width: 65px;
+            top: 8px;
+            left: 8px;
+        }
+        
         .main .block-container {
             padding-left: 1rem !important;
             padding-right: 1rem !important;
@@ -125,8 +133,14 @@ st.markdown("""
         }
     }
     
-    /* MEJORAS PARA PC */
+    /* Ajuste para PC */
     @media only screen and (min-width: 1025px) {
+        .logo-senamhi {
+            width: 80px;
+            top: 10px;
+            left: 10px;
+        }
+        
         .main .block-container {
             padding-left: 2rem !important;
             padding-right: 2rem !important;
@@ -135,18 +149,62 @@ st.markdown("""
         }
     }
     
-    /* Ocultar scrollbar de Plotly (más limpio en celular) */
     .js-plotly-plot .plotly .scrollbar {
         display: none !important;
     }
     
-    /* Fuente más legible en celular */
     body {
         font-size: 16px !important;
         line-height: 1.5 !important;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# MOSTRAR LOGO SENAMHI
+# ============================================================
+# Función para mostrar el logo desde el entorno
+def mostrar_logo_senamhi():
+    """Muestra el logo de SENAMHI en la esquina superior izquierda"""
+    
+    # Ruta de la imagen (debe estar en el entorno)
+    ruta_logo = "fotosenamhi.png"
+    
+    # Verificar si existe la imagen
+    if os.path.exists(ruta_logo):
+        try:
+            # Leer la imagen y codificar en base64
+            with open(ruta_logo, "rb") as f:
+                imagen_base64 = base64.b64encode(f.read()).decode()
+            
+            # Mostrar la imagen con HTML
+            st.markdown(f"""
+            <img src="data:image/png;base64,{imagen_base64}" 
+                 class="logo-senamhi" 
+                 alt="Logo SENAMHI"
+                 title="SENAMHI - Servicio Nacional de Meteorología e Hidrología">
+            """, unsafe_allow_html=True)
+            
+        except Exception as e:
+            # Si hay error, mostrar texto alternativo
+            st.markdown("""
+            <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
+                        background: rgba(255,255,255,0.9); padding: 6px 12px; 
+                        border-radius: 8px; font-size: 12px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <b>🌤️ SENAMHI</b>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        # Si no existe la imagen, mostrar texto alternativo
+        st.markdown("""
+        <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
+                    background: rgba(255,255,255,0.9); padding: 6px 12px; 
+                    border-radius: 8px; font-size: 12px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <b>🌤️ SENAMHI</b>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
@@ -170,18 +228,6 @@ def image_to_base64(filepath):
         except:
             return None
     return None
-
-# ============================================================
-# DETECTAR DISPOSITIVO
-# ============================================================
-def es_dispositivo_movil():
-    """Detecta si el usuario está en un dispositivo móvil"""
-    try:
-        # Streamlit no tiene detección directa, usamos el ancho de pantalla
-        # Esto se evaluará en el lado del cliente
-        return False
-    except:
-        return False
 
 # ============================================================
 # FUNCIONES DE PROCESAMIENTO
@@ -423,7 +469,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     images_plotly = []
     y_offset = 0.2
 
-    if not es_movil:  # Solo mostrar imágenes en PC
+    if not es_movil:
         if img_enferma is not None and len(enfermos_smooth) > 0:
             for idx in [0, -1]:
                 images_plotly.append({
@@ -493,7 +539,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    # ZOOM INICIAL (según selección)
+    # ZOOM INICIAL
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
     
@@ -511,33 +557,31 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
 
-    # TICKS (menos en celular)
+    # TICKS
     if es_movil:
-        # En celular, mostrar menos ticks
         if len(df) > 30:
-            freq = 'MS'  # Mensual
+            freq = 'MS'
         else:
             freq = 'MS'
         fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq=freq)
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        # Reducir tamaño de fuente en celular
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
-        height = 500  # Más baja en celular
+        height = 500
     else:
         fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
-        height = 750  # Más alta en PC
+        height = 750
 
-    # LAYOUT - RESPONSIVE
+    # LAYOUT
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        height=height,  # Altura variable
+        height=height,
         dragmode='pan',
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
@@ -600,11 +644,10 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
-    # Configuración para touch (celular)
     if es_movil:
         fig.update_layout(
             hoverlabel={'font_size': 12},
-            dragmode='pan',  # Pan en lugar de zoom para mejor experiencia en touch
+            dragmode='pan',
         )
 
     return fig
@@ -613,7 +656,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # Título con tamaño responsive
+    
+    # ============================================================
+    # MOSTRAR LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
+    # ============================================================
+    mostrar_logo_senamhi()
+    
+    # Título
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
         <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
@@ -626,7 +675,6 @@ def main():
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
-        # Botones en 2 columnas para mejor uso en celular
         st.markdown("**Seleccionar período:**")
         
         col1, col2 = st.columns(2)
@@ -646,7 +694,6 @@ def main():
         
         st.markdown("---")
         
-        # Info colapsable en celular
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
             - **🖱️ Deslizar**: Arrastra el mouse ← →
@@ -673,21 +720,9 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
-    # Obtener zoom seleccionado
     zoom_meses = st.session_state.get('zoom_periodo', None)
+    es_movil = False
 
-    # Detectar si es móvil (por ancho de pantalla)
-    # Usamos un enfoque diferente: detectamos por el tamaño de la sidebar
-    # que en móvil se colapsa automáticamente
-    es_movil = False  # Por defecto, asumimos PC
-    try:
-        # Intentamos detectar por el user agent (limitado en Streamlit)
-        # Mejor usar CSS para detectar, pero esto es un aproximado
-        es_movil = False
-    except:
-        pass
-
-    # Cargar datos
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
@@ -696,7 +731,6 @@ def main():
             fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
 
         if fig is not None:
-            # Mostrar gráfica con config responsive
             st.plotly_chart(fig, use_container_width=True, config={
                 'displayModeBar': True,
                 'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
@@ -715,13 +749,11 @@ def main():
                 ]
             })
 
-            # ESTADÍSTICAS RESPONSIVE
             with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                # En celular, mostrar en 1 columna, en PC en 3
                 if es_movil:
-                    col1, col2, col3 = st.columns(1)  # Una columna en celular
+                    col1, col2, col3 = st.columns(1)
                 else:
-                    col1, col2, col3 = st.columns(3)  # Tres columnas en PC
+                    col1, col2, col3 = st.columns(3)
                 
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                     col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
