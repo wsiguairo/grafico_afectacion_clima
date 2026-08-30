@@ -1,4 +1,4 @@
-# app.py - ACTUALIZACIÓN AUTOMÁTICA CON API
+# app.py - ACTUALIZACIÓN AUTOMÁTICA CON API - VERSIÓN FINAL
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -26,12 +26,13 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS
+# CSS - COMPACTO
 # ============================================================
 st.markdown("""
 <style>
     .stApp > header { display: none !important; height: 0 !important; }
     footer { display: none !important; height: 0 !important; }
+    
     .main .block-container { 
         padding: 0px 10px 5px 10px !important;
         max-width: 1200px !important;
@@ -39,8 +40,10 @@ st.markdown("""
         padding-top: 0px !important;
         padding-bottom: 0px !important;
     }
+    
     h1, h2, h3, p { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
     h2 { font-size: 1rem !important; padding: 2px 0 2px 0 !important; margin: 0 !important; line-height: 1 !important; }
+    
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
@@ -50,6 +53,7 @@ st.markdown("""
         padding: 0 !important;
         margin-top: -5px !important;
     }
+    
     .stPlotlyChart > div {
         width: 100% !important;
         max-width: 100% !important;
@@ -58,12 +62,15 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
+    
     .modebar { transform: scale(0.6) !important; transform-origin: top right !important; top: 2px !important; right: 2px !important; }
     .stSidebar { padding: 8px !important; margin: 0 !important; }
     .stButton button { padding: 3px 6px !important; font-size: 0.7rem !important; min-height: 24px !important; margin: 0 !important; }
+    
     .stMetric { padding: 0 !important; margin: 0 !important; }
     .stMetric label { font-size: 0.6rem !important; padding: 0 !important; margin: 0 !important; }
     .stMetric div { font-size: 0.8rem !important; padding: 0 !important; margin: 0 !important; }
+    
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
@@ -71,6 +78,7 @@ st.markdown("""
     }
     .stColumns { gap: 3px !important; margin: 0 !important; padding: 0 !important; }
     .stColumn { padding: 0 3px !important; margin: 0 !important; }
+    
     .timestamp {
         font-size: 0.7rem;
         color: #0066cc;
@@ -92,12 +100,14 @@ st.markdown("""
         50% { opacity: 0.3; }
         100% { opacity: 1; }
     }
+    
     .refresh-status {
         font-size: 0.6rem;
         color: #888;
         padding: 0 !important;
         margin: 0 !important;
     }
+    
     @media (max-width: 768px) {
         .main .block-container { padding: 0px 5px 2px 5px !important; }
         .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
@@ -107,6 +117,7 @@ st.markdown("""
         .modebar { transform: scale(0.5) !important; }
         .timestamp { font-size: 0.5rem !important; }
     }
+    
     @media (max-width: 480px) {
         .stPlotlyChart { height: 220px !important; }
         .stPlotlyChart > div { height: 220px !important; }
@@ -187,15 +198,15 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
         if client is None:
             return None
         
-        # Abrir la hoja
+        # Abrir la hoja principal "Sintomas_graf"
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Leer datos de síntomas
+        # Leer datos de la pestaña "sintomas"
         sheet_sint = spreadsheet.worksheet(sheet_sintomas)
         data_sintomas = sheet_sint.get_all_values()
         df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
         
-        # Leer datos de temperaturas
+        # Leer datos de la pestaña "temperaturas"
         sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
         data_temperaturas = sheet_temp.get_all_values()
         df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
@@ -639,10 +650,13 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
-    # IMPORTANTE: Hoja correcta es "Sintomas_graf"
+    # ============================================================
+    # CONFIGURACIÓN DE HOJAS - ¡CORRECTO!
+    # ============================================================
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'Sintomas_graf'  # ← ¡ESTE ES EL NOMBRE CORRECTO!
-    SHEET_NAME_TEMPERATURAS = 'temperaturas'
+    SHEET_NAME_SINTOMAS = 'sintomas'        # ← Pestaña interna
+    SHEET_NAME_TEMPERATURAS = 'temperaturas' # ← Pestaña interna
+    # La hoja principal se llama "Sintomas_graf"
 
     os.makedirs('imagenes', exist_ok=True)
     
@@ -689,7 +703,7 @@ def main():
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos. Verifica que la hoja 'Sintomas_graf' exista y esté compartida con el email.")
+        st.error("❌ No se pudieron cargar los datos. Verifica que las pestañas 'sintomas' y 'temperaturas' existan en la hoja 'Sintomas_graf'.")
 
 if __name__ == "__main__":
     main()
