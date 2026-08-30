@@ -31,9 +31,10 @@ st.markdown(
     """, 
     unsafe_allow_html=True
 )
-# NOTA: Cambia el '26px' de arriba por otro número (ej. 22px o 30px) si quieres achicar o agrandar el título.
+# 💡 MODIFICACIÓN: Cambia '26px' por otro número para ajustar el tamaño (ej: 22px).
 
 st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+
 
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
