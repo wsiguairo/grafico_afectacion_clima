@@ -476,7 +476,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # ============================================================
 def main():
     # Título
-    st.markdown("## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
     
     # ============================================================
