@@ -23,30 +23,6 @@ st.set_page_config(
 )
 
 # ============================================================
-# MAIN - APLICACIÓN STREAMLIT
-# ============================================================
-def main():
-    # ✂️ ELIMINA EL ESPACIO EN BLANCO (SIN GENERAR NINGÚN TÍTULO)
-    st.markdown(
-        """
-        <style>
-            .block-container {
-                padding-top: 0rem !important;
-                padding-bottom: 0rem !important;
-            }
-            header {
-                visibility: hidden !important;
-                height: 0px !important;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # 👇 REEMPLAZA ESTA LÍNEA DE ABAJO CON TU CÓDIGO (Tus gráficas, filtros, etc.)
-    st.write("Tus gráficas y filtros van aquí e iniciarán desde el borde superior.")
-
-# ============================================================
 # 🚨 LÍNEAS OBLIGATORIAS PARA QUE EL CÓDIGO FUNCIONE
 # ============================================================
 if __name__ == "__main__":
