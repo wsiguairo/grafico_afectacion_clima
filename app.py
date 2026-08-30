@@ -1,4 +1,4 @@
-# app.py - CON ACTUALIZACIÓN AUTOMÁTICA DE DATOS
+# app.py - ACTUALIZACIÓN FORZADA DE DATOS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -9,6 +9,7 @@ import warnings
 import base64
 import os
 import time
+import hashlib
 
 warnings.filterwarnings('ignore')
 
@@ -23,7 +24,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - TÍTULO MÁS ARRIBA
+# CSS - COMPACTO
 # ============================================================
 st.markdown("""
 <style>
@@ -79,7 +80,6 @@ st.markdown("""
     .streamlit-expanderHeader { font-size: 0.8rem !important; padding: 2px 0 !important; margin: 0 !important; }
     .streamlit-expanderContent { padding: 0 !important; margin: 0 !important; }
     
-    /* AUTO-REFRESH INDICATOR */
     .auto-refresh {
         font-size: 0.7rem;
         color: #666;
@@ -122,14 +122,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT PARA AUTO-REFRESH CADA 60 SEGUNDOS
+# JAVASCRIPT PARA AUTO-REFRESH CADA 30 SEGUNDOS
 # ============================================================
 st.components.v1.html("""
 <script>
-    // Recargar la página cada 60 segundos para actualizar datos
+    // Recargar la página cada 30 segundos para actualizar datos
     setTimeout(function() {
         location.reload();
-    }, 60000); // 60,000 ms = 60 segundos
+    }, 30000); // 30,000 ms = 30 segundos
 </script>
 """, height=0)
 
@@ -157,10 +157,26 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIONES DE PROCESAMIENTO - SIN CACHÉ
+# FUNCIÓN PARA OBTENER HASH DE LOS DATOS (DETECTAR CAMBIOS)
 # ============================================================
-# ELIMINAMOS @st.cache_data para que siempre cargue datos frescos
-def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
+def obtener_hash_datos(df):
+    """Genera un hash único de los datos para detectar cambios"""
+    if df is None or df.empty:
+        return "vacio"
+    # Crear un hash de los datos
+    datos_str = df.to_string()
+    return hashlib.md5(datos_str.encode()).hexdigest()
+
+# ============================================================
+# FUNCIONES DE PROCESAMIENTO - FORZAR RECARGA
+# ============================================================
+# Usamos @st.cache_data pero con un parámetro que cambia
+@st.cache_data(ttl=0, show_spinner=False)  # ttl=0 = sin caché
+def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas, _timestamp=None):
+    """
+    Carga datos desde Google Sheets
+    _timestamp es un parámetro dummy para forzar recarga
+    """
     try:
         url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}"
         url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}"
@@ -554,13 +570,23 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - CON AUTO-REFRESH
+# MAIN - CON ACTUALIZACIÓN FORZADA
 # ============================================================
 def main():
-    # TÍTULO CON INDICADOR DE ACTUALIZACIÓN
-    st.markdown("""
+    # Obtener timestamp actual para forzar recarga
+    current_time = time.time()
+    timestamp = st.session_state.get('timestamp', 0)
+    
+    # Si pasaron más de 30 segundos, forzar recarga
+    if current_time - timestamp > 30:
+        st.session_state.timestamp = current_time
+        # Forzar rerun para recargar datos
+        st.rerun()
+    
+    # TÍTULO CON INDICADOR
+    st.markdown(f"""
     ## 🦙 Monitoreo Diario
-    <div class="auto-refresh"><span></span> Actualización automática cada 60 segundos</div>
+    <div class="auto-refresh"><span></span> Actualización automática cada 30 segundos</div>
     """, unsafe_allow_html=True)
     
     with st.sidebar:
@@ -571,19 +597,24 @@ def main():
         with col1:
             if st.button("📅 1 Mes", use_container_width=True):
                 st.session_state.zoom_periodo = 1
+                st.session_state.timestamp = 0  # Forzar recarga
                 st.rerun()
             if st.button("📅 6 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 6
+                st.session_state.timestamp = 0
                 st.rerun()
             if st.button("📅 Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
+                st.session_state.timestamp = 0
                 st.rerun()
         with col2:
             if st.button("📅 3 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 3
+                st.session_state.timestamp = 0
                 st.rerun()
             if st.button("📅 1 Año", use_container_width=True):
                 st.session_state.zoom_periodo = 12
+                st.session_state.timestamp = 0
                 st.rerun()
         
         st.markdown("---")
@@ -591,11 +622,12 @@ def main():
         st.markdown("- Arrastra para deslizar")
         st.markdown("- Rueda para hacer zoom")
         
-        # ÚLTIMA ACTUALIZACIÓN
         st.markdown("---")
         st.caption(f"🔄 Última actualización: {time.strftime('%H:%M:%S')}")
         
+        # Botón de actualización forzada
         if st.button("🔄 Actualizar ahora", use_container_width=True):
+            st.session_state.timestamp = 0
             st.cache_data.clear()
             st.rerun()
 
@@ -613,8 +645,14 @@ def main():
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
+    # Cargar datos con timestamp para forzar recarga
     with st.spinner('🔄 Cargando datos...'):
-        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+        df = cargar_datos(
+            GOOGLE_SHEETS_ID, 
+            SHEET_NAME_SINTOMAS, 
+            SHEET_NAME_TEMPERATURAS,
+            _timestamp=st.session_state.get('timestamp', 0)
+        )
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica...'):
