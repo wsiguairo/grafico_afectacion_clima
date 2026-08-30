@@ -20,6 +20,38 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# ============================================================
+# TÍTULO PERSONALIZADO (TAMAÑO REDUCIDO)
+# ============================================================
+st.markdown(
+    """
+    <style>
+    /* Reduce el tamaño del título principal */
+    .title-custom {
+        font-size: 26px !important;
+        font-weight: 700;
+        color: #262730;
+        margin-bottom: 2px;
+    }
+    /* Estilo para el subtítulo informativo */
+    .subtitle-custom {
+        font-size: 13px;
+        color: #7d7d7d;
+        margin-top: 0px;
+        margin-bottom: 25px;
+    }
+    </style>
+    
+    <h1 class="title-custom">🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas</h1>
+    <p class="subtitle-custom">📊 Datos cargados automáticamente desde Google Sheets</p>
+    """,
+    unsafe_allow_html=True
+)
+
+
+
+
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
 # ============================================================
@@ -369,8 +401,8 @@ def crear_grafica(df, images_paths):
     # LAYOUT
     fig.update_layout(
         title={
-            'text': 'Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas',
-            'font': {'size': 14, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
+            'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',
+            'font': {'size': 20, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
             'x': 0.5,
             'xanchor': 'center'
         },
