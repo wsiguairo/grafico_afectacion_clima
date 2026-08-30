@@ -24,20 +24,38 @@ st.set_page_config(
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # 🌟 TÍTULO REDUCIDO MANUALMENTE (Reemplazó al st.title viejo)
+    # 🌟 TÍTULO AUTOMÁTICO Y RESPONSIVO (Se adapta a PC y Celular)
     st.markdown(
         """
-        <h2 style='font-size: 26px; font-weight: bold; margin-bottom: 5px; color: #31333F;'>
+        <style>
+            /* Definición del tamaño del título según la pantalla */
+            .titulo-responsivo {
+                font-weight: bold; 
+                margin-bottom: 5px; 
+                color: #31333F;
+                font-size: 28px; /* Tamaño por defecto en Computadoras */
+            }
+            
+            /* Si la pantalla es pequeña (Celular), el título se achica automáticamente */
+            @media (max-width: 768px) {
+                .titulo-responsivo {
+                    font-size: 18px; /* Tamaño adaptado para Celulares */
+                }
+            }
+        </style>
+        
+        <h2 class='titulo-responsivo'>
             🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas
         </h2>
         """, 
         unsafe_allow_html=True
     )
-    # 💡 MODIFICACIÓN: Cambia '26px' por otro número para ajustar el tamaño.
 
     st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
     # Aquí continúa el resto de tu código...
+
+    
 
 
 # ============================================================
