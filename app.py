@@ -1,4 +1,4 @@
-# app.py - VERSIÓN STREAMLIT COMPLETA (CON TODAS LAS MEJORAS)
+# app.py - VERSIÓN STREAMLIT COMPLETA (SIN ESPACIO EN BLANCO)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,33 +12,77 @@ import os
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# REDUCIR ESPACIO EN BLANCO DE LA PÁGINA
-# ============================================================
-st.markdown("""
-<style>
-    .main .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
-        max-width: 100%;
-    }
-    h1, h2, h3 {
-        margin-top: 0rem;
-        margin-bottom: 0rem;
-    }
-    .stPlotlyChart {
-        margin-top: -10px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# CONFIGURACIÓN DE PÁGINA
+# CONFIGURACIÓN DE PÁGINA (ANTES DE CUALQUIER OTRO ELEMENTO)
 # ============================================================
 st.set_page_config(
     page_title="Gráfica Alpacas Interactiva",
     page_icon="🦙",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
+
+# ============================================================
+# ELIMINAR TODO EL ESPACIO EN BLANCO (CSS)
+# ============================================================
+st.markdown("""
+<style>
+    /* Eliminar padding de la página */
+    .main .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Eliminar márgenes de títulos */
+    h1, h2, h3, h4, h5, h6 {
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Eliminar espacio de los elementos de Streamlit */
+    .stMarkdown, .stCaption, .stPlotlyChart {
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Eliminar espacio de la barra superior de Streamlit */
+    header {
+        display: none !important;
+    }
+    
+    /* Eliminar espacio del footer */
+    footer {
+        display: none !important;
+    }
+    
+    /* Reducir espacio de la barra de herramientas */
+    .stPlotlyChart .js-plotly-plot .plotly .modebar {
+        top: 5px !important;
+    }
+    
+    /* Reducir margen de la gráfica */
+    .stPlotlyChart > div {
+        margin-top: -15px !important;
+    }
+    
+    /* Eliminar padding del contenedor principal */
+    section.main > div {
+        padding-top: 0rem !important;
+    }
+    
+    /* Eliminar espacio del spinner */
+    .stSpinner {
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
@@ -76,7 +120,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df_sintomas = pd.read_csv(url_sintomas)
         df_temperaturas = pd.read_csv(url_temperaturas)
 
-        # Función para encontrar columna de fecha
         def encontrar_columna_fecha(df):
             for col in df.columns:
                 col_lower = col.lower().strip()
@@ -386,7 +429,7 @@ def crear_grafica(df, images_paths):
     fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
-    # LAYOUT (SIN TÍTULO DENTRO DE LA GRÁFICA)
+    # LAYOUT
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
@@ -467,7 +510,7 @@ def crear_grafica(df, images_paths):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 80, 'b': 100, 'l': 80, 'r': 120}
+        margin={'t': 50, 'b': 50, 'l': 60, 'r': 80}  # REDUCIDO: de 80 a 50
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
