@@ -1,4 +1,4 @@
-# app.py - FORZAR LECTURA DE DATOS NUEVOS
+# app.py - CÓDIGO ROBUSTO CON ACTUALIZACIÓN AUTOMÁTICA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,6 +12,8 @@ import time
 import datetime
 import requests
 import io
+import hashlib
+import json
 
 warnings.filterwarnings('ignore')
 
@@ -26,7 +28,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - COMPACTO CON INDICADOR
+# CSS - COMPACTO CON INDICADORES
 # ============================================================
 st.markdown("""
 <style>
@@ -98,15 +100,18 @@ st.markdown("""
         margin-right: 5px;
         animation: pulse 2s infinite;
     }
+    .timestamp.error span {
+        background-color: #ff0000 !important;
+    }
     @keyframes pulse {
         0% { opacity: 1; }
         50% { opacity: 0.3; }
         100% { opacity: 1; }
     }
     
-    .debug-info {
+    .status-bar {
         font-size: 0.6rem;
-        color: #999;
+        color: #666;
         padding: 0 !important;
         margin: 0 !important;
     }
@@ -118,6 +123,7 @@ st.markdown("""
         h2 { font-size: 0.8rem !important; padding: 1px 0 !important; }
         .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 18px !important; }
         .modebar { transform: scale(0.5) !important; }
+        .timestamp { font-size: 0.5rem !important; }
     }
     
     @media (max-width: 480px) {
@@ -127,10 +133,21 @@ st.markdown("""
         .stButton button { font-size: 0.5rem !important; padding: 1px 3px !important; min-height: 14px !important; }
         .stMetric label { font-size: 0.5rem !important; }
         .stMetric div { font-size: 0.6rem !important; }
-        .timestamp { font-size: 0.5rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# JAVASCRIPT PARA AUTO-REFRESH
+# ============================================================
+st.components.v1.html("""
+<script>
+    // Auto-refresh cada 30 segundos
+    setInterval(function() {
+        location.reload();
+    }, 30000);
+</script>
+""", height=0)
 
 # ============================================================
 # DICCIONARIO DE MESES
@@ -156,61 +173,94 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIÓN PARA CARGAR DATOS CON requests (FORZADO)
+# FUNCIÓN PARA CALCULAR HASH DE DATOS
 # ============================================================
-def cargar_datos_force(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos FORZANDO la lectura desde Google Sheets"""
+def calcular_hash_datos(df):
+    """Calcula un hash único de los datos para detectar cambios"""
+    if df is None or df.empty:
+        return "vacio"
+    # Crear hash de las columnas numéricas
+    datos_str = df.select_dtypes(include=[np.number]).to_string()
+    return hashlib.md5(datos_str.encode()).hexdigest()
+
+# ============================================================
+# FUNCIÓN ROBUSTA PARA CARGAR DATOS
+# ============================================================
+def cargar_datos_robusto(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """
+    Carga datos con múltiples estrategias anti-caché
+    """
+    resultados = []
+    
+    # Estrategia 1: requests con timestamp y headers anti-caché
     try:
-        # Timestamp actual para evitar caché
-        t = int(time.time() * 1000)  # Milisegundos para más precisión
+        t = int(time.time() * 1000)
         
-        # URLs con timestamp
         url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
         url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
         
-        # Headers para evitar caché
         headers = {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         
-        # Descargar con requests
+        # Descargar con timeout
         response_sintomas = requests.get(url_sintomas, headers=headers, timeout=30)
         response_temperaturas = requests.get(url_temperaturas, headers=headers, timeout=30)
         
-        # Verificar que las descargas fueron exitosas
-        if response_sintomas.status_code != 200:
-            raise Exception(f"Error al descargar síntomas: {response_sintomas.status_code}")
-        if response_temperaturas.status_code != 200:
-            raise Exception(f"Error al descargar temperaturas: {response_temperaturas.status_code}")
+        if response_sintomas.status_code == 200 and response_temperaturas.status_code == 200:
+            df_sintomas = pd.read_csv(io.StringIO(response_sintomas.text))
+            df_temperaturas = pd.read_csv(io.StringIO(response_temperaturas.text))
+            resultados.append(("requests", df_sintomas, df_temperaturas))
+    except Exception as e:
+        pass
+    
+    # Estrategia 2: pd.read_csv con parámetros anti-caché
+    try:
+        t = int(time.time() * 1000)
+        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
+        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
         
-        # Leer CSV desde el contenido
-        df_sintomas = pd.read_csv(io.StringIO(response_sintomas.text))
-        df_temperaturas = pd.read_csv(io.StringIO(response_temperaturas.text))
+        df_sintomas = pd.read_csv(url_sintomas, cache=False)
+        df_temperaturas = pd.read_csv(url_temperaturas, cache=False)
+        resultados.append(("pd_read_csv", df_sintomas, df_temperaturas))
+    except Exception as e:
+        pass
+    
+    # Si no hay resultados, error
+    if not resultados:
+        st.error("❌ No se pudo conectar con Google Sheets")
+        return None
+    
+    # Usar el primer resultado exitoso
+    _, df_sintomas, df_temperaturas = resultados[0]
+    
+    # PROCESAR DATOS
+    def encontrar_columna_fecha(df):
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo']):
+                return col
+        return df.columns[0]
 
-        def encontrar_columna_fecha(df):
-            for col in df.columns:
-                col_lower = col.lower().strip()
-                if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo']):
+    def encontrar_columna_por_patron(df, patrones):
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            for patron in patrones:
+                if patron.lower() in col_lower:
                     return col
-            return df.columns[0]
+        return None
 
-        def encontrar_columna_por_patron(df, patrones):
-            for col in df.columns:
-                col_lower = col.lower().strip()
-                for patron in patrones:
-                    if patron.lower() in col_lower:
-                        return col
-            return None
+    def estandarizar_columnas(df, mapeo):
+        for nuevo_nombre, patrones in mapeo.items():
+            col_existente = encontrar_columna_por_patron(df, patrones)
+            if col_existente and col_existente != nuevo_nombre:
+                df.rename(columns={col_existente: nuevo_nombre}, inplace=True)
+        return df
 
-        def estandarizar_columnas(df, mapeo):
-            for nuevo_nombre, patrones in mapeo.items():
-                col_existente = encontrar_columna_por_patron(df, patrones)
-                if col_existente and col_existente != nuevo_nombre:
-                    df.rename(columns={col_existente: nuevo_nombre}, inplace=True)
-            return df
-
+    try:
         col_fecha_sintomas = encontrar_columna_fecha(df_sintomas)
         col_fecha_temp = encontrar_columna_fecha(df_temperaturas)
 
@@ -299,14 +349,17 @@ def cargar_datos_force(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-        
-        # Agregar timestamp de carga
+
+        # Guardar metadatos
         df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
+        df.attrs['fecha_carga'] = datetime.datetime.now().strftime("%d/%m/%Y")
+        df.attrs['hash'] = calcular_hash_datos(df)
+        df.attrs['registros'] = len(df)
 
         return df
 
     except Exception as e:
-        st.error(f"❌ Error al cargar datos: {e}")
+        st.error(f"❌ Error al procesar datos: {e}")
         return None
 
 # ============================================================
@@ -579,9 +632,17 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - CON FORZADO DE LECTURA
+# MAIN - CON SISTEMA ROBUSTO
 # ============================================================
 def main():
+    # Inicializar session_state
+    if 'ultima_actualizacion' not in st.session_state:
+        st.session_state.ultima_actualizacion = None
+    if 'hash_anterior' not in st.session_state:
+        st.session_state.hash_anterior = None
+    if 'datos_cargados' not in st.session_state:
+        st.session_state.datos_cargados = None
+    
     # Obtener timestamp actual
     now = datetime.datetime.now()
     hora_actual = now.strftime("%H:%M:%S")
@@ -622,10 +683,20 @@ def main():
         st.markdown("- Rueda para hacer zoom")
         
         st.markdown("---")
-        st.caption(f"🔄 Última recarga: {hora_actual}")
         
+        # Estado de la actualización
+        if st.session_state.ultima_actualizacion:
+            st.caption(f"🔄 Última recarga: {st.session_state.ultima_actualizacion}")
+        else:
+            st.caption("🔄 Cargando datos...")
+        
+        # Botón de actualización forzada
         if st.button("🔄 Actualizar ahora", use_container_width=True):
+            st.session_state.ultima_actualizacion = hora_actual
             st.rerun()
+        
+        st.markdown("---")
+        st.caption("⏱️ Auto-actualización cada 30 segundos")
 
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
@@ -642,9 +713,20 @@ def main():
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos_force(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+        df = cargar_datos_robusto(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
+        # Verificar si los datos cambiaron
+        hash_actual = df.attrs.get('hash', '')
+        if st.session_state.hash_anterior is None:
+            st.session_state.hash_anterior = hash_actual
+        elif st.session_state.hash_anterior != hash_actual:
+            st.session_state.hash_anterior = hash_actual
+            # Mostrar notificación de cambio
+            st.success("🔄 ¡Datos actualizados!")
+        
+        st.session_state.ultima_actualizacion = df.attrs.get('timestamp_carga', hora_actual)
+        
         with st.spinner('📊 Generando gráfica...'):
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
@@ -669,6 +751,9 @@ def main():
                     col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+                
+                # Mostrar metadatos
+                st.caption(f"📊 Registros: {df.attrs.get('registros', 0)} | Hash: {df.attrs.get('hash', '')[:8]}...")
 
             st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
