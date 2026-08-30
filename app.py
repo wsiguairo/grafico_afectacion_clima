@@ -1,4 +1,4 @@
-# app.py - SIN ESPACIO VACÍO
+# app.py - CONTROL TOTAL DEL LAYOUT
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,12 +22,18 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - ELIMINAR TODO EL ESPACIO VACÍO
+# CSS EXTREMO - ELIMINAR TODO ESPACIO
 # ============================================================
 st.markdown("""
 <style>
-    /* RESET TOTAL - ELIMINAR TODO */
-    html, body, .main, .main > div, .block-container {
+    /* ELIMINAR TODO - RESET COMPLETO */
+    * {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    html, body, .stApp, .stApp > div, .main, .main > div {
         margin: 0 !important;
         padding: 0 !important;
         max-width: 100% !important;
@@ -35,43 +41,54 @@ st.markdown("""
         overflow: hidden !important;
     }
     
-    /* Contenedor principal - SIN PADDING */
+    .stApp {
+        background: white !important;
+    }
+    
     .main .block-container {
-        padding: 0 !important;
+        padding: 0px 0px 0px 0px !important;
         max-width: 100% !important;
         width: 100% !important;
-        height: 100vh !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 0 !important;
-    }
-    
-    /* ELIMINAR ESPACIO DEL TÍTULO */
-    h1, h2, h3, p, div {
         margin: 0 !important;
-        padding: 0 !important;
     }
     
+    /* ELIMINAR HEADER */
+    header, .stApp > header, .css-1d391kg, #MainMenu {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* ELIMINAR FOOTER */
+    footer, .stApp > footer {
+        display: none !important;
+        height: 0 !important;
+    }
+    
+    /* TÍTULO - MÍNIMO ESPACIO */
     h2 {
         font-size: 0.9rem !important;
-        padding: 0.05rem 0 !important;
+        line-height: 1.2 !important;
+        padding: 2px 0 0 0 !important;
         margin: 0 !important;
-        line-height: 1 !important;
+        height: auto !important;
+        min-height: 0 !important;
     }
     
-    /* ELIMINAR HEADER Y FOOTER */
-    header { display: none !important; }
-    footer { display: none !important; }
-    .stApp > header { display: none !important; }
-    #MainMenu { visibility: hidden !important; }
-    
-    /* CONTENEDOR DE LA GRÁFICA - OCUPA TODO EL ESPACIO */
+    /* GRÁFICA - OCUPA TODO EL ESPACIO */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
+        height: auto !important;
+        min-height: 200px !important;
         flex: 1 !important;
-        min-height: 180px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
@@ -81,108 +98,96 @@ st.markdown("""
         max-width: 100% !important;
         min-width: 100% !important;
         height: 100% !important;
-        min-height: 180px !important;
+        min-height: 200px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
     
-    /* BARRA DE HERRAMIENTAS MÁS PEQUEÑA */
+    /* BARRA DE HERRAMIENTAS - MÁS PEQUEÑA */
     .modebar {
-        transform: scale(0.5) !important;
+        transform: scale(0.4) !important;
         transform-origin: top right !important;
-        top: 2px !important;
-        right: 2px !important;
+        top: 0 !important;
+        right: 0 !important;
     }
     
-    /* SIDEBAR COMPACTA */
-    .css-1d391kg {
-        padding: 0.2rem !important;
+    /* SIDEBAR */
+    .css-1d391kg, .stSidebar {
+        padding: 2px 4px !important;
         margin: 0 !important;
     }
     
     .stButton button {
-        padding: 0.05rem 0.2rem !important;
+        padding: 1px 4px !important;
         font-size: 0.6rem !important;
         min-height: 18px !important;
+        height: auto !important;
         margin: 0 !important;
     }
     
-    /* MÉTRICAS COMPACTAS */
+    /* MÉTRICAS */
     .stMetric {
         padding: 0 !important;
         margin: 0 !important;
     }
     .stMetric label {
         font-size: 0.6rem !important;
+        padding: 0 !important;
         margin: 0 !important;
     }
     .stMetric div {
         font-size: 0.8rem !important;
+        padding: 0 !important;
         margin: 0 !important;
     }
     
-    /* ELIMINAR ESPACIO DE LOS ELEMENTOS DE STREAMLIT */
-    .element-container {
+    /* ELIMINAR ESPACIOS DE STREAMLIT */
+    .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
+        gap: 0 !important;
     }
     
-    .stMarkdown {
-        margin: 0 !important;
-        padding: 0 !important;
+    .stColumns {
+        gap: 2px !important;
     }
     
-    /* OCULTAR ESPACIO DE LA BARRA DE ESTADO */
-    .stStatusWidget {
-        display: none !important;
+    .stColumn {
+        padding: 0 2px !important;
     }
     
     /* MÓVIL */
     @media (max-width: 768px) {
         .stPlotlyChart {
-            min-height: 140px !important;
+            min-height: 150px !important;
         }
         .stPlotlyChart > div {
-            min-height: 140px !important;
+            min-height: 150px !important;
         }
         h2 {
             font-size: 0.7rem !important;
         }
         .stButton button {
             font-size: 0.5rem !important;
-            padding: 0.03rem 0.15rem !important;
+            padding: 1px 2px !important;
             min-height: 14px !important;
-        }
-        .stMetric label {
-            font-size: 0.5rem !important;
-        }
-        .stMetric div {
-            font-size: 0.7rem !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .stPlotlyChart {
-            min-height: 100px !important;
-        }
-        .stPlotlyChart > div {
-            min-height: 100px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT PARA REDIMENSIONAR Y ELIMINAR ESPACIOS
+# JAVASCRIPT PARA FORZAR REDIMENSIONAMIENTO
 # ============================================================
 st.components.v1.html("""
 <script>
-    function removeAllSpaces() {
-        // Eliminar espacios en blanco de todos los contenedores
-        const elements = document.querySelectorAll('.main, .block-container, .stPlotlyChart, .element-container, .stMarkdown');
-        elements.forEach(el => {
-            el.style.margin = '0';
-            el.style.padding = '0';
+    function forceResize() {
+        // Eliminar todos los espacios
+        document.querySelectorAll('*').forEach(el => {
+            if (el.style) {
+                el.style.margin = '0';
+                el.style.padding = '0';
+            }
         });
         
         // Redimensionar gráfica
@@ -190,27 +195,22 @@ st.components.v1.html("""
         charts.forEach((chart) => {
             const parent = chart.parentElement;
             if (parent) {
-                // Calcular altura disponible (85% de la pantalla)
-                const height = Math.min(window.innerHeight * 0.82, 450);
-                const width = parent.offsetWidth;
+                // Altura dinámica basada en ventana
+                const h = window.innerHeight;
+                let height = Math.min(h * 0.75, 500);
+                if (h < 600) height = Math.min(h * 0.65, 300);
+                if (h < 400) height = Math.min(h * 0.55, 200);
                 
                 chart.style.width = '100%';
-                chart.style.maxWidth = '100%';
-                chart.style.minWidth = '100%';
                 chart.style.height = height + 'px';
-                chart.style.minHeight = '100px';
-                chart.style.margin = '0';
-                chart.style.padding = '0';
+                chart.style.minHeight = '120px';
+                chart.style.maxHeight = '70vh';
                 
                 const plotlyDiv = chart.querySelector('.plotly');
                 if (plotlyDiv) {
                     plotlyDiv.style.width = '100%';
-                    plotlyDiv.style.maxWidth = '100%';
-                    plotlyDiv.style.minWidth = '100%';
-                    plotlyDiv.style.height = '100%';
-                    plotlyDiv.style.margin = '0';
-                    plotlyDiv.style.padding = '0';
-                    
+                    plotlyDiv.style.height = height + 'px';
+                    plotlyDiv.style.minHeight = '120px';
                     if (plotlyDiv._fullLayout) {
                         try {
                             Plotly.Plots.resize(plotlyDiv);
@@ -221,34 +221,28 @@ st.components.v1.html("""
         });
     }
     
-    // Ejecutar inmediatamente y varias veces
-    removeAllSpaces();
-    setTimeout(removeAllSpaces, 50);
-    setTimeout(removeAllSpaces, 150);
-    setTimeout(removeAllSpaces, 300);
-    setTimeout(removeAllSpaces, 500);
+    // Ejecutar inmediatamente y repetidamente
+    forceResize();
+    setTimeout(forceResize, 50);
+    setTimeout(forceResize, 100);
+    setTimeout(forceResize, 200);
+    setTimeout(forceResize, 500);
+    setTimeout(forceResize, 1000);
     
     // Redimensionar al cambiar tamaño
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(removeAllSpaces, 50);
+    let timer;
+    window.addEventListener('resize', () => {
+        clearTimeout(timer);
+        timer = setTimeout(forceResize, 50);
     });
     
-    // Redimensionar al cargar
-    window.addEventListener('load', function() {
-        setTimeout(removeAllSpaces, 100);
-        setTimeout(removeAllSpaces, 300);
-    });
-    
-    // Observar cambios en el DOM
-    const observer = new MutationObserver(function() {
-        removeAllSpaces();
+    // Observar cambios
+    const observer = new MutationObserver(() => {
+        forceResize();
     });
     observer.observe(document.body, {
         childList: true,
-        subtree: true,
-        attributes: false
+        subtree: true
     });
 </script>
 """, height=0)
@@ -602,7 +596,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT - MÁRGENES MÍNIMOS
+    # LAYOUT - MÁRGENES MÍNIMOS ABSOLUTOS
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
@@ -655,7 +649,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         legend={
             'orientation': 'h',
             'x': 0.5,
-            'y': -0.15,
+            'y': -0.12,
             'xanchor': 'center',
             'yanchor': 'top',
             'bgcolor': 'rgba(255, 255, 255, 0.7)',
@@ -667,7 +661,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 5, 'b': 5, 'l': 20, 'r': 25}
+        margin={'t': 2, 'b': 2, 'l': 15, 'r': 20}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.5, opacity=0.3)
 
@@ -677,32 +671,36 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # MAIN
 # ============================================================
 def main():
-    # Título - SIN ESPACIO
-    st.markdown("## 🦙 Monitoreo Diario")
+    # USAR UN CONTENEDOR VACÍO PARA CONTROL TOTAL
+    container = st.container()
     
-    # BARRA LATERAL
-    with st.sidebar:
-        st.markdown("### ⏱️ Período")
+    with container:
+        # Título - sin espacio
+        st.markdown("## 🦙 Monitoreo Diario")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("1M", use_container_width=True):
-                st.session_state.zoom_periodo = 1
-            if st.button("6M", use_container_width=True):
-                st.session_state.zoom_periodo = 6
-            if st.button("Todo", use_container_width=True):
-                st.session_state.zoom_periodo = None
-        
-        with col2:
-            if st.button("3M", use_container_width=True):
-                st.session_state.zoom_periodo = 3
-            if st.button("1A", use_container_width=True):
-                st.session_state.zoom_periodo = 12
-        
-        st.markdown("---")
-        if st.button("🔄 Actualizar", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
+        # BARRA LATERAL
+        with st.sidebar:
+            st.markdown("### ⏱️")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("1M", use_container_width=True):
+                    st.session_state.zoom_periodo = 1
+                if st.button("6M", use_container_width=True):
+                    st.session_state.zoom_periodo = 6
+                if st.button("Todo", use_container_width=True):
+                    st.session_state.zoom_periodo = None
+            
+            with col2:
+                if st.button("3M", use_container_width=True):
+                    st.session_state.zoom_periodo = 3
+                if st.button("1A", use_container_width=True):
+                    st.session_state.zoom_periodo = 12
+            
+            st.markdown("---")
+            if st.button("🔄", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
 
     # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
@@ -740,9 +738,8 @@ def main():
                 }
             )
 
-            # ESTADÍSTICAS ULTRA COMPACTAS - SIN ESPACIO
+            # ESTADÍSTICAS - SIN ESPACIO
             col1, col2, col3 = st.columns(3)
-            col1.markdown('<style>.stMetric{margin:0!important;padding:0!important}</style>', unsafe_allow_html=True)
             if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                 col1.metric("🦙", f"{df['Enfermos'].sum():.0f}")
             if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
