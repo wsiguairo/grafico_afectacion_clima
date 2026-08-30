@@ -1,4 +1,4 @@
-# app.py - SOLUCIÓN DEFINITIVA CON GOOGLE SHEETS API
+# app.py - ACTUALIZACIÓN AUTOMÁTICA CON GOOGLE SHEETS API
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,7 +12,6 @@ import time
 import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import json
 
 warnings.filterwarnings('ignore')
 
@@ -33,7 +32,6 @@ st.markdown("""
 <style>
     .stApp > header { display: none !important; height: 0 !important; }
     footer { display: none !important; height: 0 !important; }
-    
     .main .block-container { 
         padding: 0px 10px 5px 10px !important;
         max-width: 1200px !important;
@@ -41,10 +39,8 @@ st.markdown("""
         padding-top: 0px !important;
         padding-bottom: 0px !important;
     }
-    
     h1, h2, h3, p { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
     h2 { font-size: 1rem !important; padding: 2px 0 2px 0 !important; margin: 0 !important; line-height: 1 !important; }
-    
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
@@ -54,7 +50,6 @@ st.markdown("""
         padding: 0 !important;
         margin-top: -5px !important;
     }
-    
     .stPlotlyChart > div {
         width: 100% !important;
         max-width: 100% !important;
@@ -63,15 +58,12 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
-    
     .modebar { transform: scale(0.6) !important; transform-origin: top right !important; top: 2px !important; right: 2px !important; }
     .stSidebar { padding: 8px !important; margin: 0 !important; }
     .stButton button { padding: 3px 6px !important; font-size: 0.7rem !important; min-height: 24px !important; margin: 0 !important; }
-    
     .stMetric { padding: 0 !important; margin: 0 !important; }
     .stMetric label { font-size: 0.6rem !important; padding: 0 !important; margin: 0 !important; }
     .stMetric div { font-size: 0.8rem !important; padding: 0 !important; margin: 0 !important; }
-    
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
@@ -79,10 +71,6 @@ st.markdown("""
     }
     .stColumns { gap: 3px !important; margin: 0 !important; padding: 0 !important; }
     .stColumn { padding: 0 3px !important; margin: 0 !important; }
-    
-    .streamlit-expanderHeader { font-size: 0.8rem !important; padding: 2px 0 !important; margin: 0 !important; }
-    .streamlit-expanderContent { padding: 0 !important; margin: 0 !important; }
-    
     .timestamp {
         font-size: 0.7rem;
         color: #0066cc;
@@ -104,7 +92,12 @@ st.markdown("""
         50% { opacity: 0.3; }
         100% { opacity: 1; }
     }
-    
+    .refresh-status {
+        font-size: 0.6rem;
+        color: #888;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
     @media (max-width: 768px) {
         .main .block-container { padding: 0px 5px 2px 5px !important; }
         .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
@@ -114,26 +107,23 @@ st.markdown("""
         .modebar { transform: scale(0.5) !important; }
         .timestamp { font-size: 0.5rem !important; }
     }
-    
     @media (max-width: 480px) {
         .stPlotlyChart { height: 220px !important; }
         .stPlotlyChart > div { height: 220px !important; }
         h2 { font-size: 0.7rem !important; }
         .stButton button { font-size: 0.5rem !important; padding: 1px 3px !important; min-height: 14px !important; }
-        .stMetric label { font-size: 0.5rem !important; }
-        .stMetric div { font-size: 0.6rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT PARA AUTO-REFRESH
+# JAVASCRIPT AUTO-REFRESH CADA 20 SEGUNDOS
 # ============================================================
 st.components.v1.html("""
 <script>
     setInterval(function() {
         location.reload();
-    }, 60000);
+    }, 20000);
 </script>
 """, height=0)
 
@@ -161,13 +151,12 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# CONFIGURACIÓN DE GOOGLE SHEETS API
+# CONEXIÓN A GOOGLE SHEETS
 # ============================================================
-# Credenciales desde secrets de Streamlit
-def get_google_sheets_client():
-    """Obtiene cliente de Google Sheets usando secrets"""
+def conectar_google_sheets():
+    """Conecta a Google Sheets usando credenciales de secrets"""
     try:
-        # Usar secrets de Streamlit
+        # Cargar credenciales desde secrets
         creds_dict = {
             "type": st.secrets["gcp_service_account"]["type"],
             "project_id": st.secrets["gcp_service_account"]["project_id"],
@@ -186,32 +175,34 @@ def get_google_sheets_client():
         client = gspread.authorize(creds)
         return client
     except Exception as e:
-        st.error(f"❌ Error al conectar con Google Sheets API: {e}")
+        st.error(f"❌ Error de conexión: {e}")
+        st.error("⚠️ Verifica que las credenciales estén configuradas en Secrets")
         return None
 
 # ============================================================
-# FUNCIÓN PARA CARGAR DATOS CON API OFICIAL
+# FUNCIÓN PARA CARGAR DATOS EN TIEMPO REAL
 # ============================================================
-def cargar_datos_api(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos usando Google Sheets API oficial"""
+def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """Carga datos EN TIEMPO REAL desde Google Sheets"""
     try:
-        client = get_google_sheets_client()
+        client = conectar_google_sheets()
         if client is None:
             return None
         
-        # Abrir la hoja de cálculo
+        # Abrir la hoja
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Obtener datos de síntomas
+        # Leer datos de síntomas
         sheet_sint = spreadsheet.worksheet(sheet_sintomas)
         data_sintomas = sheet_sint.get_all_values()
         df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
         
-        # Obtener datos de temperaturas
+        # Leer datos de temperaturas
         sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
         data_temperaturas = sheet_temp.get_all_values()
         df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
         
+        # Procesar datos
         def encontrar_columna_fecha(df):
             for col in df.columns:
                 col_lower = col.lower().strip()
@@ -325,11 +316,13 @@ def cargar_datos_api(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         # Guardar timestamp
         df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
+        df.attrs['fecha_carga'] = datetime.datetime.now().strftime("%d/%m/%Y")
+        df.attrs['registros'] = len(df)
 
         return df
 
     except Exception as e:
-        st.error(f"❌ Error al cargar datos con API: {e}")
+        st.error(f"❌ Error al cargar datos: {e}")
         return None
 
 # ============================================================
@@ -609,9 +602,11 @@ def main():
     hora_actual = now.strftime("%H:%M:%S")
     fecha_actual = now.strftime("%d/%m/%Y")
     
+    # Título con timestamp
     st.markdown(f"""
-    ## 🦙 Monitoreo Diario
-    <div class="timestamp"><span></span> Datos cargados: {fecha_actual} {hora_actual}</div>
+    ## 🦙 Monitoreo Diario - Actualización Automática
+    <div class="timestamp"><span></span> 📊 Datos cargados: {fecha_actual} {hora_actual}</div>
+    <div class="refresh-status">🔄 Auto-actualización cada 20 segundos</div>
     """, unsafe_allow_html=True)
     
     with st.sidebar:
@@ -663,8 +658,8 @@ def main():
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
-    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos_api(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+    with st.spinner('🔄 Cargando datos en tiempo real...'):
+        df = cargar_datos_tiempo_real(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica...'):
@@ -691,12 +686,14 @@ def main():
                     col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+                
+                st.caption(f"📊 Registros cargados: {df.attrs.get('registros', 0)}")
 
-            st.success("✅ ¡Gráfica cargada exitosamente!")
+            st.success("✅ ¡Gráfica cargada exitosamente! Los datos se actualizan automáticamente.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos")
+        st.error("❌ No se pudieron cargar los datos. Verifica que las credenciales estén configuradas correctamente.")
 
 if __name__ == "__main__":
     main()
