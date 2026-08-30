@@ -11,9 +11,6 @@ import os
 
 warnings.filterwarnings('ignore')
 
-import streamlit as st  # Asegúrate de tener siempre esta línea al inicio
-
-
 st.set_page_config(
     page_title="",
     page_icon="🦙",
