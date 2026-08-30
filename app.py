@@ -15,7 +15,7 @@ import streamlit as st  # Asegúrate de tener siempre esta línea al inicio
 
 
 st.set_page_config(
-    page_title="Gráfica Alpacas Interactiva",
+    page_title="",
     page_icon="🦙",
     layout="wide"
 )
