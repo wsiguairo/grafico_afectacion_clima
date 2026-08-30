@@ -11,15 +11,6 @@ import os
 
 warnings.filterwarnings('ignore')
 
-# ============================================================
-# CONFIGURACIÓN DE PÁGINA
-# ============================================================
-st.set_page_config(
-    page_title="Gráfica Alpacas Interactiva",
-    page_icon="🦙",
-    layout="wide"
-)
-
 
 # ============================================================
 # TÍTULO PERSONALIZADO (TAMAÑO REDUCIDO)
