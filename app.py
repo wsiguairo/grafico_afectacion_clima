@@ -1,4 +1,4 @@
-# app.py - VERSIÓN COMPLETA CON HOVER MEJORADO (FECHA + TODOS LOS VALORES)
+# app.py - VERSIÓN CON FECHA ÚNICA AL INICIO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -325,7 +325,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER CON FECHA Y VALORES
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA AL INICIO
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -347,7 +347,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - HOVER CON FECHA
+    # PRECIPITACIÓN - SOLO VALOR (SIN FECHA)
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -356,11 +356,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Precipitación',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
-            hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>💧 Precipitación:</b> %{y:.0f} mm<extra></extra>'
+            hovertemplate='<b>💧 Precipitación:</b> %{y:.0f} mm<extra></extra>'  # ✅ SIN FECHA
         ))
 
     # ============================================================
-    # TEMPERATURA - HOVER CON FECHA
+    # TEMPERATURA - SOLO VALOR (SIN FECHA)
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -371,11 +371,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             line=dict(color='#2563EB', width=2.5),
             marker=dict(size=4, color='#2563EB'),
             opacity=0.9,
-            hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<extra></extra>'
+            hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<extra></extra>'  # ✅ SIN FECHA
         ))
 
     # ============================================================
-    # VIENTO - HOVER CON FECHA
+    # VIENTO - SOLO VALOR (SIN FECHA)
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -385,7 +385,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Viento',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
-            hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'
+            hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'  # ✅ SIN FECHA
         ))
 
     # ============================================================
@@ -410,7 +410,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - PUNTOS INVISIBLES CON HOVER (FECHA + VALOR)
+    # ALPACAS ENFERMAS - PUNTOS INVISIBLES CON FECHA ÚNICA
     # ============================================================
     if 'Enfermos' in df.columns:
         df_enfermos = df[df['Enfermos'] > 0].copy()
@@ -428,11 +428,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 ),
                 yaxis='y2',
                 showlegend=False,
+                # ✅ SOLO AQUÍ SE MUESTRA LA FECHA (UNA VEZ)
                 hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>🦙 Alpacas enfermas:</b> %{y:.0f}<extra></extra>'
             ))
 
     # ============================================================
-    # ALPACAS MUERTAS - HOVER CON FECHA
+    # ALPACAS MUERTAS - SOLO VALOR (SIN FECHA)
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -445,11 +446,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
-                hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>💀 Alpacas muertas:</b> %{customdata:.0f}<extra></extra>'
+                hovertemplate='<b>💀 Alpacas muertas:</b> %{customdata:.0f}<extra></extra>'  # ✅ SIN FECHA
             ))
 
     # ============================================================
-    # ABORTOS - HOVER CON FECHA
+    # ABORTOS - SOLO VALOR (SIN FECHA)
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -462,7 +463,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
-                hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>⚠️ Abortos:</b> %{customdata:.0f}<extra></extra>'
+                hovertemplate='<b>⚠️ Abortos:</b> %{customdata:.0f}<extra></extra>'  # ✅ SIN FECHA
             ))
 
     # ============================================================
@@ -696,7 +697,7 @@ def main():
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
             - **🖱️ Pasa el cursor** sobre la línea roja para ver:
-              - 📅 Fecha
+              - 📅 Fecha (una sola vez)
               - 🦙 Alpacas enfermas (valor real)
               - 🌡️ Temperatura
               - 💧 Precipitación
@@ -767,7 +768,7 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la línea roja para ver todos los valores.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la línea roja para ver todos los valores con fecha única.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
