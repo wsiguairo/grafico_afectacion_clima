@@ -12,50 +12,21 @@ import os
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# MAIN - APLICACIÓN STREAMLIT
+# CONFIGURACIÓN DE PÁGINA (¡DEJA ESTO!
+# ============================================================
+st.set_page_config(
+    page_title="Gráfica Alpacas Interactiva",
+    page_icon="🦙",
+    layout="wide"
+)
+
+# ============================================================
+# MAIN - APLICACIÓN STREAMLIT (¡DEJA ESTO!)
 # ============================================================
 def main():
-    # 🌟 TEXTOS EN TAMAÑO AJUSTABLE (OBLIGATORIO)
-    st.markdown(
-        """
-        <style>
-            /* --- ESTILOS PARA COMPUTADORA (PC) --- */
-            .titulo-micro {
-                font-weight: bold !important; 
-                margin-bottom: 0px !important; 
-                color: #31333F !important;
-                font-size: 16px !important; /* 👈 CAMBIA ESTE NÚMERO (Ej: 18px, 20px) */
-            }
-            
-            .subtitulo-micro {
-                color: #555555 !important;
-                margin-top: 1px !important;
-                margin-bottom: 10px !important;
-                font-size: 13px !important; /* 👈 CAMBIA ESTE NÚMERO (Ej: 12px, 14px) */
-            }
-            
-            /* --- ESTILOS PARA CELULAR --- */
-            @media (max-width: 768px) {
-                .titulo-micro {
-                    font-size: 12px !important; /* 👈 CAMBIA ESTE NÚMERO EN CELULAR */
-                }
-                .subtitulo-micro {
-                    font-size: 10px !important; /* 👈 CAMBIA ESTE NÚMERO EN CELULAR */
-                }
-            }
-        </style>
-        
-        <h2 class='titulo-micro'>
-            🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas
-        </h2>
-        <p class='subtitulo-micro'>
-            📊 Datos cargados automáticamente desde Google Sheets
-        </p>
-        """, 
-        unsafe_allow_html=True
-    )
+    # El título ya no está aquí. Quedó borrado.
 
-      
+       
     
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
