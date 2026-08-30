@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON BARRA LATERAL Y RESPONSIVA
+# app.py - VERSIÓN CON BARRA LATERAL Y RESPONSIVA (CORREGIDA)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,10 +22,11 @@ st.set_page_config(
 )
 
 # ============================================================
-# ELIMINAR ESPACIO EN BLANCO Y CSS RESPONSIVO
+# CSS PARA FORZAR RESPONSIVIDAD
 # ============================================================
 st.markdown("""
 <style>
+    /* Resetear contenedores */
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
@@ -33,67 +34,52 @@ st.markdown("""
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
+    
     h1, h2, h3 {
         margin-top: 0rem !important;
         margin-bottom: 0rem !important;
     }
+    
     header { display: none !important; }
     footer { display: none !important; }
-    .stPlotlyChart > div {
-        margin-top: -10px !important;
+    
+    /* FORZAR RESPONSIVIDAD DE PLOTLY */
+    .stPlotlyChart {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
     }
+    
+    .stPlotlyChart > div {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+    
+    .stPlotlyChart iframe {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+    
     /* Ocultar rangeselector de Plotly */
     .rangeselector { display: none !important; }
     
-    /* ============================================================
-       MEJORAS PARA RESPONSIVIDAD
-    ============================================================ */
-    .stPlotlyChart {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 400px !important;
-    }
-    
-    .stPlotlyChart > div {
-        width: 100% !important;
-        height: 100% !important;
-    }
-    
-    /* Ajustes para tablets y móviles */
-    @media (max-width: 1024px) {
-        .main .block-container {
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
-        }
-        .stPlotlyChart {
-            min-height: 350px !important;
-        }
-    }
-    
+    /* Ajustes para móviles */
     @media (max-width: 768px) {
         .main .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            padding-top: 0.25rem !important;
+            padding-left: 0.3rem !important;
+            padding-right: 0.3rem !important;
+            padding-top: 0.2rem !important;
         }
-        .stPlotlyChart {
-            min-height: 300px !important;
-        }
-        h2 {
-            font-size: 1.2rem !important;
-        }
-        .stSidebar {
-            min-width: 200px !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
         .stPlotlyChart {
             min-height: 250px !important;
         }
-        .stButton button {
-            font-size: 0.8rem !important;
-            padding: 0.25rem 0.5rem !important;
+        h2 {
+            font-size: 1.1rem !important;
         }
     }
 </style>
@@ -253,24 +239,9 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA DETECTAR DISPOSITIVO MÓVIL
+# FUNCIÓN PARA CREAR LA GRÁFICA (CON ALTURA DINÁMICA)
 # ============================================================
-def detectar_dispositivo():
-    """Detecta si el usuario está en un dispositivo móvil usando query params"""
-    try:
-        # Leer el parámetro de la URL
-        is_mobile = st.query_params.get('mobile', 'false') == 'true'
-        st.session_state.is_mobile = is_mobile
-        return is_mobile
-    except:
-        # Si hay error, asumimos que no es móvil
-        st.session_state.is_mobile = False
-        return False
-
-# ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
-# ============================================================
-def crear_grafica(df, images_paths, zoom_meses=None):
+def crear_grafica(df, images_paths, zoom_meses=None, altura=600):
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -279,9 +250,6 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             font=dict(size=16, color="red")
         )
         return fig
-
-    # Detectar si es móvil para ajustar tamaños
-    is_mobile = st.session_state.get('is_mobile', False)
 
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
@@ -449,12 +417,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    # ZOOM INICIAL (según selección)
+    # ZOOM INICIAL
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
     
     if zoom_meses is None:
-        # Zoom por defecto: Mayo-Agosto
         año_datos = df['fecha'].max().year
         fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
         fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
@@ -463,7 +430,6 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
             fecha_fin_zoom = df['fecha'].max()
     else:
-        # Zoom según botón seleccionado
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
@@ -474,27 +440,23 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT - COMPLETAMENTE RESPONSIVO
+    # LAYOUT - CONFIGURACIÓN RESPONSIVA
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        # ALTURA DINÁMICA SEGÚN DISPOSITIVO
-        height=350 if is_mobile else 650,
-        autosize=True,  # ¡IMPORTANTE! Permite redimensionamiento automático
+        height=altura,  # Altura dinámica
+        autosize=True,
         dragmode='pan',
         xaxis={
-            'title': {
-                'text': 'Meses',
-                'font': {'size': 10 if is_mobile else 13, 'color': '#34495e'}
-            },
+            'title': {'text': 'Meses', 'font': {'size': 13, 'color': '#34495e'}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': 8 if is_mobile else 11, 'color': '#2c3e50'},
+            'tickfont': {'size': 11, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
@@ -502,13 +464,10 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
         },
         yaxis={
-            'title': {
-                'text': 'Temperatura mínima (°C)',
-                'font': {'size': 10 if is_mobile else 13, 'color': '#34495e'}
-            },
+            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': 13, 'color': '#34495e'}},
             'range': [y1_min, y1_max],
             'tickformat': '.1f',
-            'tickfont': {'size': 8 if is_mobile else 11, 'color': '#2c3e50'},
+            'tickfont': {'size': 11, 'color': '#2c3e50'},
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'zeroline': True,
@@ -518,14 +477,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'side': 'left'
         },
         yaxis2={
-            'title': {
-                'text': 'Precipitación / Afectación',
-                'font': {'size': 10 if is_mobile else 13, 'color': '#34495e'}
-            },
+            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 13, 'color': '#34495e'}},
             'range': [0, max_y2],
             'tickformat': 'd',
             'dtick': max(2, int(max_y2 / 8)),
-            'tickfont': {'size': 8 if is_mobile else 11, 'color': '#2c3e50'},
+            'tickfont': {'size': 11, 'color': '#2c3e50'},
             'overlaying': 'y',
             'side': 'right',
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
@@ -537,28 +493,19 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         legend={
             'orientation': 'h',
             'x': 0.5,
-            'y': -0.15 if not is_mobile else -0.25,
+            'y': -0.15,
             'xanchor': 'center',
             'yanchor': 'top',
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 1,
-            'font': {'size': 8 if is_mobile else 11, 'color': '#2c3e50'},
-            'itemwidth': 20 if is_mobile else 30,
-            'tracegroupgap': 3 if is_mobile else 5
+            'font': {'size': 11, 'color': '#2c3e50'},
+            'itemwidth': 30,
+            'tracegroupgap': 5
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        # MÁRGENES REDUCIDOS EN MÓVIL
-        margin={
-            't': 20 if is_mobile else 30,
-            'b': 20 if is_mobile else 30,
-            'l': 30 if is_mobile else 50,
-            'r': 30 if is_mobile else 60
-        },
-        # CONFIGURACIÓN DE RESPONSIVIDAD
-        autosize=True,
-        width=None  # Permite que el ancho sea automático
+        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
@@ -568,26 +515,6 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # ============================================================
-    # DETECCIÓN DE DISPOSITIVO MÓVIL
-    # ============================================================
-    # Intentar detectar por el User-Agent o parámetros de URL
-    is_mobile = False
-    try:
-        # Verificar si viene como parámetro en la URL
-        if 'mobile' in st.query_params:
-            is_mobile = st.query_params['mobile'] == 'true'
-        else:
-            # Intentar detectar por el tamaño de la pantalla (estimado)
-            # Streamlit no tiene una forma directa, pero podemos usar el ancho disponible
-            # Asumimos que si la sidebar está colapsada o el ancho es pequeño, es móvil
-            pass
-    except:
-        pass
-    
-    # Guardar en session_state para usarlo en otras funciones
-    st.session_state.is_mobile = is_mobile
-    
     # Título
     st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     
@@ -599,7 +526,6 @@ def main():
         
         st.markdown("**Seleccionar período:**")
         
-        # Botones de selección de tiempo - más pequeños en móvil
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📅 1 Mes", use_container_width=True):
@@ -624,6 +550,10 @@ def main():
         - **Ver valores**: Pasa el cursor sobre cualquier punto
         """)
         
+        st.markdown("---")
+        st.markdown("**📐 Ajustar altura:**")
+        altura = st.slider("Altura de la gráfica", 300, 800, 500, 50)
+        
         if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -644,6 +574,9 @@ def main():
 
     # Obtener zoom seleccionado
     zoom_meses = st.session_state.get('zoom_periodo', None)
+    
+    # Obtener altura del slider
+    altura_grafica = st.session_state.get('altura', 500)
 
     # Cargar datos
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
@@ -651,7 +584,7 @@ def main():
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses)
+            fig = crear_grafica(df, IMAGES, zoom_meses, altura_grafica)
 
         if fig is not None:
             # ============================================================
@@ -659,13 +592,13 @@ def main():
             # ============================================================
             st.plotly_chart(
                 fig, 
-                use_container_width=True,  # ¡IMPORTANTE! Usa el ancho completo
+                use_container_width=True,
                 config={
                     'displayModeBar': True,
                     'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
                     'displaylogo': False,
                     'scrollZoom': True,
-                    'responsive': True,  # ¡IMPORTANTE! Habilita responsividad
+                    'responsive': True,
                     'modeBarButtonsToAdd': [
                         'zoom2d',
                         'pan2d',
@@ -679,7 +612,7 @@ def main():
                 }
             )
 
-            # ESTADÍSTICAS (fuera de la gráfica)
+            # ESTADÍSTICAS
             with st.expander("📊 Ver estadísticas de los datos"):
                 col1, col2, col3 = st.columns(3)
                 
