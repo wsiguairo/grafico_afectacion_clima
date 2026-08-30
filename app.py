@@ -466,7 +466,7 @@ def crear_grafica(df, images_paths):
 # ============================================================
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
-#def main():
+def main():
     #st.markdown(" ## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
