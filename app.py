@@ -13,35 +13,13 @@ warnings.filterwarnings('ignore')
 
 
 # ============================================================
-# TÍTULO PERSONALIZADO (TAMAÑO REDUCIDO)
+# CONFIGURACIÓN DE PÁGINA
 # ============================================================
-st.markdown(
-    """
-    <style>
-    /* Reduce el tamaño del título principal */
-    .title-custom {
-        font-size: 26px !important;
-        font-weight: 700;
-        color: #262730;
-        margin-bottom: 2px;
-    }
-    /* Estilo para el subtítulo informativo */
-    .subtitle-custom {
-        font-size: 13px;
-        color: #7d7d7d;
-        margin-top: 0px;
-        margin-bottom: 25px;
-    }
-    </style>
-    
-    <h1 class="title-custom">🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas</h1>
-    <p class="subtitle-custom">📊 Datos cargados automáticamente desde Google Sheets</p>
-    """,
-    unsafe_allow_html=True
+st.set_page_config(
+    page_title="Gráfica Alpacas Interactiva",
+    page_icon="🦙",
+    layout="wide"
 )
-
-
-
 
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
