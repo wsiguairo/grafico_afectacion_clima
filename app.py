@@ -1,4 +1,4 @@
-# app.py - ACTUALIZACIÓN AUTOMÁTICA CON API - VERSIÓN FINAL
+# app.py - CON DETECCIÓN DE NOMBRES DE PESTAÑAS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -26,13 +26,12 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - COMPACTO
+# CSS
 # ============================================================
 st.markdown("""
 <style>
     .stApp > header { display: none !important; height: 0 !important; }
     footer { display: none !important; height: 0 !important; }
-    
     .main .block-container { 
         padding: 0px 10px 5px 10px !important;
         max-width: 1200px !important;
@@ -40,10 +39,8 @@ st.markdown("""
         padding-top: 0px !important;
         padding-bottom: 0px !important;
     }
-    
     h1, h2, h3, p { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
     h2 { font-size: 1rem !important; padding: 2px 0 2px 0 !important; margin: 0 !important; line-height: 1 !important; }
-    
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
@@ -53,7 +50,6 @@ st.markdown("""
         padding: 0 !important;
         margin-top: -5px !important;
     }
-    
     .stPlotlyChart > div {
         width: 100% !important;
         max-width: 100% !important;
@@ -62,15 +58,12 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
-    
     .modebar { transform: scale(0.6) !important; transform-origin: top right !important; top: 2px !important; right: 2px !important; }
     .stSidebar { padding: 8px !important; margin: 0 !important; }
     .stButton button { padding: 3px 6px !important; font-size: 0.7rem !important; min-height: 24px !important; margin: 0 !important; }
-    
     .stMetric { padding: 0 !important; margin: 0 !important; }
     .stMetric label { font-size: 0.6rem !important; padding: 0 !important; margin: 0 !important; }
     .stMetric div { font-size: 0.8rem !important; padding: 0 !important; margin: 0 !important; }
-    
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
@@ -78,7 +71,6 @@ st.markdown("""
     }
     .stColumns { gap: 3px !important; margin: 0 !important; padding: 0 !important; }
     .stColumn { padding: 0 3px !important; margin: 0 !important; }
-    
     .timestamp {
         font-size: 0.7rem;
         color: #0066cc;
@@ -100,14 +92,20 @@ st.markdown("""
         50% { opacity: 0.3; }
         100% { opacity: 1; }
     }
-    
     .refresh-status {
         font-size: 0.6rem;
         color: #888;
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+    .debug-info {
+        font-size: 0.7rem;
+        color: #333;
+        background: #f0f0f0;
+        padding: 10px !important;
+        border-radius: 5px;
+        margin: 5px 0 !important;
+    }
     @media (max-width: 768px) {
         .main .block-container { padding: 0px 5px 2px 5px !important; }
         .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
@@ -117,7 +115,6 @@ st.markdown("""
         .modebar { transform: scale(0.5) !important; }
         .timestamp { font-size: 0.5rem !important; }
     }
-    
     @media (max-width: 480px) {
         .stPlotlyChart { height: 220px !important; }
         .stPlotlyChart > div { height: 220px !important; }
@@ -189,6 +186,24 @@ def conectar_google_sheets():
         return None
 
 # ============================================================
+# FUNCIÓN PARA LISTAR PESTAÑAS
+# ============================================================
+def listar_pestanas(sheet_id):
+    """Lista todas las pestañas de la hoja"""
+    try:
+        client = conectar_google_sheets()
+        if client is None:
+            return None
+        
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheets = spreadsheet.worksheets()
+        nombres = [ws.title for ws in worksheets]
+        return nombres
+    except Exception as e:
+        st.error(f"❌ Error al listar pestañas: {e}")
+        return None
+
+# ============================================================
 # CARGAR DATOS EN TIEMPO REAL
 # ============================================================
 def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
@@ -198,15 +213,15 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
         if client is None:
             return None
         
-        # Abrir la hoja principal "Sintomas_graf"
+        # Abrir la hoja
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Leer datos de la pestaña "sintomas"
+        # Leer datos de síntomas
         sheet_sint = spreadsheet.worksheet(sheet_sintomas)
         data_sintomas = sheet_sint.get_all_values()
         df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
         
-        # Leer datos de la pestaña "temperaturas"
+        # Leer datos de temperaturas
         sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
         data_temperaturas = sheet_temp.get_all_values()
         df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
@@ -602,7 +617,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN
+# MAIN - CON DETECCIÓN DE PESTAÑAS
 # ============================================================
 def main():
     now = datetime.datetime.now()
@@ -650,60 +665,92 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
-    # ============================================================
-    # CONFIGURACIÓN DE HOJAS - ¡CORRECTO!
-    # ============================================================
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'sintomas'        # ← Pestaña interna
-    SHEET_NAME_TEMPERATURAS = 'temperaturas' # ← Pestaña interna
-    # La hoja principal se llama "Sintomas_graf"
-
-    os.makedirs('imagenes', exist_ok=True)
     
-    IMAGES = {
-        'enferma': 'imagenes/enferma.png',
-        'muerta': 'imagenes/muerta.png',
-        'aborto': 'imagenes/aborto.png'
-    }
-
-    zoom_meses = st.session_state.get('zoom_periodo', None)
-
-    with st.spinner('🔄 Cargando datos en tiempo real...'):
-        df = cargar_datos_tiempo_real(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
-
-    if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses)
-
-        if fig is not None:
-            st.plotly_chart(
-                fig, 
-                use_container_width=True,
-                config={
-                    'displayModeBar': True,
-                    'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
-                    'displaylogo': False,
-                    'scrollZoom': True,
-                    'responsive': True,
-                }
-            )
-
-            with st.expander("📊 Ver estadísticas"):
-                col1, col2, col3 = st.columns(3)
-                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-                
-                st.caption(f"📊 Registros cargados: {df.attrs.get('registros', 0)}")
-
-            st.success("✅ ¡Gráfica cargada exitosamente! Los datos se actualizan automáticamente.")
+    # ============================================================
+    # MOSTRAR PESTAÑAS DISPONIBLES
+    # ============================================================
+    with st.expander("🔍 Ver pestañas disponibles", expanded=True):
+        st.info("🔄 Conectando a Google Sheets para detectar pestañas...")
+        pestanas = listar_pestanas(GOOGLE_SHEETS_ID)
+        
+        if pestanas:
+            st.success(f"✅ Pestañas encontradas en 'Sintomas_graf':")
+            for i, nombre in enumerate(pestanas, 1):
+                st.code(f"{i}. '{nombre}'")
+            
+            st.markdown("---")
+            st.markdown("**📌 Nombres exactos para usar en el código:**")
+            for nombre in pestanas:
+                st.code(f"SHEET_NAME = '{nombre}'")
         else:
-            st.error("❌ Error al generar la gráfica")
+            st.error("❌ No se pudieron listar las pestañas. Verifica que la hoja esté compartida con el email.")
+
+    # ============================================================
+    # INTENTAR CARGAR DATOS CON LOS NOMBRES DETECTADOS
+    # ============================================================
+    if pestanas:
+        # Buscar pestañas que coincidan con "sintomas" o "temperaturas"
+        sintomas_nombre = None
+        temperaturas_nombre = None
+        
+        for nombre in pestanas:
+            nombre_lower = nombre.lower()
+            if 'sintoma' in nombre_lower or 'síntoma' in nombre_lower:
+                sintomas_nombre = nombre
+            elif 'temperatura' in nombre_lower:
+                temperaturas_nombre = nombre
+        
+        if sintomas_nombre and temperaturas_nombre:
+            st.success(f"✅ Usando pestañas: '{sintomas_nombre}' y '{temperaturas_nombre}'")
+            
+            with st.spinner('🔄 Cargando datos en tiempo real...'):
+                df = cargar_datos_tiempo_real(GOOGLE_SHEETS_ID, sintomas_nombre, temperaturas_nombre)
+
+            if df is not None and not df.empty:
+                with st.spinner('📊 Generando gráfica...'):
+                    fig = crear_grafica(df, IMAGES, zoom_meses)
+
+                if fig is not None:
+                    st.plotly_chart(
+                        fig, 
+                        use_container_width=True,
+                        config={
+                            'displayModeBar': True,
+                            'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
+                            'displaylogo': False,
+                            'scrollZoom': True,
+                            'responsive': True,
+                        }
+                    )
+
+                    with st.expander("📊 Ver estadísticas"):
+                        col1, col2, col3 = st.columns(3)
+                        if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                            col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                        if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                            col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                        if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                            col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+                        
+                        st.caption(f"📊 Registros cargados: {df.attrs.get('registros', 0)}")
+
+                    st.success("✅ ¡Gráfica cargada exitosamente! Los datos se actualizan automáticamente.")
+                else:
+                    st.error("❌ Error al generar la gráfica")
+            else:
+                st.error("❌ No se pudieron cargar los datos")
+        else:
+            st.warning(f"""
+            ⚠️ No se encontraron pestañas con 'sintomas' o 'temperaturas'.
+            
+            **Pestañas disponibles:**
+            {', '.join(pestanas)}
+            
+            **Solución:** Cambia los nombres en el código para que coincidan exactamente.
+            """)
     else:
-        st.error("❌ No se pudieron cargar los datos. Verifica que las pestañas 'sintomas' y 'temperaturas' existan en la hoja 'Sintomas_graf'.")
+        st.error("❌ No se pudo conectar a Google Sheets. Verifica que las credenciales estén configuradas correctamente.")
 
 if __name__ == "__main__":
     main()
