@@ -24,37 +24,49 @@ st.set_page_config(
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # 🌟 TÍTULO AUTOMÁTICO Y RESPONSIVO (Se adapta a PC y Celular)
+    # 🌟 TEXTOS EN TAMAÑO MICRO (TÍTULO Y SUBTÍTULO ULTRA COMPACTOS)
     st.markdown(
         """
         <style>
-            /* Definición del tamaño del título según la pantalla */
-            .titulo-responsivo {
+            /* --- ESTILOS PARA COMPUTADORA (PC) --- */
+            .titulo-micro {
                 font-weight: bold; 
-                margin-bottom: 5px; 
+                margin-bottom: 0px; 
                 color: #31333F;
-                font-size: 20px; /* Tamaño por defecto en Computadoras */
+                font-size: 13px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN PC */
             }
             
-            /* Si la pantalla es pequeña (Celular), el título se achica automáticamente */
+            .subtitulo-micro {
+                color: #555555;
+                margin-top: 1px;
+                margin-bottom: 10px;
+                font-size: 11px; /* 👈 CAMBIA ESTE NÚMERO PARA EL SUBTÍTULO EN PC */
+            }
+            
+            /* --- ESTILOS PARA CELULAR --- */
             @media (max-width: 768px) {
-                .titulo-responsivo {
-                    font-size: 18px; /* Tamaño adaptado para Celulares */
+                .titulo-micro {
+                    font-size: 11px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN CELULAR */
+                }
+                .subtitulo-micro {
+                    font-size: 9px;  /* 👈 CAMBIA ESTE NÚMERO PARA EL SUBTÍTULO EN CELULAR */
                 }
             }
         </style>
         
-        <h2 class='titulo-responsivo'>
+        <h2 class='titulo-micro'>
             🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas
         </h2>
+        <p class='subtitulo-micro'>
+            📊 Datos cargados automáticamente desde Google Sheets
+        </p>
         """, 
         unsafe_allow_html=True
     )
 
-    st.caption("📊 Datos cargados automáticamente desde Google Sheets")
-
     # Aquí continúa el resto de tu código...
 
+           
     
 
 
