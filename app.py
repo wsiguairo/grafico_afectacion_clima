@@ -1,3 +1,4 @@
+# app.py - SOLUCIÓN DEFINITIVA SIN ESPACIO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -7,6 +8,7 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
+import time
 
 warnings.filterwarnings('ignore')
 
@@ -21,167 +23,195 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS EXTREMO - ÚLTIMO RECURSO
+# CSS EXTREMO CON !important
 # ============================================================
 st.markdown("""
 <style>
-    /* Reset global */
-    * {
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
+    /* Eliminar TODO el espacio */
+    .stApp {
+        margin-top: -60px !important;
     }
-
-    html, body, .stApp, .stApp > div, .main, .main > div, .block-container {
-        margin: 0 !important;
-        padding: 0 !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        overflow: hidden !important;
-        background: white !important;
-    }
-
-    /* Ocultar header y footer */
-    header, .stApp > header, .css-1d391kg, #MainMenu, footer {
+    
+    .stApp > header {
         display: none !important;
-        height: 0 !important;
-        min-height: 0 !important;
-        max-height: 0 !important;
+        height: 0px !important;
+        min-height: 0px !important;
+        max-height: 0px !important;
         visibility: hidden !important;
         opacity: 0 !important;
         overflow: hidden !important;
         padding: 0 !important;
         margin: 0 !important;
     }
-
-    /* Título */
-    h2 {
-        font-size: 0.9rem !important;
-        line-height: 1.2 !important;
-        padding: 2px 0 0 0 !important;
-        margin: 0 !important;
+    
+    .main .block-container {
+        padding: 0px 5px 0px 5px !important;
+        max-width: 100% !important;
+        margin-top: -20px !important;
     }
-
-    /* Contenedor de la gráfica */
+    
+    /* Ocultar footer */
+    footer {
+        display: none !important;
+        height: 0px !important;
+    }
+    
+    /* Título compacto */
+    h2 {
+        font-size: 0.8rem !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
+    
+    /* Gráfica - ocupa todo */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
         height: auto !important;
-        min-height: 250px !important;
-        flex: 1 !important;
         margin: 0 !important;
         padding: 0 !important;
     }
-
+    
     .stPlotlyChart > div {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
         height: 100% !important;
-        min-height: 250px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
-
-    /* Barra de herramientas */
+    
+    /* Barra de herramientas más pequeña */
     .modebar {
-        transform: scale(0.5) !important;
+        transform: scale(0.4) !important;
         transform-origin: top right !important;
         top: 0 !important;
         right: 0 !important;
     }
-
-    /* Sidebar */
-    .css-1d391kg, .stSidebar {
-        padding: 2px 4px !important;
+    
+    /* Sidebar compacta */
+    .stSidebar {
+        padding: 2px !important;
         margin: 0 !important;
     }
-
+    
     .stButton button {
-        padding: 1px 4px !important;
-        font-size: 0.6rem !important;
-        min-height: 18px !important;
+        padding: 1px 3px !important;
+        font-size: 0.55rem !important;
+        min-height: 16px !important;
         height: auto !important;
         margin: 0 !important;
     }
-
-    /* Métricas */
+    
+    /* Métricas compactas */
     .stMetric {
         padding: 0 !important;
         margin: 0 !important;
     }
     .stMetric label {
-        font-size: 0.6rem !important;
+        font-size: 0.5rem !important;
         padding: 0 !important;
         margin: 0 !important;
     }
     .stMetric div {
-        font-size: 0.8rem !important;
+        font-size: 0.7rem !important;
         padding: 0 !important;
         margin: 0 !important;
     }
-
-    /* Eliminar espacios de Streamlit */
+    
+    /* Eliminar espacios entre elementos */
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
         gap: 0 !important;
     }
-
+    
     .stColumns {
         gap: 2px !important;
     }
-
+    
     .stColumn {
         padding: 0 2px !important;
     }
-
+    
     /* Móvil */
     @media (max-width: 768px) {
-        .stPlotlyChart {
-            min-height: 180px !important;
+        .stApp {
+            margin-top: -40px !important;
         }
-        .stPlotlyChart > div {
-            min-height: 180px !important;
+        .main .block-container {
+            padding: 0px 2px 0px 2px !important;
+            margin-top: -10px !important;
         }
         h2 {
-            font-size: 0.7rem !important;
+            font-size: 0.6rem !important;
         }
         .stButton button {
-            font-size: 0.5rem !important;
-            padding: 1px 2px !important;
-            min-height: 14px !important;
+            font-size: 0.45rem !important;
+            padding: 0px 2px !important;
+            min-height: 12px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT PARA FORZAR REDIMENSIONAMIENTO
+# JAVASCRIPT PARA ELIMINAR HEADER Y ESPACIOS
 # ============================================================
 st.components.v1.html("""
 <script>
-    function forceResize() {
+    function removeHeaderAndSpaces() {
+        // Eliminar header
+        const headers = document.querySelectorAll('header, .stApp > header, .css-1d391kg');
+        headers.forEach(el => {
+            if (el) {
+                el.style.display = 'none';
+                el.style.height = '0px';
+                el.style.minHeight = '0px';
+                el.style.maxHeight = '0px';
+                el.style.visibility = 'hidden';
+                el.style.opacity = '0';
+                el.style.overflow = 'hidden';
+                el.style.padding = '0';
+                el.style.margin = '0';
+            }
+        });
+        
+        // Eliminar espacios de la aplicación
+        const app = document.querySelector('.stApp');
+        if (app) {
+            app.style.marginTop = '-60px';
+        }
+        
+        const blockContainer = document.querySelector('.block-container');
+        if (blockContainer) {
+            blockContainer.style.padding = '0px 5px 0px 5px';
+            blockContainer.style.marginTop = '-20px';
+        }
+        
+        // Redimensionar gráfica
         const charts = document.querySelectorAll('.stPlotlyChart');
         charts.forEach((chart) => {
             const parent = chart.parentElement;
             if (parent) {
                 const h = window.innerHeight;
-                let height = Math.min(h * 0.75, 500);
-                if (h < 600) height = Math.min(h * 0.65, 300);
-                if (h < 400) height = Math.min(h * 0.55, 200);
+                let height = Math.min(h * 0.75, 450);
+                if (h < 600) height = Math.min(h * 0.65, 280);
+                if (h < 400) height = Math.min(h * 0.55, 180);
                 
                 chart.style.width = '100%';
                 chart.style.height = height + 'px';
-                chart.style.minHeight = '120px';
-                chart.style.maxHeight = '70vh';
+                chart.style.minHeight = '100px';
+                chart.style.margin = '0';
+                chart.style.padding = '0';
                 
                 const plotlyDiv = chart.querySelector('.plotly');
                 if (plotlyDiv) {
                     plotlyDiv.style.width = '100%';
                     plotlyDiv.style.height = height + 'px';
-                    plotlyDiv.style.minHeight = '120px';
+                    plotlyDiv.style.minHeight = '100px';
                     if (plotlyDiv._fullLayout) {
                         try {
                             Plotly.Plots.resize(plotlyDiv);
@@ -192,17 +222,28 @@ st.components.v1.html("""
         });
     }
     
-    forceResize();
-    setTimeout(forceResize, 50);
-    setTimeout(forceResize, 100);
-    setTimeout(forceResize, 200);
-    setTimeout(forceResize, 500);
-    setTimeout(forceResize, 1000);
+    // Ejecutar inmediatamente y repetidamente
+    removeHeaderAndSpaces();
+    setTimeout(removeHeaderAndSpaces, 50);
+    setTimeout(removeHeaderAndSpaces, 100);
+    setTimeout(removeHeaderAndSpaces, 200);
+    setTimeout(removeHeaderAndSpaces, 500);
+    setTimeout(removeHeaderAndSpaces, 1000);
     
+    // Redimensionar al cambiar tamaño
     let timer;
     window.addEventListener('resize', () => {
         clearTimeout(timer);
-        timer = setTimeout(forceResize, 50);
+        timer = setTimeout(removeHeaderAndSpaces, 50);
+    });
+    
+    // Observar cambios en el DOM
+    const observer = new MutationObserver(() => {
+        removeHeaderAndSpaces();
+    });
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
     });
 </script>
 """, height=0)
@@ -556,7 +597,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT - MÁRGENES MÍNIMOS
+    # LAYOUT
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
@@ -628,20 +669,19 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN
+# MAIN - SOLUCIÓN DEFINITIVA
 # ============================================================
 def main():
-    # Crear un layout con columnas para forzar un espacio mínimo
-    # La columna principal contendrá la gráfica y ocupará casi todo
-    col_main, col_dummy = st.columns([0.99, 0.01])
+    # Crear un contenedor vacío para todo el contenido
+    main_container = st.container()
     
-    with col_main:
-        # Título
-        st.markdown("## 🦙 Monitoreo Diario")
+    with main_container:
+        # Título compacto
+        st.markdown("## 🦙 Monitoreo")
         
-        # Sidebar (se renderiza pero la ponemos en su propio espacio)
+        # Sidebar
         with st.sidebar:
-            st.markdown("### ⏱️ Período")
+            st.markdown("### ⏱️")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("1M", use_container_width=True):
@@ -683,30 +723,30 @@ def main():
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
         if fig is not None:
-            # Mostrar gráfica en la columna principal
-            with col_main:
-                st.plotly_chart(
-                    fig, 
-                    use_container_width=True,
-                    config={
-                        'displayModeBar': True,
-                        'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
-                        'displaylogo': False,
-                        'scrollZoom': True,
-                        'responsive': True,
-                    }
-                )
+            # Mostrar gráfica
+            st.plotly_chart(
+                fig, 
+                use_container_width=True,
+                config={
+                    'displayModeBar': True,
+                    'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
+                    'displaylogo': False,
+                    'scrollZoom': True,
+                    'responsive': True,
+                }
+            )
 
-                # Estadísticas
-                cols = st.columns(3)
-                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    cols[0].metric("🦙", f"{df['Enfermos'].sum():.0f}")
-                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    cols[1].metric("💀", f"{df['Muertos'].sum():.0f}")
-                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    cols[2].metric("⚠️", f"{df['Abortos'].sum():.0f}")
+            # Estadísticas compactas
+            col1, col2, col3 = st.columns(3)
+            if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                col1.metric("🦙", f"{df['Enfermos'].sum():.0f}")
+            if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                col2.metric("💀", f"{df['Muertos'].sum():.0f}")
+            if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                col3.metric("⚠️", f"{df['Abortos'].sum():.0f}")
+
         else:
-            st.error("❌ Error al generar la gráfica")
+            st.error("❌ Error")
     else:
         st.error("❌ No se pudieron cargar los datos")
 
