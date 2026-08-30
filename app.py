@@ -1,4 +1,4 @@
-# app.py - VERSIÓN ULTRA COMPACTA Y RESPONSIVA
+# app.py - GRÁFICA CON AJUSTE AUTOMÁTICO 100%
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,7 +12,7 @@ import os
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# CONFIGURACIÓN DE PÁGINA - LO MÁS COMPACTO POSIBLE
+# CONFIGURACIÓN DE PÁGINA
 # ============================================================
 st.set_page_config(
     page_title="Gráfica Alpacas",
@@ -22,37 +22,45 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS ULTRA COMPACTO
+# CSS PARA AJUSTE AUTOMÁTICO - 100% ANCHO Y ALTO
 # ============================================================
 st.markdown("""
 <style>
-    /* Eliminar TODO el espacio innecesario */
-    .main .block-container {
-        padding: 0.1rem 0.3rem !important;
-        max-width: 100% !important;
-    }
-    
-    h1, h2, h3, p {
+    /* ELIMINAR TODO ESPACIO */
+    html, body, .main, .main > div, .block-container {
         margin: 0 !important;
         padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        overflow: hidden !important;
+    }
+    
+    .main .block-container {
+        padding: 0.1rem 0.2rem !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     
     h2 {
         font-size: 0.9rem !important;
-        margin-bottom: 0.1rem !important;
+        margin: 0.1rem 0 !important;
+        padding: 0 !important;
     }
     
     header { display: none !important; }
     footer { display: none !important; }
     
-    /* Contenedor de la gráfica - FORZAR AJUSTE */
+    /* CONTENEDOR DE LA GRÁFICA - 100% */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
         height: auto !important;
-        min-height: 180px !important;
-        max-height: 350px !important;
+        flex: 1 !important;
+        min-height: 200px !important;
     }
     
     .stPlotlyChart > div {
@@ -60,19 +68,24 @@ st.markdown("""
         max-width: 100% !important;
         min-width: 100% !important;
         height: 100% !important;
-        min-height: 180px !important;
-        max-height: 350px !important;
+        min-height: 200px !important;
     }
     
-    /* Sidebar más compacta */
+    /* Modo bar más pequeño */
+    .modebar {
+        transform: scale(0.6) !important;
+        transform-origin: top right !important;
+    }
+    
+    /* Sidebar compacta */
     .css-1d391kg {
-        padding: 0.3rem !important;
+        padding: 0.2rem !important;
     }
     
     .stButton button {
-        padding: 0.1rem 0.3rem !important;
-        font-size: 0.65rem !important;
-        min-height: 0 !important;
+        padding: 0.05rem 0.2rem !important;
+        font-size: 0.6rem !important;
+        min-height: 20px !important;
     }
     
     /* Estadísticas compactas */
@@ -80,74 +93,63 @@ st.markdown("""
         padding: 0 !important;
     }
     .stMetric label {
-        font-size: 0.7rem !important;
+        font-size: 0.6rem !important;
     }
     .stMetric div {
-        font-size: 0.9rem !important;
+        font-size: 0.8rem !important;
     }
     
-    /* Ocultar elementos de Plotly que ocupan espacio */
-    .modebar {
-        transform: scale(0.7) !important;
-        transform-origin: top right !important;
-    }
-    .js-plotly-plot .plotly .modebar {
-        padding: 2px !important;
-    }
-    
+    /* MÓVIL */
     @media (max-width: 768px) {
         .stPlotlyChart {
             min-height: 150px !important;
-            max-height: 280px !important;
         }
         .stPlotlyChart > div {
             min-height: 150px !important;
-            max-height: 280px !important;
         }
         h2 {
-            font-size: 0.8rem !important;
+            font-size: 0.7rem !important;
         }
         .stButton button {
-            font-size: 0.55rem !important;
-            padding: 0.05rem 0.2rem !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .stPlotlyChart {
-            min-height: 120px !important;
-            max-height: 220px !important;
-        }
-        .stPlotlyChart > div {
-            min-height: 120px !important;
-            max-height: 220px !important;
+            font-size: 0.5rem !important;
+            padding: 0.03rem 0.15rem !important;
+            min-height: 15px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# INYECTAR JAVASCRIPT PARA REDIMENSIONAR
+# JAVASCRIPT PARA REDIMENSIONAR AL 100%
 # ============================================================
 st.components.v1.html("""
 <script>
-    function resizePlotlyCharts() {
+    function resizeTo100() {
         const charts = document.querySelectorAll('.stPlotlyChart');
         charts.forEach((chart) => {
+            // Obtener el contenedor padre
             const parent = chart.parentElement;
             if (parent) {
+                // Calcular espacio disponible
                 const width = parent.offsetWidth;
-                const height = Math.min(window.innerHeight * 0.35, 320);
+                const height = Math.min(window.innerHeight * 0.75, 500);
                 
+                // Aplicar 100% de ancho y alto dinámico
                 chart.style.width = '100%';
                 chart.style.maxWidth = '100%';
+                chart.style.minWidth = '100%';
                 chart.style.height = height + 'px';
-                chart.style.minHeight = '120px';
+                chart.style.minHeight = '150px';
                 
+                // Ajustar el div de Plotly
                 const plotlyDiv = chart.querySelector('.plotly');
                 if (plotlyDiv) {
                     plotlyDiv.style.width = '100%';
+                    plotlyDiv.style.maxWidth = '100%';
+                    plotlyDiv.style.minWidth = '100%';
                     plotlyDiv.style.height = '100%';
+                    
+                    // Forzar redimensionamiento de Plotly
                     if (plotlyDiv._fullLayout) {
                         try {
                             Plotly.Plots.resize(plotlyDiv);
@@ -158,10 +160,32 @@ st.components.v1.html("""
         });
     }
     
-    setTimeout(resizePlotlyCharts, 50);
-    window.addEventListener('resize', resizePlotlyCharts);
+    // Ejecutar múltiples veces para asegurar
+    setTimeout(resizeTo100, 50);
+    setTimeout(resizeTo100, 200);
+    setTimeout(resizeTo100, 500);
+    
+    // Redimensionar al cambiar el tamaño de la ventana
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(resizeTo100, 100);
+    });
+    
+    // Redimensionar al cargar completamente
     window.addEventListener('load', function() {
-        setTimeout(resizePlotlyCharts, 100);
+        setTimeout(resizeTo100, 100);
+        setTimeout(resizeTo100, 300);
+    });
+    
+    // Observar cambios en el DOM
+    const observer = new MutationObserver(function(mutations) {
+        resizeTo100();
+    });
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false
     });
 </script>
 """, height=0)
@@ -318,7 +342,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - MUY COMPACTA
+# FUNCIÓN PARA CREAR LA GRÁFICA - 100% RESPONSIVA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None):
     if df is None or df.empty:
@@ -422,7 +446,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 hovertemplate='⚠️ %{customdata:02.0f}<extra></extra>'
             ))
 
-    # IMÁGENES - REDUCIDAS
+    # IMÁGENES
     images_plotly = []
     y_offset = 0.15
 
@@ -510,12 +534,12 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
 
-    # TICKS - MENOS TICKS PARA QUE NO SE AMONTONEN
+    # TICKS
     fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT - ULTRA COMPACTO
+    # LAYOUT - CONFIGURACIÓN 100% RESPONSIVA
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
@@ -531,7 +555,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'hoverformat': '%d %b %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': 7},
+            'tickfont': {'size': 8},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.2)',
             'gridwidth': 0.5,
@@ -542,7 +566,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'title': {'text': 'Temp. (°C)', 'font': {'size': 9}},
             'range': [y1_min, y1_max],
             'tickformat': '.0f',
-            'tickfont': {'size': 7},
+            'tickfont': {'size': 8},
             'gridcolor': 'rgba(200, 200, 200, 0.2)',
             'gridwidth': 0.5,
             'zeroline': True,
@@ -556,7 +580,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'range': [0, max_y2],
             'tickformat': 'd',
             'dtick': max(2, int(max_y2 / 6)),
-            'tickfont': {'size': 7},
+            'tickfont': {'size': 8},
             'overlaying': 'y',
             'side': 'right',
             'gridcolor': 'rgba(200, 200, 200, 0.1)',
@@ -568,19 +592,19 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         legend={
             'orientation': 'h',
             'x': 0.5,
-            'y': -0.25,
+            'y': -0.2,
             'xanchor': 'center',
             'yanchor': 'top',
             'bgcolor': 'rgba(255, 255, 255, 0.8)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 0.5,
-            'font': {'size': 7},
+            'font': {'size': 8},
             'itemwidth': 15,
             'tracegroupgap': 2
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 10, 'b': 10, 'l': 30, 'r': 35}
+        margin={'t': 8, 'b': 8, 'l': 25, 'r': 30}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.5, opacity=0.3)
 
@@ -591,11 +615,9 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # ============================================================
 def main():
     # Título ultra compacto
-    st.markdown("## 🦙 Monitoreo Diario")
+    st.markdown("## 🦙 Monitoreo")
     
-    # ============================================================
     # BARRA LATERAL
-    # ============================================================
     with st.sidebar:
         st.markdown("### ⏱️ Período")
         
@@ -624,7 +646,6 @@ def main():
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
-    # IMÁGENES
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
@@ -633,10 +654,8 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
-    # Obtener zoom seleccionado
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
-    # Cargar datos
     with st.spinner('🔄 Cargando...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
@@ -645,7 +664,7 @@ def main():
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
         if fig is not None:
-            # MOSTRAR GRÁFICA
+            # MOSTRAR GRÁFICA CON CONFIGURACIÓN 100% RESPONSIVA
             st.plotly_chart(
                 fig, 
                 use_container_width=True,
@@ -658,7 +677,7 @@ def main():
                 }
             )
 
-            # ESTADÍSTICAS COMPACTAS
+            # ESTADÍSTICAS ULTRA COMPACTAS
             col1, col2, col3 = st.columns(3)
             if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                 col1.metric("🦙 Enfermos", f"{df['Enfermos'].sum():.0f}")
