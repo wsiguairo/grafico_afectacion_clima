@@ -373,7 +373,7 @@ def crear_grafica(df, images_paths):
     fig.update_layout(
         title={
             'text': '🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',                  # titulo de la grafica 
-            'font': {'size': 20, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
+            'font': {'size': 28, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
             'x': 0.5,
             'xanchor': 'center'
         },
