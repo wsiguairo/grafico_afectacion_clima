@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON PUNTOS INVISIBLES Y HOVER ACTIVO
+# app.py - VERSIÓN COMPLETA CON HOVER MEJORADO (FECHA + TODOS LOS VALORES)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -26,7 +26,6 @@ st.set_page_config(
 # ============================================================
 st.markdown("""
 <style>
-    /* ESTILOS GENERALES */
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
@@ -48,12 +47,8 @@ st.markdown("""
         width: 100% !important;
     }
     
-    /* OCULTAR RANGESELECTOR DE PLOTLY */
     .rangeselector { display: none !important; }
     
-    /* ============================================
-       LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
-       ============================================ */
     .logo-senamhi {
         position: fixed;
         top: 10px;
@@ -75,7 +70,6 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
-    /* Ajuste para celular */
     @media only screen and (max-width: 768px) {
         .logo-senamhi {
             width: 55px;
@@ -114,7 +108,6 @@ st.markdown("""
         .row-widget.stColumns { gap: 0.2rem !important; }
     }
     
-    /* Ajuste para tablet */
     @media only screen and (min-width: 769px) and (max-width: 1024px) {
         .logo-senamhi {
             width: 65px;
@@ -133,7 +126,6 @@ st.markdown("""
         }
     }
     
-    /* Ajuste para PC */
     @media only screen and (min-width: 1025px) {
         .logo-senamhi {
             width: 80px;
@@ -164,8 +156,6 @@ st.markdown("""
 # MOSTRAR LOGO SENAMHI
 # ============================================================
 def mostrar_logo_senamhi():
-    """Muestra el logo de SENAMHI en la esquina superior izquierda"""
-    
     ruta_logo = "fotosenamhi.png"
     
     if os.path.exists(ruta_logo):
@@ -179,28 +169,11 @@ def mostrar_logo_senamhi():
                  alt="Logo SENAMHI"
                  title="SENAMHI - Servicio Nacional de Meteorología e Hidrología">
             """, unsafe_allow_html=True)
-            
-        except Exception as e:
-            st.markdown("""
-            <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
-                        background: rgba(255,255,255,0.9); padding: 6px 12px; 
-                        border-radius: 8px; font-size: 12px; 
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <b>🌤️ SENAMHI</b>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
-                    background: rgba(255,255,255,0.9); padding: 6px 12px; 
-                    border-radius: 8px; font-size: 12px; 
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <b>🌤️ SENAMHI</b>
-        </div>
-        """, unsafe_allow_html=True)
+        except:
+            pass
 
 # ============================================================
-# DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
+# DICCIONARIO DE MESES
 # ============================================================
 MESES_ES = {
     1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
@@ -227,7 +200,6 @@ def image_to_base64(filepath):
 # ============================================================
 @st.cache_data(ttl=10)
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos desde Google Sheets con caché"""
     try:
         url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}"
         url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}"
@@ -353,7 +325,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - PUNTOS INVISIBLES
+# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER CON FECHA Y VALORES
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -375,7 +347,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - VALOR REAL DEL ARCHIVO
+    # PRECIPITACIÓN - HOVER CON FECHA
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -384,11 +356,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Precipitación',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
-            hovertemplate='<b>💧 Precipitación:</b> %{y:.0f} mm<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+            hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>💧 Precipitación:</b> %{y:.0f} mm<extra></extra>'
         ))
 
     # ============================================================
-    # TEMPERATURA - VALOR REAL DEL ARCHIVO
+    # TEMPERATURA - HOVER CON FECHA
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -399,11 +371,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             line=dict(color='#2563EB', width=2.5),
             marker=dict(size=4, color='#2563EB'),
             opacity=0.9,
-            hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+            hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<extra></extra>'
         ))
 
     # ============================================================
-    # VIENTO - VALOR REAL DEL ARCHIVO
+    # VIENTO - HOVER CON FECHA
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -413,7 +385,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Viento',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
-            hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+            hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'
         ))
 
     # ============================================================
@@ -433,12 +405,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
             ),
             yaxis='y2',
-            hoverinfo='skip',  # ✅ DESACTIVADO: NO muestra valores suavizados
+            hoverinfo='skip',
             showlegend=True
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - PUNTOS INVISIBLES CON HOVER ACTIVO
+    # ALPACAS ENFERMAS - PUNTOS INVISIBLES CON HOVER (FECHA + VALOR)
     # ============================================================
     if 'Enfermos' in df.columns:
         df_enfermos = df[df['Enfermos'] > 0].copy()
@@ -447,21 +419,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 x=df_enfermos['fecha'],
                 y=df_enfermos['Enfermos'],
                 mode='markers',
-                name='Datos reales',  # Nombre invisible en la leyenda
+                name='Datos reales',
                 marker=dict(
-                    size=1,  # Tamaño mínimo
-                    color='rgba(0,0,0,0)',  # ✅ COMPLETAMENTE INVISIBLE
-                    opacity=0,  # ✅ SIN OPACIDAD
-                    line=dict(color='rgba(0,0,0,0)', width=0)  # ✅ SIN BORDE
+                    size=1,
+                    color='rgba(0,0,0,0)',
+                    opacity=0,
+                    line=dict(color='rgba(0,0,0,0)', width=0)
                 ),
                 yaxis='y2',
-                showlegend=False,  # ✅ OCULTO DE LA LEYENDA
-                # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO (ej: 15)
-                hovertemplate='<b>🦙 Alpacas enfermas:</b> %{y:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+                showlegend=False,
+                hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>🦙 Alpacas enfermas:</b> %{y:.0f}<extra></extra>'
             ))
 
     # ============================================================
-    # ALPACAS MUERTAS - VALOR REAL DEL ARCHIVO
+    # ALPACAS MUERTAS - HOVER CON FECHA
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -474,11 +445,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
-                hovertemplate='<b>💀 Alpacas muertas:</b> %{customdata:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+                hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>💀 Alpacas muertas:</b> %{customdata:.0f}<extra></extra>'
             ))
 
     # ============================================================
-    # ABORTOS - VALOR REAL DEL ARCHIVO
+    # ABORTOS - HOVER CON FECHA
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -491,7 +462,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
-                hovertemplate='<b>⚠️ Abortos:</b> %{customdata:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+                hovertemplate='<b>📅 %{x|%d/%m/%Y}</b><br><b>⚠️ Abortos:</b> %{customdata:.0f}<extra></extra>'
             ))
 
     # ============================================================
@@ -501,7 +472,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y_offset = 0.2
 
     if not es_movil:
-        # IMAGEN ENFERMA - Tamaño 8
         if img_enferma is not None and len(enfermos_smooth) > 0:
             for idx in [0, -1]:
                 images_plotly.append({
@@ -517,7 +487,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                     'layer': 'above'
                 })
 
-        # IMAGEN MUERTA - Tamaño 8
         if img_muerta is not None and 'Muertos' in df.columns:
             df_muertos_varios = df[df['Muertos'] >= 3].copy()
             if not df_muertos_varios.empty:
@@ -535,7 +504,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                         'layer': 'above'
                     })
 
-        # IMAGEN ABORTO - Tamaño 8
         if img_aborto is not None and 'Abortos' in df.columns:
             df_abortos_pos = df[df['Abortos'] > 0].copy()
             if not df_abortos_pos.empty:
@@ -599,11 +567,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # TICKS
     # ============================================================
     if es_movil:
-        if len(df) > 30:
-            freq = 'MS'
-        else:
-            freq = 'MS'
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq=freq)
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
@@ -695,25 +659,18 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     return fig
 
 # ============================================================
-# MAIN - APLICACIÓN STREAMLIT
+# MAIN
 # ============================================================
 def main():
     
-    # ============================================================
-    # MOSTRAR LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
-    # ============================================================
     mostrar_logo_senamhi()
     
-    # Título
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
         <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
     
-    # ============================================================
-    # BARRA LATERAL - CONTROLES
-    # ============================================================
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
@@ -738,22 +695,26 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la línea roja para ver el valor real del archivo
+            - **🖱️ Pasa el cursor** sobre la línea roja para ver:
+              - 📅 Fecha
+              - 🦙 Alpacas enfermas (valor real)
+              - 🌡️ Temperatura
+              - 💧 Precipitación
+              - 💨 Viento
+              - 💀 Muertos
+              - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
-            - **🔍 Zoom**: Rueda del mouse o pellizcar
-            - **📊 Ver valores**: Pasa el cursor sobre cualquier punto de la línea roja
+            - **🔍 Zoom**: Rueda del mouse
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
-    # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
-    # IMÁGENES
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
@@ -799,17 +760,14 @@ def main():
                 
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                     col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                    col1.caption(f"📊 Rango: {df['Enfermos'].min():.0f} - {df['Enfermos'].max():.0f}")
                 if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
                     col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                    col2.caption(f"📊 Rango: {df['Muertos'].min():.0f} - {df['Muertos'].max():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-                    col3.caption(f"📊 Rango: {df['Abortos'].min():.0f} - {df['Abortos'].max():.0f}")
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la línea roja para ver el valor real del archivo.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la línea roja para ver todos los valores.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
