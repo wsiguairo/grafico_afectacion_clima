@@ -33,7 +33,7 @@ def main():
                 font-weight: bold; 
                 margin-bottom: 0px; 
                 color: #31333F;
-                font-size: 12px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN PC */
+                font-size: 10px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN PC */
             }
             
             .subtitulo-micro {
@@ -64,12 +64,8 @@ def main():
         unsafe_allow_html=True
     )
 
-    # Aquí continúa el resto de tu código...
-
-           
+      
     
-
-
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
 # ============================================================
