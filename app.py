@@ -33,7 +33,7 @@ def main():
                 font-weight: bold; 
                 margin-bottom: 5px; 
                 color: #31333F;
-                font-size: 28px; /* Tamaño por defecto en Computadoras */
+                font-size: 20px; /* Tamaño por defecto en Computadoras */
             }
             
             /* Si la pantalla es pequeña (Celular), el título se achica automáticamente */
