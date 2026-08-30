@@ -1,4 +1,4 @@
-# app.py - VERSIÓN STREAMLIT COMPLETA (SIN ESPACIO EN BLANCO)
+# app.py - VERSIÓN STREAMLIT (SIN ESPACIO EN BLANCO)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,29 +22,29 @@ st.set_page_config(
 )
 
 # ============================================================
-# ELIMINAR TODO EL ESPACIO EN BLANCO (CSS)
+# ELIMINAR TODO EL ESPACIO EN BLANCO (CSS AGRESIVO)
 # ============================================================
 st.markdown("""
 <style>
-    /* Eliminar padding de la página */
+    /* Eliminar padding de TODOS los contenedores */
     .main .block-container {
         padding-top: 0rem !important;
         padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
         max-width: 100% !important;
     }
     
     /* Eliminar márgenes de títulos */
-    h1, h2, h3, h4, h5, h6 {
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
+    h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        margin-top: -10px !important;
+        margin-bottom: -5px !important;
         padding-top: 0rem !important;
         padding-bottom: 0rem !important;
     }
     
-    /* Eliminar espacio de los elementos de Streamlit */
-    .stMarkdown, .stCaption, .stPlotlyChart {
+    /* Eliminar espacio de todos los elementos */
+    .stMarkdown, .stCaption, .stPlotlyChart, .stSpinner, .stAlert {
         margin-top: 0rem !important;
         margin-bottom: 0rem !important;
         padding-top: 0rem !important;
@@ -61,25 +61,56 @@ st.markdown("""
         display: none !important;
     }
     
-    /* Reducir espacio de la barra de herramientas */
+    /* Eliminar padding del contenedor principal */
+    section.main > div {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Eliminar espacio de la barra de desplazamiento */
+    .stApp {
+        margin-top: -20px !important;
+    }
+    
+    /* Reducir espacio de la barra de herramientas de Plotly */
     .stPlotlyChart .js-plotly-plot .plotly .modebar {
         top: 5px !important;
+        right: 5px !important;
     }
     
     /* Reducir margen de la gráfica */
     .stPlotlyChart > div {
-        margin-top: -15px !important;
+        margin-top: -25px !important;
+        margin-bottom: -10px !important;
     }
     
-    /* Eliminar padding del contenedor principal */
-    section.main > div {
+    /* Eliminar espacio de los elementos de la barra lateral */
+    .css-1d391kg, .css-1lcbmhc {
         padding-top: 0rem !important;
     }
     
-    /* Eliminar espacio del spinner */
-    .stSpinner {
+    /* Eliminar espacio de los spinners */
+    .stSpinner > div {
         margin-top: 0rem !important;
         margin-bottom: 0rem !important;
+    }
+    
+    /* Eliminar espacio de las filas y columnas */
+    .row-widget, .stColumns {
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Eliminar espacio de los expanders */
+    .streamlit-expanderHeader {
+        margin-top: 0rem !important;
+        padding-top: 0rem !important;
+    }
+    
+    .streamlit-expanderContent {
+        padding-top: 0rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -433,7 +464,7 @@ def crear_grafica(df, images_paths):
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        height=700,
+        height=750,  # Aumentado para compensar la falta de espacio
         dragmode='pan',
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': 13, 'color': '#34495e'}},
@@ -510,7 +541,7 @@ def crear_grafica(df, images_paths):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 50, 'b': 50, 'l': 60, 'r': 80}  # REDUCIDO: de 80 a 50
+        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}  # MÁXIMO REDUCIDO
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
