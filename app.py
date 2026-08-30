@@ -71,7 +71,7 @@ def image_to_base64(filepath):
 # ============================================================
 # FUNCIONES DE PROCESAMIENTO
 # ============================================================
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=10)  # ✅ MODIFICADO: AHORA SON 10 SEGUNDOS
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
     """Carga datos desde Google Sheets con caché"""
     try:
