@@ -372,7 +372,7 @@ def crear_grafica(df, images_paths):
     # LAYOUT
     fig.update_layout(
         title={
-            'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',
+           # 'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',
             'font': {'size': 20, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
             'x': 0.5,
             'xanchor': 'center'
@@ -467,7 +467,7 @@ def crear_grafica(df, images_paths):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    #st.title("🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    st.title("🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
     # CONFIGURACIÓN
