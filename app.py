@@ -11,7 +11,6 @@ import os
 
 warnings.filterwarnings('ignore')
 
-
 # ============================================================
 # CONFIGURACIÓN DE PÁGINA
 # ============================================================
@@ -20,6 +19,21 @@ st.set_page_config(
     page_icon="🦙",
     layout="wide"
 )
+
+# ============================================================
+# TÍTULO REDUCIDO MANUALMENTE
+# ============================================================
+st.markdown(
+    """
+    <h2 style='font-size: 26px; font-weight: bold; margin-bottom: 5px; color: #31333F;'>
+        🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas
+    </h2>
+    """, 
+    unsafe_allow_html=True
+)
+# NOTA: Cambia el '26px' de arriba por otro número (ej. 22px o 30px) si quieres achicar o agrandar el título.
+
+st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
