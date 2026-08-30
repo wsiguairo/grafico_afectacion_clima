@@ -13,6 +13,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 warnings.filterwarnings('ignore')
 
+# VERSIÓN: 2.0 - ACTUALIZADA
 st.set_page_config(page_title="Gráfica Alpacas", page_icon="🦙", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -37,12 +38,12 @@ st.markdown("""
     .timestamp span { display: inline-block; width: 8px; height: 8px; background-color: #00cc00; border-radius: 50%; margin-right: 5px; animation: pulse 2s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     .refresh-status { font-size: 0.6rem; color: #888; padding: 0 !important; margin: 0 !important; }
+    .version { font-size: 0.6rem; color: #ff6600; padding: 0 !important; margin: 0 !important; font-weight: bold; }
     @media (max-width: 768px) { .main .block-container { padding: 0px 5px 2px 5px !important; } .stPlotlyChart { height: 300px !important; margin-top: -3px !important; } .stPlotlyChart > div { height: 300px !important; } h2 { font-size: 0.8rem !important; padding: 1px 0 !important; } .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 18px !important; } .modebar { transform: scale(0.5) !important; } .timestamp { font-size: 0.5rem !important; } }
     @media (max-width: 480px) { .stPlotlyChart { height: 220px !important; } .stPlotlyChart > div { height: 220px !important; } h2 { font-size: 0.7rem !important; } .stButton button { font-size: 0.5rem !important; padding: 1px 3px !important; min-height: 14px !important; } }
 </style>
 """, unsafe_allow_html=True)
 
-# AUTO-REFRESH CADA 15 SEGUNDOS
 st.components.v1.html("""
 <script>
     setInterval(function() { location.reload(); }, 15000);
@@ -65,7 +66,7 @@ def image_to_base64(filepath):
             return None
     return None
 
-def cargar_datos():
+def conectar_google_sheets():
     try:
         creds_dict = {
             "type": st.secrets["gcp_service_account"]["type"],
@@ -81,14 +82,25 @@ def cargar_datos():
         }
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        client = gspread.authorize(creds)
+        return gspread.authorize(creds)
+    except Exception as e:
+        st.error(f"❌ Error de conexión: {e}")
+        return None
+
+def cargar_datos():
+    try:
+        client = conectar_google_sheets()
+        if client is None:
+            return None
         
         spreadsheet = client.open_by_key('11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro')
         
+        # Leer pestaña síntomas
         sheet_sint = spreadsheet.worksheet('sintomas')
         data_sintomas = sheet_sint.get_all_values()
         df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
         
+        # Leer pestaña temperaturas
         sheet_temp = spreadsheet.worksheet('temperaturas')
         data_temperaturas = sheet_temp.get_all_values()
         df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
@@ -193,6 +205,7 @@ def cargar_datos():
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
+
         return df
 
     except Exception as e:
@@ -309,6 +322,7 @@ def main():
     
     st.markdown(f"""
     ## 🦙 Monitoreo Diario - Actualización Automática
+    <div class="version">✅ VERSIÓN 2.0 - {fecha_actual} {hora_actual}</div>
     <div class="timestamp"><span></span> 📊 Datos cargados: {fecha_actual} {hora_actual}</div>
     <div class="refresh-status">🔄 Auto-actualización cada 15 segundos</div>
     """, unsafe_allow_html=True)
@@ -348,6 +362,10 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
+    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
+    SHEET_NAME_SINTOMAS = 'sintomas'
+    SHEET_NAME_TEMPERATURAS = 'temperaturas'
+
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
@@ -377,11 +395,11 @@ def main():
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
 
-            st.success("✅ ¡Gráfica cargada exitosamente!")
+            st.success("✅ ¡Gráfica cargada exitosamente! Los datos se actualizan automáticamente.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos")
+        st.error("❌ No se pudieron cargar los datos. Verifica que las pestañas 'sintomas' y 'temperaturas' existan.")
 
 if __name__ == "__main__":
     main()
