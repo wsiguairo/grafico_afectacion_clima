@@ -1,4 +1,4 @@
-# app.py - VERSIÓN FINAL COMPACTA
+# app.py - TÍTULO MÁS ARRIBA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,22 +22,43 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - COMPACTO
+# CSS - TÍTULO MÁS ARRIBA Y COMPACTO
 # ============================================================
 st.markdown("""
 <style>
-    .stApp > header { display: none !important; height: 0 !important; }
+    /* ELIMINAR HEADER */
+    .stApp > header { 
+        display: none !important; 
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+    }
     footer { display: none !important; height: 0 !important; }
     
+    /* CONTENEDOR PRINCIPAL - MÁRGENES MÍNIMOS */
     .main .block-container { 
-        padding: 5px 10px 5px 10px !important;
+        padding: 0px 10px 5px 10px !important;
         max-width: 1200px !important;
         margin: 0 auto !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
     }
     
-    h1, h2, h3, p { margin: 0 !important; padding: 0 !important; }
-    h2 { font-size: 1rem !important; padding: 5px 0 !important; }
+    /* TÍTULO - MÁS ARRIBA */
+    h1, h2, h3, p { 
+        margin: 0 !important; 
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
     
+    h2 { 
+        font-size: 1rem !important; 
+        padding: 2px 0 2px 0 !important;
+        margin: 0 !important;
+        line-height: 1 !important;
+    }
+    
+    /* GRÁFICA */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
@@ -45,6 +66,7 @@ st.markdown("""
         height: 450px !important;
         margin: 0 !important;
         padding: 0 !important;
+        margin-top: -5px !important;
     }
     
     .stPlotlyChart > div {
@@ -56,42 +78,97 @@ st.markdown("""
         padding: 0 !important;
     }
     
+    /* BARRA DE HERRAMIENTAS */
     .modebar {
         transform: scale(0.6) !important;
         transform-origin: top right !important;
-        top: 5px !important;
-        right: 5px !important;
+        top: 2px !important;
+        right: 2px !important;
     }
     
-    .stSidebar { padding: 10px !important; }
+    /* SIDEBAR */
+    .stSidebar { 
+        padding: 8px !important;
+        margin: 0 !important;
+    }
+    .stSidebar .sidebar-content {
+        padding: 0 !important;
+    }
+    
     .stButton button {
-        padding: 4px 8px !important;
+        padding: 3px 6px !important;
         font-size: 0.7rem !important;
-        min-height: 28px !important;
+        min-height: 24px !important;
+        margin: 0 !important;
     }
     
-    .stMetric { padding: 0 !important; margin: 0 !important; }
-    .stMetric label { font-size: 0.6rem !important; }
-    .stMetric div { font-size: 0.8rem !important; }
+    /* MÉTRICAS */
+    .stMetric { 
+        padding: 0 !important; 
+        margin: 0 !important; 
+    }
+    .stMetric label { 
+        font-size: 0.6rem !important; 
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .stMetric div { 
+        font-size: 0.8rem !important; 
+        padding: 0 !important;
+        margin: 0 !important;
+    }
     
+    /* ELIMINAR ESPACIOS */
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
         gap: 0 !important;
     }
-    .stColumns { gap: 5px !important; }
-    .stColumn { padding: 0 5px !important; }
+    .stColumns { 
+        gap: 3px !important; 
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .stColumn { 
+        padding: 0 3px !important; 
+        margin: 0 !important;
+    }
     
+    /* EXPANDER COMPACTO */
+    .streamlit-expanderHeader {
+        font-size: 0.8rem !important;
+        padding: 2px 0 !important;
+        margin: 0 !important;
+    }
+    .streamlit-expanderContent {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* MÓVIL */
     @media (max-width: 768px) {
+        .main .block-container { 
+            padding: 0px 5px 2px 5px !important;
+        }
         .stPlotlyChart {
             height: 300px !important;
+            margin-top: -3px !important;
         }
         .stPlotlyChart > div {
             height: 300px !important;
         }
-        h2 { font-size: 0.8rem !important; }
-        .main .block-container { padding: 2px 5px !important; }
-        .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 20px !important; }
+        h2 { 
+            font-size: 0.8rem !important;
+            padding: 1px 0 !important;
+        }
+        .stButton button { 
+            font-size: 0.6rem !important; 
+            padding: 2px 4px !important; 
+            min-height: 18px !important;
+        }
+        .modebar {
+            transform: scale(0.5) !important;
+        }
     }
     
     @media (max-width: 480px) {
@@ -101,6 +178,16 @@ st.markdown("""
         .stPlotlyChart > div {
             height: 220px !important;
         }
+        h2 { 
+            font-size: 0.7rem !important;
+        }
+        .stButton button { 
+            font-size: 0.5rem !important; 
+            padding: 1px 3px !important; 
+            min-height: 14px !important;
+        }
+        .stMetric label { font-size: 0.5rem !important; }
+        .stMetric div { font-size: 0.6rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -257,7 +344,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
+# FUNCIÓN PARA CREAR LA GRÁFICA - ESTRUCTURA SIN CAMBIOS
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None):
     if df is None or df.empty:
@@ -519,16 +606,17 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 20, 'b': 20, 'l': 40, 'r': 50}
+        margin={'t': 15, 'b': 20, 'l': 40, 'r': 50}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
     return fig
 
 # ============================================================
-# MAIN
+# MAIN - TÍTULO MÁS ARRIBA
 # ============================================================
 def main():
+    # TÍTULO - CON MÍNIMO ESPACIO
     st.markdown("## 🦙 Monitoreo Diario")
     
     with st.sidebar:
