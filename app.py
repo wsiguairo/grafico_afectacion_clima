@@ -22,14 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 
-
-# ============================================================
-# 🚨 LÍNEAS OBLIGATORIAS PARA QUE EL CÓDIGO FUNCIONE
-# ============================================================
-if __name__ == "__main__":
-    main()
-
-       
+      
     
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
