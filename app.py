@@ -11,6 +11,10 @@ import os
 
 warnings.filterwarnings('ignore')
 
+
+# ============================================================
+# CONFIGURACIÓN DE PÁGINA
+# ============================================================
 st.set_page_config(
     page_title="",
     page_icon="🦙",
@@ -463,7 +467,7 @@ def crear_grafica(df, images_paths):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    st.title("🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    #st.title("🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
     # CONFIGURACIÓN
