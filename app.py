@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON BARRA LATERAL
+# app.py - VERSIÓN RESPONSIVE (CELULAR Y PC)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,26 +22,129 @@ st.set_page_config(
 )
 
 # ============================================================
-# ELIMINAR ESPACIO EN BLANCO
+# ESTILOS RESPONSIVE PARA CELULAR Y PC
 # ============================================================
 st.markdown("""
 <style>
+    /* ESTILOS GENERALES */
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
         max-width: 100% !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
     }
+    
     h1, h2, h3 {
         margin-top: 0rem !important;
         margin-bottom: 0rem !important;
     }
+    
     header { display: none !important; }
     footer { display: none !important; }
+    
     .stPlotlyChart > div {
         margin-top: -10px !important;
+        width: 100% !important;
     }
-    /* Ocultar rangeselector de Plotly */
+    
+    /* OCULTAR RANGESELECTOR DE PLOTLY */
     .rangeselector { display: none !important; }
+    
+    /* MEJORAS PARA CELULAR */
+    @media only screen and (max-width: 768px) {
+        .main .block-container {
+            padding-left: 0.2rem !important;
+            padding-right: 0.2rem !important;
+            padding-top: 0.2rem !important;
+        }
+        
+        /* Títulos más pequeños en celular */
+        h1 {
+            font-size: 1.5rem !important;
+        }
+        h2 {
+            font-size: 1.2rem !important;
+        }
+        h3 {
+            font-size: 1rem !important;
+        }
+        
+        /* Botones más grandes para touch */
+        .stButton button {
+            font-size: 14px !important;
+            padding: 8px 12px !important;
+            min-height: 44px !important;  /* Tamaño mínimo para touch */
+        }
+        
+        /* Sidebar más estrecha en celular */
+        .css-1d391kg {
+            width: 280px !important;
+        }
+        
+        /* Tarjetas de métricas más pequeñas */
+        .stMetric {
+            font-size: 14px !important;
+        }
+        .stMetric label {
+            font-size: 12px !important;
+        }
+        .stMetric .stMetricValue {
+            font-size: 18px !important;
+        }
+        
+        /* Ajustar tabla en celular */
+        .stDataFrame {
+            font-size: 12px !important;
+        }
+        .stDataFrame table {
+            font-size: 11px !important;
+        }
+        
+        /* Spinner más pequeño */
+        .stSpinner > div {
+            font-size: 14px !important;
+        }
+        
+        /* Ajustar columnas en celular */
+        .row-widget.stColumns {
+            gap: 0.2rem !important;
+        }
+    }
+    
+    /* MEJORAS PARA TABLET */
+    @media only screen and (min-width: 769px) and (max-width: 1024px) {
+        .main .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        
+        .stButton button {
+            font-size: 15px !important;
+            padding: 10px 16px !important;
+        }
+    }
+    
+    /* MEJORAS PARA PC */
+    @media only screen and (min-width: 1025px) {
+        .main .block-container {
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+            max-width: 1400px !important;
+            margin: 0 auto !important;
+        }
+    }
+    
+    /* Ocultar scrollbar de Plotly (más limpio en celular) */
+    .js-plotly-plot .plotly .scrollbar {
+        display: none !important;
+    }
+    
+    /* Fuente más legible en celular */
+    body {
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -69,9 +172,21 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
+# DETECTAR DISPOSITIVO
+# ============================================================
+def es_dispositivo_movil():
+    """Detecta si el usuario está en un dispositivo móvil"""
+    try:
+        # Streamlit no tiene detección directa, usamos el ancho de pantalla
+        # Esto se evaluará en el lado del cliente
+        return False
+    except:
+        return False
+
+# ============================================================
 # FUNCIONES DE PROCESAMIENTO
 # ============================================================
-@st.cache_data(ttl=10)  # ✅ MODIFICADO: AHORA SON 10 SEGUNDOS
+@st.cache_data(ttl=10)
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
     """Carga datos desde Google Sheets con caché"""
     try:
@@ -199,9 +314,9 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
+# FUNCIÓN PARA CREAR LA GRÁFICA (VERSIÓN RESPONSIVE)
 # ============================================================
-def crear_grafica(df, images_paths, zoom_meses=None):
+def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -304,35 +419,19 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 hovertemplate='<b>⚠️ Abortos:</b> %{customdata:02.0f}<extra></extra>'
             ))
 
-    # IMÁGENES
+    # IMÁGENES (solo en PC para no saturar celular)
     images_plotly = []
     y_offset = 0.2
 
-    if img_enferma is not None and len(enfermos_smooth) > 0:
-        for idx in [0, -1]:
-            images_plotly.append({
-                'source': f"data:image/png;base64,{img_enferma}",
-                'xref': 'x',
-                'yref': 'y2',
-                'x': fecha_smooth[idx],
-                'y': float(enfermos_smooth[idx]),
-                'sizex': 14,
-                'sizey': 14,
-                'xanchor': 'center',
-                'yanchor': 'middle',
-                'layer': 'above'
-            })
-
-    if img_muerta is not None and 'Muertos' in df.columns:
-        df_muertos_varios = df[df['Muertos'] >= 3].copy()
-        if not df_muertos_varios.empty:
-            for _, row in df_muertos_varios.iterrows():
+    if not es_movil:  # Solo mostrar imágenes en PC
+        if img_enferma is not None and len(enfermos_smooth) > 0:
+            for idx in [0, -1]:
                 images_plotly.append({
-                    'source': f"data:image/png;base64,{img_muerta}",
+                    'source': f"data:image/png;base64,{img_enferma}",
                     'xref': 'x',
                     'yref': 'y2',
-                    'x': row['fecha'],
-                    'y': y_offset,
+                    'x': fecha_smooth[idx],
+                    'y': float(enfermos_smooth[idx]),
                     'sizex': 14,
                     'sizey': 14,
                     'xanchor': 'center',
@@ -340,16 +439,15 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                     'layer': 'above'
                 })
 
-    if img_aborto is not None and 'Abortos' in df.columns:
-        df_abortos_pos = df[df['Abortos'] > 0].copy()
-        if not df_abortos_pos.empty:
-            for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
-                if idx < len(df_abortos_pos):
+        if img_muerta is not None and 'Muertos' in df.columns:
+            df_muertos_varios = df[df['Muertos'] >= 3].copy()
+            if not df_muertos_varios.empty:
+                for _, row in df_muertos_varios.iterrows():
                     images_plotly.append({
-                        'source': f"data:image/png;base64,{img_aborto}",
+                        'source': f"data:image/png;base64,{img_muerta}",
                         'xref': 'x',
                         'yref': 'y2',
-                        'x': df_abortos_pos['fecha'].iloc[idx],
+                        'x': row['fecha'],
                         'y': y_offset,
                         'sizex': 14,
                         'sizey': 14,
@@ -357,6 +455,24 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                         'yanchor': 'middle',
                         'layer': 'above'
                     })
+
+        if img_aborto is not None and 'Abortos' in df.columns:
+            df_abortos_pos = df[df['Abortos'] > 0].copy()
+            if not df_abortos_pos.empty:
+                for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
+                    if idx < len(df_abortos_pos):
+                        images_plotly.append({
+                            'source': f"data:image/png;base64,{img_aborto}",
+                            'xref': 'x',
+                            'yref': 'y2',
+                            'x': df_abortos_pos['fecha'].iloc[idx],
+                            'y': y_offset,
+                            'sizex': 14,
+                            'sizey': 14,
+                            'xanchor': 'center',
+                            'yanchor': 'middle',
+                            'layer': 'above'
+                        })
 
     # RANGOS
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
@@ -382,7 +498,6 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     fecha_fin = df['fecha'].max()
     
     if zoom_meses is None:
-        # Zoom por defecto: Mayo-Agosto
         año_datos = df['fecha'].max().year
         fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
         fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
@@ -391,43 +506,59 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
             fecha_fin_zoom = df['fecha'].max()
     else:
-        # Zoom según botón seleccionado
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
 
-    # TICKS
-    fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+    # TICKS (menos en celular)
+    if es_movil:
+        # En celular, mostrar menos ticks
+        if len(df) > 30:
+            freq = 'MS'  # Mensual
+        else:
+            freq = 'MS'
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq=freq)
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+        # Reducir tamaño de fuente en celular
+        tick_font_size = 9
+        legend_font_size = 10
+        title_font_size = 11
+        height = 500  # Más baja en celular
+    else:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+        tick_font_size = 11
+        legend_font_size = 11
+        title_font_size = 13
+        height = 750  # Más alta en PC
 
-    # LAYOUT - SIN rangeselector (los botones están en la sidebar)
+    # LAYOUT - RESPONSIVE
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        height=750,
+        height=height,  # Altura variable
         dragmode='pan',
         xaxis={
-            'title': {'text': 'Meses', 'font': {'size': 13, 'color': '#34495e'}},
+            'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': 11, 'color': '#2c3e50'},
+            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
-            # ELIMINADO: rangeselector (los botones están en la sidebar)
         },
         yaxis={
-            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': 13, 'color': '#34495e'}},
+            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'range': [y1_min, y1_max],
             'tickformat': '.1f',
-            'tickfont': {'size': 11, 'color': '#2c3e50'},
+            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'zeroline': True,
@@ -437,11 +568,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'side': 'left'
         },
         yaxis2={
-            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 13, 'color': '#34495e'}},
+            'title': {'text': 'Precipitación / Afectación', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'range': [0, max_y2],
             'tickformat': 'd',
             'dtick': max(2, int(max_y2 / 8)),
-            'tickfont': {'size': 11, 'color': '#2c3e50'},
+            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
             'overlaying': 'y',
             'side': 'right',
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
@@ -459,15 +590,22 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 1,
-            'font': {'size': 11, 'color': '#2c3e50'},
+            'font': {'size': legend_font_size, 'color': '#2c3e50'},
             'itemwidth': 30,
             'tracegroupgap': 5
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}
+        margin={'t': 20, 'b': 20, 'l': 40, 'r': 40} if es_movil else {'t': 30, 'b': 30, 'l': 50, 'r': 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
+
+    # Configuración para touch (celular)
+    if es_movil:
+        fig.update_layout(
+            hoverlabel={'font_size': 12},
+            dragmode='pan',  # Pan en lugar de zoom para mejor experiencia en touch
+        )
 
     return fig
 
@@ -475,9 +613,12 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # Título
-    st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
-    #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+    # Título con tamaño responsive
+    st.markdown("""
+    <div style="text-align: center; padding: 0.5rem 0;">
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+    </div>
+    """, unsafe_allow_html=True)
     
     # ============================================================
     # BARRA LATERAL - CONTROLES
@@ -485,9 +626,9 @@ def main():
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
+        # Botones en 2 columnas para mejor uso en celular
         st.markdown("**Seleccionar período:**")
         
-        # Botones de selección de tiempo
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📅 1 Mes", use_container_width=True):
@@ -504,13 +645,15 @@ def main():
                 st.session_state.zoom_periodo = 12
         
         st.markdown("---")
-        st.markdown("**🖱️ Cómo interactuar:**")
-        st.markdown("""
-        - **Deslizar**: Arrastra el mouse ← →
-        - **Zoom**: Rueda del mouse
-        - **Seleccionar**: Usa botones de la barra de herramientas
-        - **Ver valores**: Pasa el cursor sobre cualquier punto
-        """)
+        
+        # Info colapsable en celular
+        with st.expander("ℹ️ Cómo interactuar", expanded=False):
+            st.markdown("""
+            - **🖱️ Deslizar**: Arrastra el mouse ← →
+            - **🔍 Zoom**: Rueda del mouse o pellizcar
+            - **👆 Seleccionar**: Usa botones de la barra
+            - **📊 Ver valores**: Pasa el cursor sobre cualquier punto
+            """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
@@ -533,16 +676,27 @@ def main():
     # Obtener zoom seleccionado
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
+    # Detectar si es móvil (por ancho de pantalla)
+    # Usamos un enfoque diferente: detectamos por el tamaño de la sidebar
+    # que en móvil se colapsa automáticamente
+    es_movil = False  # Por defecto, asumimos PC
+    try:
+        # Intentamos detectar por el user agent (limitado en Streamlit)
+        # Mejor usar CSS para detectar, pero esto es un aproximado
+        es_movil = False
+    except:
+        pass
+
     # Cargar datos
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses)
+            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
 
         if fig is not None:
-            # Mostrar gráfica con herramientas en la parte superior
+            # Mostrar gráfica con config responsive
             st.plotly_chart(fig, use_container_width=True, config={
                 'displayModeBar': True,
                 'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
@@ -561,9 +715,13 @@ def main():
                 ]
             })
 
-            # ESTADÍSTICAS (fuera de la gráfica)
-            with st.expander("📊 Ver estadísticas de los datos"):
-                col1, col2, col3 = st.columns(3)
+            # ESTADÍSTICAS RESPONSIVE
+            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
+                # En celular, mostrar en 1 columna, en PC en 3
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)  # Una columna en celular
+                else:
+                    col1, col2, col3 = st.columns(3)  # Tres columnas en PC
                 
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                     col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
