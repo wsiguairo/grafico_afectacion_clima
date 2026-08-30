@@ -11,6 +11,8 @@ import os
 
 warnings.filterwarnings('ignore')
 
+import streamlit as st  # Asegúrate de tener siempre esta línea al inicio
+
 # ============================================================
 # CONFIGURACIÓN DE PÁGINA
 # ============================================================
@@ -43,7 +45,13 @@ def main():
 
     # 👇 REEMPLAZA ESTA LÍNEA DE ABAJO CON TU CÓDIGO (Tus gráficas, filtros, etc.)
     st.write("Tus gráficas y filtros van aquí e iniciarán desde el borde superior.")
-            
+
+# ============================================================
+# 🚨 LÍNEAS OBLIGATORIAS PARA QUE EL CÓDIGO FUNCIONE
+# ============================================================
+if __name__ == "__main__":
+    main()
+
        
     
 # ============================================================
