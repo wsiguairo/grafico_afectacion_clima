@@ -1,4 +1,4 @@
-# app.py - ACTUALIZACIÓN FORZADA DE DATOS
+# app.py - ACTUALIZACIÓN FORZADA SIN CACHÉ
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -9,7 +9,7 @@ import warnings
 import base64
 import os
 import time
-import hashlib
+import requests
 
 warnings.filterwarnings('ignore')
 
@@ -122,14 +122,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT PARA AUTO-REFRESH CADA 30 SEGUNDOS
+# JAVASCRIPT PARA AUTO-REFRESH CADA 15 SEGUNDOS
 # ============================================================
 st.components.v1.html("""
 <script>
-    // Recargar la página cada 30 segundos para actualizar datos
+    // Recargar la página cada 15 segundos
     setTimeout(function() {
         location.reload();
-    }, 30000); // 30,000 ms = 30 segundos
+    }, 15000);
 </script>
 """, height=0)
 
@@ -157,32 +157,26 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIÓN PARA OBTENER HASH DE LOS DATOS (DETECTAR CAMBIOS)
+# FUNCIÓN PARA CARGAR DATOS - SIN NINGÚN CACHÉ
 # ============================================================
-def obtener_hash_datos(df):
-    """Genera un hash único de los datos para detectar cambios"""
-    if df is None or df.empty:
-        return "vacio"
-    # Crear un hash de los datos
-    datos_str = df.to_string()
-    return hashlib.md5(datos_str.encode()).hexdigest()
-
-# ============================================================
-# FUNCIONES DE PROCESAMIENTO - FORZAR RECARGA
-# ============================================================
-# Usamos @st.cache_data pero con un parámetro que cambia
-@st.cache_data(ttl=0, show_spinner=False)  # ttl=0 = sin caché
-def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas, _timestamp=None):
-    """
-    Carga datos desde Google Sheets
-    _timestamp es un parámetro dummy para forzar recarga
-    """
+def cargar_datos_desde_google(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """Carga datos DIRECTAMENTE desde Google Sheets sin caché"""
     try:
-        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}"
-        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}"
+        # Agregar un parámetro aleatorio para evitar caché de Google
+        random_param = f"&_={int(time.time())}"
         
-        df_sintomas = pd.read_csv(url_sintomas)
-        df_temperaturas = pd.read_csv(url_temperaturas)
+        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}{random_param}"
+        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}{random_param}"
+        
+        # Forzar que no use caché
+        headers = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+        
+        df_sintomas = pd.read_csv(url_sintomas, headers=headers)
+        df_temperaturas = pd.read_csv(url_temperaturas, headers=headers)
 
         def encontrar_columna_fecha(df):
             for col in df.columns:
@@ -257,6 +251,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas, _timestamp=None):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
+        # Suavizado
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
@@ -294,6 +289,9 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas, _timestamp=None):
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
 
+        # Guardar timestamp de última actualización
+        st.session_state.last_update = time.strftime('%H:%M:%S')
+        
         return df
 
     except Exception as e:
@@ -570,23 +568,13 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - CON ACTUALIZACIÓN FORZADA
+# MAIN - SIN CACHÉ
 # ============================================================
 def main():
-    # Obtener timestamp actual para forzar recarga
-    current_time = time.time()
-    timestamp = st.session_state.get('timestamp', 0)
-    
-    # Si pasaron más de 30 segundos, forzar recarga
-    if current_time - timestamp > 30:
-        st.session_state.timestamp = current_time
-        # Forzar rerun para recargar datos
-        st.rerun()
-    
-    # TÍTULO CON INDICADOR
-    st.markdown(f"""
+    # TÍTULO
+    st.markdown("""
     ## 🦙 Monitoreo Diario
-    <div class="auto-refresh"><span></span> Actualización automática cada 30 segundos</div>
+    <div class="auto-refresh"><span></span> Actualización automática cada 15 segundos</div>
     """, unsafe_allow_html=True)
     
     with st.sidebar:
@@ -597,24 +585,24 @@ def main():
         with col1:
             if st.button("📅 1 Mes", use_container_width=True):
                 st.session_state.zoom_periodo = 1
-                st.session_state.timestamp = 0  # Forzar recarga
+                st.session_state.force_reload = True
                 st.rerun()
             if st.button("📅 6 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 6
-                st.session_state.timestamp = 0
+                st.session_state.force_reload = True
                 st.rerun()
             if st.button("📅 Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
-                st.session_state.timestamp = 0
+                st.session_state.force_reload = True
                 st.rerun()
         with col2:
             if st.button("📅 3 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 3
-                st.session_state.timestamp = 0
+                st.session_state.force_reload = True
                 st.rerun()
             if st.button("📅 1 Año", use_container_width=True):
                 st.session_state.zoom_periodo = 12
-                st.session_state.timestamp = 0
+                st.session_state.force_reload = True
                 st.rerun()
         
         st.markdown("---")
@@ -622,12 +610,15 @@ def main():
         st.markdown("- Arrastra para deslizar")
         st.markdown("- Rueda para hacer zoom")
         
+        # Mostrar última actualización
+        last_update = st.session_state.get('last_update', 'Nunca')
         st.markdown("---")
-        st.caption(f"🔄 Última actualización: {time.strftime('%H:%M:%S')}")
+        st.caption(f"🔄 Última actualización: {last_update}")
         
         # Botón de actualización forzada
         if st.button("🔄 Actualizar ahora", use_container_width=True):
-            st.session_state.timestamp = 0
+            st.session_state.force_reload = True
+            # Limpiar cualquier caché
             st.cache_data.clear()
             st.rerun()
 
@@ -644,14 +635,17 @@ def main():
     }
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
+    
+    # Forzar recarga si es necesario
+    if st.session_state.get('force_reload', False):
+        st.session_state.force_reload = False
 
-    # Cargar datos con timestamp para forzar recarga
-    with st.spinner('🔄 Cargando datos...'):
-        df = cargar_datos(
+    # Cargar datos DIRECTAMENTE sin caché
+    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
+        df = cargar_datos_desde_google(
             GOOGLE_SHEETS_ID, 
             SHEET_NAME_SINTOMAS, 
-            SHEET_NAME_TEMPERATURAS,
-            _timestamp=st.session_state.get('timestamp', 0)
+            SHEET_NAME_TEMPERATURAS
         )
 
     if df is not None and not df.empty:
