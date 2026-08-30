@@ -552,8 +552,8 @@ def crear_grafica(df, images_paths):
 # ============================================================
 def main():
     # Título SUBIDO AL TOPE (sin espacio extra)
-    st.markdown("## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
-    st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+    st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+   #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
     
     # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
