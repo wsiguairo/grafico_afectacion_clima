@@ -370,9 +370,9 @@ def crear_grafica(df, images_paths):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # LAYOUT
-    fig.update_layout(
+   # fig.update_layout(
         title={
-           # 'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',
+            'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',
             'font': {'size': 20, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
             'x': 0.5,
             'xanchor': 'center'
