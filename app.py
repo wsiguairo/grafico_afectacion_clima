@@ -469,6 +469,7 @@ def crear_grafica(df, images_paths):
 def main():
     #st.markdown(" ## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+    placeholder = st.empty()  # Contenedor invisible que ocupa 0 espacio
 
     # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'    # el codigo el archivo
