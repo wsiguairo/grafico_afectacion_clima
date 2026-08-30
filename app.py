@@ -1,4 +1,4 @@
-# app.py - GRÁFICA CON DETECCIÓN AUTOMÁTICA DE PANTALLA
+# app.py - VERSIÓN FINAL COMPACTA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - ELIMINAR ESPACIOS
+# CSS - COMPACTO
 # ============================================================
 st.markdown("""
 <style>
@@ -30,22 +30,19 @@ st.markdown("""
     footer { display: none !important; height: 0 !important; }
     
     .main .block-container { 
-        padding: 2px 5px 2px 5px !important;
-        max-width: 100% !important;
-        margin: 0 !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
+        padding: 5px 10px 5px 10px !important;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
     }
     
     h1, h2, h3, p { margin: 0 !important; padding: 0 !important; }
-    h2 { font-size: 0.8rem !important; padding: 1px 0 !important; }
+    h2 { font-size: 1rem !important; padding: 5px 0 !important; }
     
-    /* GRÁFICA - AUTO AJUSTE */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
-        height: auto !important;
+        height: 450px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
@@ -54,123 +51,59 @@ st.markdown("""
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
-        height: auto !important;
+        height: 450px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
     
     .modebar {
-        transform: scale(0.4) !important;
+        transform: scale(0.6) !important;
         transform-origin: top right !important;
-        top: 0 !important;
-        right: 0 !important;
+        top: 5px !important;
+        right: 5px !important;
     }
     
-    .stSidebar { padding: 2px !important; margin: 0 !important; }
+    .stSidebar { padding: 10px !important; }
     .stButton button {
-        padding: 1px 3px !important;
-        font-size: 0.5rem !important;
-        min-height: 14px !important;
-        height: auto !important;
-        margin: 0 !important;
+        padding: 4px 8px !important;
+        font-size: 0.7rem !important;
+        min-height: 28px !important;
     }
     
     .stMetric { padding: 0 !important; margin: 0 !important; }
-    .stMetric label { font-size: 0.5rem !important; }
-    .stMetric div { font-size: 0.7rem !important; }
+    .stMetric label { font-size: 0.6rem !important; }
+    .stMetric div { font-size: 0.8rem !important; }
     
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
         gap: 0 !important;
     }
-    .stColumns { gap: 2px !important; }
-    .stColumn { padding: 0 2px !important; }
+    .stColumns { gap: 5px !important; }
+    .stColumn { padding: 0 5px !important; }
+    
+    @media (max-width: 768px) {
+        .stPlotlyChart {
+            height: 300px !important;
+        }
+        .stPlotlyChart > div {
+            height: 300px !important;
+        }
+        h2 { font-size: 0.8rem !important; }
+        .main .block-container { padding: 2px 5px !important; }
+        .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 20px !important; }
+    }
+    
+    @media (max-width: 480px) {
+        .stPlotlyChart {
+            height: 220px !important;
+        }
+        .stPlotlyChart > div {
+            height: 220px !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
-
-# ============================================================
-# JAVASCRIPT PARA DETECTAR PANTALLA Y AJUSTAR
-# ============================================================
-st.components.v1.html("""
-<script>
-    function getScreenSize() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        let chartHeight = 300; // altura por defecto
-        
-        // Detectar tipo de dispositivo
-        if (width < 480) {
-            // Móvil pequeño
-            chartHeight = Math.min(height * 0.40, 180);
-        } else if (width < 768) {
-            // Móvil grande / Tablet
-            chartHeight = Math.min(height * 0.45, 250);
-        } else if (width < 1024) {
-            // Tablet
-            chartHeight = Math.min(height * 0.50, 320);
-        } else {
-            // PC
-            chartHeight = Math.min(height * 0.55, 400);
-        }
-        
-        // Asegurar altura mínima
-        chartHeight = Math.max(chartHeight, 150);
-        
-        return chartHeight;
-    }
-    
-    function resizeCharts() {
-        const height = getScreenSize();
-        const charts = document.querySelectorAll('.stPlotlyChart');
-        charts.forEach((chart) => {
-            chart.style.height = height + 'px';
-            chart.style.minHeight = height + 'px';
-            chart.style.maxHeight = height + 'px';
-            
-            const plotlyDiv = chart.querySelector('.plotly');
-            if (plotlyDiv) {
-                plotlyDiv.style.height = height + 'px';
-                plotlyDiv.style.minHeight = height + 'px';
-                plotlyDiv.style.maxHeight = height + 'px';
-                if (plotlyDiv._fullLayout) {
-                    try {
-                        Plotly.Plots.resize(plotlyDiv);
-                    } catch(e) {}
-                }
-            }
-        });
-    }
-    
-    // Ejecutar inmediatamente
-    setTimeout(resizeCharts, 100);
-    setTimeout(resizeCharts, 300);
-    setTimeout(resizeCharts, 500);
-    
-    // Redimensionar al cambiar el tamaño de la ventana
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(resizeCharts, 150);
-    });
-    
-    // Redimensionar al cargar completamente
-    window.addEventListener('load', function() {
-        setTimeout(resizeCharts, 200);
-        setTimeout(resizeCharts, 500);
-    });
-    
-    // Observar cambios en el DOM
-    const observer = new MutationObserver(function() {
-        resizeCharts();
-    });
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: false
-    });
-</script>
-""", height=0)
 
 # ============================================================
 # DICCIONARIO DE MESES
@@ -332,7 +265,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         fig.add_annotation(
             text="No se pudieron cargar los datos",
             x=0.5, y=0.5, showarrow=False,
-            font=dict(size=12, color="red")
+            font=dict(size=16, color="red")
         )
         return fig
 
@@ -350,8 +283,8 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         fig.add_trace(go.Bar(
             x=df['fecha'],
             y=df['Precipitacion '],
-            name='Precip.',
-            marker=dict(color='#87CEEB', opacity=0.4),
+            name='Precipitación',
+            marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
             hovertemplate='💧 %{y:02.0f} mm<extra></extra>'
         ))
@@ -362,9 +295,9 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             x=df['fecha'],
             y=df['Temperaturas minimas  (°C)'],
             mode='lines+markers',
-            name='Temp.',
-            line=dict(color='#2563EB', width=2),
-            marker=dict(size=3, color='#2563EB'),
+            name='Temperatura',
+            line=dict(color='#2563EB', width=2.5),
+            marker=dict(size=4, color='#2563EB'),
             hovertemplate='🌡️ %{y:.0f}°C<extra></extra>'
         ))
 
@@ -375,8 +308,8 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             y=df['Vel. viento (Km/h)'],
             mode='lines',
             name='Viento',
-            line=dict(color='#808080', width=1.5, dash='dash'),
-            opacity=0.5,
+            line=dict(color='#808080', width=2, dash='dash'),
+            opacity=0.6,
             hovertemplate='💨 %{y:.0f} Km/h<extra></extra>'
         ))
 
@@ -386,13 +319,13 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             x=fecha_smooth,
             y=enfermos_smooth,
             mode='lines',
-            name='Enfermas',
-            line=dict(color='#8B0000', width=2),
+            name='Alpacas enfermas',
+            line=dict(color='#8B0000', width=2.5),
             opacity=0.8,
             fill='tozeroy',
             fillgradient=dict(
                 type='vertical',
-                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.1)']]
+                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
             ),
             yaxis='y2',
             hovertemplate='🦙 %{y:02.0f}<extra></extra>'
@@ -404,10 +337,10 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         if not df_muertos.empty:
             fig.add_trace(go.Scatter(
                 x=df_muertos['fecha'],
-                y=[0.15] * len(df_muertos),
+                y=[0.2] * len(df_muertos),
                 mode='markers',
                 name='Muertas',
-                marker=dict(size=8, color='#555555', line=dict(color='black', width=0.5)),
+                marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
                 hovertemplate='💀 %{customdata:02.0f}<extra></extra>'
@@ -419,10 +352,10 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         if not df_abortos.empty:
             fig.add_trace(go.Scatter(
                 x=df_abortos['fecha'],
-                y=[0.2] * len(df_abortos),
+                y=[0.25] * len(df_abortos),
                 mode='markers',
                 name='Abortos',
-                marker=dict(size=8, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
+                marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
                 hovertemplate='⚠️ %{customdata:02.0f}<extra></extra>'
@@ -430,7 +363,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 
     # IMÁGENES
     images_plotly = []
-    y_offset = 0.15
+    y_offset = 0.2
 
     if img_enferma is not None and len(enfermos_smooth) > 0:
         for idx in [0, -1]:
@@ -440,8 +373,8 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 'yref': 'y2',
                 'x': fecha_smooth[idx],
                 'y': float(enfermos_smooth[idx]),
-                'sizex': 10,
-                'sizey': 10,
+                'sizex': 14,
+                'sizey': 14,
                 'xanchor': 'center',
                 'yanchor': 'middle',
                 'layer': 'above'
@@ -457,8 +390,8 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                     'yref': 'y2',
                     'x': row['fecha'],
                     'y': y_offset,
-                    'sizex': 10,
-                    'sizey': 10,
+                    'sizex': 14,
+                    'sizey': 14,
                     'xanchor': 'center',
                     'yanchor': 'middle',
                     'layer': 'above'
@@ -475,8 +408,8 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                         'yref': 'y2',
                         'x': df_abortos_pos['fecha'].iloc[idx],
                         'y': y_offset,
-                        'sizex': 10,
-                        'sizey': 10,
+                        'sizex': 14,
+                        'sizey': 14,
                         'xanchor': 'center',
                         'yanchor': 'middle',
                         'layer': 'above'
@@ -521,51 +454,51 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT
+    # LAYOUT - COMPACTO
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
         autosize=True,
-        height=None,  # SIN altura fija - se ajusta automáticamente
+        height=450,
         dragmode='pan',
         xaxis={
-            'title': {'text': '', 'font': {'size': 8}},
+            'title': {'text': 'Meses', 'font': {'size': 11}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
-            'hoverformat': '%d %b %Y',
+            'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': 7},
+            'tickfont': {'size': 9},
             'showgrid': True,
-            'gridcolor': 'rgba(200, 200, 200, 0.15)',
+            'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
         },
         yaxis={
-            'title': {'text': 'Temp. (°C)', 'font': {'size': 8}},
+            'title': {'text': 'Temperatura (°C)', 'font': {'size': 11}},
             'range': [y1_min, y1_max],
             'tickformat': '.0f',
-            'tickfont': {'size': 7},
-            'gridcolor': 'rgba(200, 200, 200, 0.15)',
+            'tickfont': {'size': 9},
+            'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'zeroline': True,
-            'zerolinecolor': 'rgba(128, 128, 128, 0.2)',
-            'zerolinewidth': 0.5,
+            'zerolinecolor': 'rgba(128, 128, 128, 0.5)',
+            'zerolinewidth': 1,
             'fixedrange': False,
             'side': 'left'
         },
         yaxis2={
-            'title': {'text': 'Precip./Afect.', 'font': {'size': 8}},
+            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 11}},
             'range': [0, max_y2],
             'tickformat': 'd',
-            'dtick': max(2, int(max_y2 / 6)),
-            'tickfont': {'size': 7},
+            'dtick': max(2, int(max_y2 / 8)),
+            'tickfont': {'size': 9},
             'overlaying': 'y',
             'side': 'right',
-            'gridcolor': 'rgba(200, 200, 200, 0.1)',
+            'gridcolor': 'rgba(200, 200, 200, 0.15)',
             'gridwidth': 0.3,
             'showgrid': True,
             'fixedrange': False
@@ -577,18 +510,18 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'y': -0.15,
             'xanchor': 'center',
             'yanchor': 'top',
-            'bgcolor': 'rgba(255, 255, 255, 0.7)',
+            'bgcolor': 'rgba(255, 255, 255, 0.95)',
             'bordercolor': '#bdc3c7',
-            'borderwidth': 0.5,
-            'font': {'size': 7},
-            'itemwidth': 12,
-            'tracegroupgap': 2
+            'borderwidth': 1,
+            'font': {'size': 9},
+            'itemwidth': 25,
+            'tracegroupgap': 5
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 5, 'b': 5, 'l': 10, 'r': 15}
+        margin={'t': 20, 'b': 20, 'l': 40, 'r': 50}
     )
-    fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.5, opacity=0.3)
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
     return fig
 
@@ -596,30 +529,37 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # MAIN
 # ============================================================
 def main():
-    st.markdown("## 🦙 Monitoreo")
+    st.markdown("## 🦙 Monitoreo Diario")
     
     with st.sidebar:
-        st.markdown("### ⏱️")
+        st.markdown("### 🎛️ Controles")
+        st.markdown("**Seleccionar período:**")
+        
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("1M", use_container_width=True):
+            if st.button("📅 1 Mes", use_container_width=True):
                 st.session_state.zoom_periodo = 1
                 st.rerun()
-            if st.button("6M", use_container_width=True):
+            if st.button("📅 6 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 6
                 st.rerun()
-            if st.button("Todo", use_container_width=True):
+            if st.button("📅 Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
                 st.rerun()
         with col2:
-            if st.button("3M", use_container_width=True):
+            if st.button("📅 3 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 3
                 st.rerun()
-            if st.button("1A", use_container_width=True):
+            if st.button("📅 1 Año", use_container_width=True):
                 st.session_state.zoom_periodo = 12
                 st.rerun()
+        
         st.markdown("---")
-        if st.button("🔄", use_container_width=True):
+        st.markdown("**🖱️ Interactuar:**")
+        st.markdown("- Arrastra para deslizar")
+        st.markdown("- Rueda para hacer zoom")
+        
+        if st.button("🔄 Actualizar", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
@@ -637,11 +577,11 @@ def main():
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
-    with st.spinner('🔄 Cargando...'):
+    with st.spinner('🔄 Cargando datos...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        with st.spinner('📊 Generando...'):
+        with st.spinner('📊 Generando gráfica...'):
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
         if fig is not None:
@@ -657,16 +597,18 @@ def main():
                 }
             )
 
-            col1, col2, col3 = st.columns(3)
-            if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                col1.metric("🦙", f"{df['Enfermos'].sum():.0f}")
-            if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                col2.metric("💀", f"{df['Muertos'].sum():.0f}")
-            if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                col3.metric("⚠️", f"{df['Abortos'].sum():.0f}")
+            with st.expander("📊 Ver estadísticas"):
+                col1, col2, col3 = st.columns(3)
+                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
 
+            st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
-            st.error("❌ Error")
+            st.error("❌ Error al generar la gráfica")
     else:
         st.error("❌ No se pudieron cargar los datos")
 
