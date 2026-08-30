@@ -1,4 +1,4 @@
-# app.py - CON DETECCIÓN DE NOMBRES DE PESTAÑAS
+# app.py - VERSIÓN QUE SÍ FUNCIONA (CON ACTUALIZACIÓN AUTOMÁTICA)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,8 +10,8 @@ import base64
 import os
 import time
 import datetime
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import requests
+import io
 
 warnings.filterwarnings('ignore')
 
@@ -26,7 +26,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS
+# CSS - COMPACTO
 # ============================================================
 st.markdown("""
 <style>
@@ -98,14 +98,6 @@ st.markdown("""
         padding: 0 !important;
         margin: 0 !important;
     }
-    .debug-info {
-        font-size: 0.7rem;
-        color: #333;
-        background: #f0f0f0;
-        padding: 10px !important;
-        border-radius: 5px;
-        margin: 5px 0 !important;
-    }
     @media (max-width: 768px) {
         .main .block-container { padding: 0px 5px 2px 5px !important; }
         .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
@@ -125,13 +117,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# AUTO-REFRESH CADA 15 SEGUNDOS
+# JAVASCRIPT PARA AUTO-REFRESH CADA 30 SEGUNDOS
 # ============================================================
 st.components.v1.html("""
 <script>
     setInterval(function() {
         location.reload();
-    }, 15000);
+    }, 30000);
 </script>
 """, height=0)
 
@@ -159,74 +151,36 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# CONEXIÓN A GOOGLE SHEETS
+# FUNCIÓN PARA CARGAR DATOS - SIN CACHÉ
 # ============================================================
-def conectar_google_sheets():
-    """Conecta a Google Sheets usando credenciales de secrets"""
+def cargar_datos_sin_cache(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """Carga datos desde Google Sheets SIN CACHÉ usando exportación CSV"""
     try:
-        creds_dict = {
-            "type": st.secrets["gcp_service_account"]["type"],
-            "project_id": st.secrets["gcp_service_account"]["project_id"],
-            "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
-            "private_key": st.secrets["gcp_service_account"]["private_key"],
-            "client_email": st.secrets["gcp_service_account"]["client_email"],
-            "client_id": st.secrets["gcp_service_account"]["client_id"],
-            "auth_uri": st.secrets["gcp_service_account"]["auth_uri"],
-            "token_uri": st.secrets["gcp_service_account"]["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["gcp_service_account"]["auth_provider_x509_cert_url"],
-            "client_x509_cert_url": st.secrets["gcp_service_account"]["client_x509_cert_url"]
+        # Agregar timestamp para evitar caché
+        t = int(time.time() * 1000)
+        
+        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
+        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
+        
+        # Headers para evitar caché
+        headers = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
         }
         
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        st.error(f"❌ Error de conexión: {e}")
-        return None
+        # Descargar con requests
+        response_sintomas = requests.get(url_sintomas, headers=headers, timeout=30)
+        response_temperaturas = requests.get(url_temperaturas, headers=headers, timeout=30)
+        
+        if response_sintomas.status_code != 200:
+            raise Exception(f"Error al descargar síntomas: {response_sintomas.status_code}")
+        if response_temperaturas.status_code != 200:
+            raise Exception(f"Error al descargar temperaturas: {response_temperaturas.status_code}")
+        
+        df_sintomas = pd.read_csv(io.StringIO(response_sintomas.text))
+        df_temperaturas = pd.read_csv(io.StringIO(response_temperaturas.text))
 
-# ============================================================
-# FUNCIÓN PARA LISTAR PESTAÑAS
-# ============================================================
-def listar_pestanas(sheet_id):
-    """Lista todas las pestañas de la hoja"""
-    try:
-        client = conectar_google_sheets()
-        if client is None:
-            return None
-        
-        spreadsheet = client.open_by_key(sheet_id)
-        worksheets = spreadsheet.worksheets()
-        nombres = [ws.title for ws in worksheets]
-        return nombres
-    except Exception as e:
-        st.error(f"❌ Error al listar pestañas: {e}")
-        return None
-
-# ============================================================
-# CARGAR DATOS EN TIEMPO REAL
-# ============================================================
-def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos EN TIEMPO REAL desde Google Sheets"""
-    try:
-        client = conectar_google_sheets()
-        if client is None:
-            return None
-        
-        # Abrir la hoja
-        spreadsheet = client.open_by_key(sheet_id)
-        
-        # Leer datos de síntomas
-        sheet_sint = spreadsheet.worksheet(sheet_sintomas)
-        data_sintomas = sheet_sint.get_all_values()
-        df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
-        
-        # Leer datos de temperaturas
-        sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
-        data_temperaturas = sheet_temp.get_all_values()
-        df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
-        
-        # PROCESAR DATOS
         def encontrar_columna_fecha(df):
             for col in df.columns:
                 col_lower = col.lower().strip()
@@ -338,8 +292,6 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
         df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
-        df.attrs['fecha_carga'] = datetime.datetime.now().strftime("%d/%m/%Y")
-        df.attrs['registros'] = len(df)
 
         return df
 
@@ -617,7 +569,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - CON DETECCIÓN DE PESTAÑAS
+# MAIN
 # ============================================================
 def main():
     now = datetime.datetime.now()
@@ -627,7 +579,7 @@ def main():
     st.markdown(f"""
     ## 🦙 Monitoreo Diario - Actualización Automática
     <div class="timestamp"><span></span> 📊 Datos cargados: {fecha_actual} {hora_actual}</div>
-    <div class="refresh-status">🔄 Auto-actualización cada 15 segundos</div>
+    <div class="refresh-status">🔄 Auto-actualización cada 30 segundos</div>
     """, unsafe_allow_html=True)
     
     with st.sidebar:
@@ -666,91 +618,53 @@ def main():
             st.rerun()
 
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
+    SHEET_NAME_SINTOMAS = 'sintomas'
+    SHEET_NAME_TEMPERATURAS = 'temperaturas'
+
+    os.makedirs('imagenes', exist_ok=True)
     
-    # ============================================================
-    # MOSTRAR PESTAÑAS DISPONIBLES
-    # ============================================================
-    with st.expander("🔍 Ver pestañas disponibles", expanded=True):
-        st.info("🔄 Conectando a Google Sheets para detectar pestañas...")
-        pestanas = listar_pestanas(GOOGLE_SHEETS_ID)
-        
-        if pestanas:
-            st.success(f"✅ Pestañas encontradas en 'Sintomas_graf':")
-            for i, nombre in enumerate(pestanas, 1):
-                st.code(f"{i}. '{nombre}'")
-            
-            st.markdown("---")
-            st.markdown("**📌 Nombres exactos para usar en el código:**")
-            for nombre in pestanas:
-                st.code(f"SHEET_NAME = '{nombre}'")
+    IMAGES = {
+        'enferma': 'imagenes/enferma.png',
+        'muerta': 'imagenes/muerta.png',
+        'aborto': 'imagenes/aborto.png'
+    }
+
+    zoom_meses = st.session_state.get('zoom_periodo', None)
+
+    with st.spinner('🔄 Cargando datos...'):
+        df = cargar_datos_sin_cache(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+
+    if df is not None and not df.empty:
+        with st.spinner('📊 Generando gráfica...'):
+            fig = crear_grafica(df, IMAGES, zoom_meses)
+
+        if fig is not None:
+            st.plotly_chart(
+                fig, 
+                use_container_width=True,
+                config={
+                    'displayModeBar': True,
+                    'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
+                    'displaylogo': False,
+                    'scrollZoom': True,
+                    'responsive': True,
+                }
+            )
+
+            with st.expander("📊 Ver estadísticas"):
+                col1, col2, col3 = st.columns(3)
+                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+
+            st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
-            st.error("❌ No se pudieron listar las pestañas. Verifica que la hoja esté compartida con el email.")
-
-    # ============================================================
-    # INTENTAR CARGAR DATOS CON LOS NOMBRES DETECTADOS
-    # ============================================================
-    if pestanas:
-        # Buscar pestañas que coincidan con "sintomas" o "temperaturas"
-        sintomas_nombre = None
-        temperaturas_nombre = None
-        
-        for nombre in pestanas:
-            nombre_lower = nombre.lower()
-            if 'sintoma' in nombre_lower or 'síntoma' in nombre_lower:
-                sintomas_nombre = nombre
-            elif 'temperatura' in nombre_lower:
-                temperaturas_nombre = nombre
-        
-        if sintomas_nombre and temperaturas_nombre:
-            st.success(f"✅ Usando pestañas: '{sintomas_nombre}' y '{temperaturas_nombre}'")
-            
-            with st.spinner('🔄 Cargando datos en tiempo real...'):
-                df = cargar_datos_tiempo_real(GOOGLE_SHEETS_ID, sintomas_nombre, temperaturas_nombre)
-
-            if df is not None and not df.empty:
-                with st.spinner('📊 Generando gráfica...'):
-                    fig = crear_grafica(df, IMAGES, zoom_meses)
-
-                if fig is not None:
-                    st.plotly_chart(
-                        fig, 
-                        use_container_width=True,
-                        config={
-                            'displayModeBar': True,
-                            'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
-                            'displaylogo': False,
-                            'scrollZoom': True,
-                            'responsive': True,
-                        }
-                    )
-
-                    with st.expander("📊 Ver estadísticas"):
-                        col1, col2, col3 = st.columns(3)
-                        if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                            col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                        if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                            col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                        if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                            col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-                        
-                        st.caption(f"📊 Registros cargados: {df.attrs.get('registros', 0)}")
-
-                    st.success("✅ ¡Gráfica cargada exitosamente! Los datos se actualizan automáticamente.")
-                else:
-                    st.error("❌ Error al generar la gráfica")
-            else:
-                st.error("❌ No se pudieron cargar los datos")
-        else:
-            st.warning(f"""
-            ⚠️ No se encontraron pestañas con 'sintomas' o 'temperaturas'.
-            
-            **Pestañas disponibles:**
-            {', '.join(pestanas)}
-            
-            **Solución:** Cambia los nombres en el código para que coincidan exactamente.
-            """)
+            st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudo conectar a Google Sheets. Verifica que las credenciales estén configuradas correctamente.")
+        st.error("❌ No se pudieron cargar los datos")
 
 if __name__ == "__main__":
     main()
