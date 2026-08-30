@@ -1,4 +1,4 @@
-# app.py - VERSIÓN COMPLETA CON IMÁGENES PEQUEÑAS Y VALORES REALES EN HOVER
+# app.py - VERSIÓN CON PUNTOS INVISIBLES Y HOVER ACTIVO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -353,7 +353,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA CON VALORES REALES EN HOVER
+# FUNCIÓN PARA CREAR LA GRÁFICA - PUNTOS INVISIBLES
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -424,7 +424,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             x=fecha_smooth,
             y=enfermos_smooth,
             mode='lines',
-            name='Alpacas enfermas (tendencia)',
+            name='Alpacas enfermas',
             line=dict(color='#8B0000', width=2.5),
             opacity=0.8,
             fill='tozeroy',
@@ -438,7 +438,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - PUNTOS REALES DEL ARCHIVO (CON HOVER)
+    # ALPACAS ENFERMAS - PUNTOS INVISIBLES CON HOVER ACTIVO
     # ============================================================
     if 'Enfermos' in df.columns:
         df_enfermos = df[df['Enfermos'] > 0].copy()
@@ -447,14 +447,15 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 x=df_enfermos['fecha'],
                 y=df_enfermos['Enfermos'],
                 mode='markers',
-                name='Alpacas enfermas (datos reales)',
+                name='Datos reales',  # Nombre invisible en la leyenda
                 marker=dict(
-                    size=8,
-                    color='#8B0000',
-                    symbol='circle',
-                    line=dict(color='white', width=1)
+                    size=1,  # Tamaño mínimo
+                    color='rgba(0,0,0,0)',  # ✅ COMPLETAMENTE INVISIBLE
+                    opacity=0,  # ✅ SIN OPACIDAD
+                    line=dict(color='rgba(0,0,0,0)', width=0)  # ✅ SIN BORDE
                 ),
                 yaxis='y2',
+                showlegend=False,  # ✅ OCULTO DE LA LEYENDA
                 # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO (ej: 15)
                 hovertemplate='<b>🦙 Alpacas enfermas:</b> %{y:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
             ))
@@ -737,10 +738,10 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el cursor** sobre los puntos rojos para ver el valor real del archivo
+            - **🖱️ Pasa el cursor** sobre la línea roja para ver el valor real del archivo
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse o pellizcar
-            - **📊 Ver valores**: Pasa el cursor sobre los puntos rojos (datos reales)
+            - **📊 Ver valores**: Pasa el cursor sobre cualquier punto de la línea roja
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
@@ -808,7 +809,7 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre los PUNTOS ROJOS para ver el valor real del archivo.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la línea roja para ver el valor real del archivo.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
