@@ -1,4 +1,4 @@
-## app.py - VERSIÓN STREAMLIT
+# app.py - VERSIÓN STREAMLIT COMPLETA (CON TODAS LAS MEJORAS)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -11,18 +11,35 @@ import os
 
 warnings.filterwarnings('ignore')
 
+# ============================================================
+# REDUCIR ESPACIO EN BLANCO DE LA PÁGINA
+# ============================================================
+st.markdown("""
+<style>
+    .main .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+        max-width: 100%;
+    }
+    h1, h2, h3 {
+        margin-top: 0rem;
+        margin-bottom: 0rem;
+    }
+    .stPlotlyChart {
+        margin-top: -10px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # CONFIGURACIÓN DE PÁGINA
 # ============================================================
 st.set_page_config(
-    page_title="",
+    page_title="Gráfica Alpacas Interactiva",
     page_icon="🦙",
     layout="wide"
 )
 
-  
-    
 # ============================================================
 # DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
 # ============================================================
@@ -460,11 +477,12 @@ def crear_grafica(df, images_paths):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    st.markdown(" ## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    # Título SUBIDO AL TOPE (sin espacio extra)
+    st.markdown("## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     st.caption("📊 Datos cargados automáticamente desde Google Sheets")
-
+    
     # CONFIGURACIÓN
-    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'    # el codigo el archivo
+    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
@@ -486,12 +504,23 @@ def main():
             fig = crear_grafica(df, IMAGES)
 
         if fig is not None:
+            # Mostrar gráfica con herramientas en la parte superior
             st.plotly_chart(fig, use_container_width=True, config={
                 'displayModeBar': True,
                 'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
                 'displaylogo': False,
                 'scrollZoom': True,
-                'responsive': True
+                'responsive': True,
+                'modeBarButtonsToAdd': [
+                    'zoom2d',
+                    'pan2d',
+                    'select2d',
+                    'lasso2d',
+                    'zoomIn2d',
+                    'zoomOut2d',
+                    'autoScale2d',
+                    'resetScale2d'
+                ]
             })
 
             # ESTADÍSTICAS
@@ -510,7 +539,8 @@ def main():
             st.info("""
             **🖱️ Cómo interactuar:**
             - **Deslizar**: Arrastra el mouse horizontalmente ← → 
-            - **Zoom**: Rueda del mouse
+            - **Zoom**: Rueda del mouse o botones de zoom
+            - **Seleccionar**: Usa los botones de selección (cuadro, lazo)
             - **Ver valores**: Pasa el cursor sobre cualquier punto
             - **Selector de tiempo**: Botones "1 Mes", "3 Meses", etc.
             """)
