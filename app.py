@@ -1,4 +1,4 @@
-# app.py - CON TIMESTAMP PARA VERIFICAR ACTUALIZACIÓN
+# app.py - FORZAR LECTURA DE DATOS NUEVOS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,6 +10,8 @@ import base64
 import os
 import time
 import datetime
+import requests
+import io
 
 warnings.filterwarnings('ignore')
 
@@ -24,7 +26,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - COMPACTO CON INDICADOR DE ACTUALIZACIÓN
+# CSS - COMPACTO CON INDICADOR
 # ============================================================
 st.markdown("""
 <style>
@@ -154,21 +156,38 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIÓN PARA CARGAR DATOS CON TIMESTAMP
+# FUNCIÓN PARA CARGAR DATOS CON requests (FORZADO)
 # ============================================================
-def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos desde Google Sheets con timestamp para verificar"""
+def cargar_datos_force(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """Carga datos FORZANDO la lectura desde Google Sheets"""
     try:
-        # Generar timestamp único para esta carga
-        timestamp_carga = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Timestamp actual para evitar caché
+        t = int(time.time() * 1000)  # Milisegundos para más precisión
         
-        # URL con timestamp para evitar caché
-        t = int(time.time())
+        # URLs con timestamp
         url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
         url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
         
-        df_sintomas = pd.read_csv(url_sintomas)
-        df_temperaturas = pd.read_csv(url_temperaturas)
+        # Headers para evitar caché
+        headers = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+        
+        # Descargar con requests
+        response_sintomas = requests.get(url_sintomas, headers=headers, timeout=30)
+        response_temperaturas = requests.get(url_temperaturas, headers=headers, timeout=30)
+        
+        # Verificar que las descargas fueron exitosas
+        if response_sintomas.status_code != 200:
+            raise Exception(f"Error al descargar síntomas: {response_sintomas.status_code}")
+        if response_temperaturas.status_code != 200:
+            raise Exception(f"Error al descargar temperaturas: {response_temperaturas.status_code}")
+        
+        # Leer CSV desde el contenido
+        df_sintomas = pd.read_csv(io.StringIO(response_sintomas.text))
+        df_temperaturas = pd.read_csv(io.StringIO(response_temperaturas.text))
 
         def encontrar_columna_fecha(df):
             for col in df.columns:
@@ -280,9 +299,9 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-
-        # Guardar timestamp de carga
-        df.attrs['timestamp_carga'] = timestamp_carga
+        
+        # Agregar timestamp de carga
+        df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
 
         return df
 
@@ -560,15 +579,15 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - CON TIMESTAMP VISIBLE
+# MAIN - CON FORZADO DE LECTURA
 # ============================================================
 def main():
-    # Obtener timestamp actual para mostrar
+    # Obtener timestamp actual
     now = datetime.datetime.now()
     hora_actual = now.strftime("%H:%M:%S")
     fecha_actual = now.strftime("%d/%m/%Y")
     
-    # TÍTULO CON TIMESTAMP VISIBLE
+    # Mostrar timestamp
     st.markdown(f"""
     ## 🦙 Monitoreo Diario
     <div class="timestamp"><span></span> Datos cargados: {fecha_actual} {hora_actual}</div>
@@ -623,7 +642,7 @@ def main():
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+        df = cargar_datos_force(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica...'):
