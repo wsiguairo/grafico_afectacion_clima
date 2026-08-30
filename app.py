@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON FECHA ÚNICA AL INICIO (SIN DUPLICADOS)
+# app.py - VERSIÓN CON FECHA ÚNICA AL INICIO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -360,7 +360,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SOLO VALOR (SIN FECHA) ⬅️ QUITADA LA FECHA
+    # TEMPERATURA - SOLO VALOR (SIN FECHA)
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
