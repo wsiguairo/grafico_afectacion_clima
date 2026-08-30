@@ -1,4 +1,4 @@
-# app.py - CÓDIGO ROBUSTO CON ACTUALIZACIÓN AUTOMÁTICA
+# app.py - SOLUCIÓN DEFINITIVA CON GOOGLE SHEETS API
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,9 +10,8 @@ import base64
 import os
 import time
 import datetime
-import requests
-import io
-import hashlib
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 import json
 
 warnings.filterwarnings('ignore')
@@ -28,7 +27,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - COMPACTO CON INDICADORES
+# CSS
 # ============================================================
 st.markdown("""
 <style>
@@ -100,20 +99,10 @@ st.markdown("""
         margin-right: 5px;
         animation: pulse 2s infinite;
     }
-    .timestamp.error span {
-        background-color: #ff0000 !important;
-    }
     @keyframes pulse {
         0% { opacity: 1; }
         50% { opacity: 0.3; }
         100% { opacity: 1; }
-    }
-    
-    .status-bar {
-        font-size: 0.6rem;
-        color: #666;
-        padding: 0 !important;
-        margin: 0 !important;
     }
     
     @media (max-width: 768px) {
@@ -142,10 +131,9 @@ st.markdown("""
 # ============================================================
 st.components.v1.html("""
 <script>
-    // Auto-refresh cada 30 segundos
     setInterval(function() {
         location.reload();
-    }, 30000);
+    }, 60000);
 </script>
 """, height=0)
 
@@ -173,94 +161,79 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIÓN PARA CALCULAR HASH DE DATOS
+# CONFIGURACIÓN DE GOOGLE SHEETS API
 # ============================================================
-def calcular_hash_datos(df):
-    """Calcula un hash único de los datos para detectar cambios"""
-    if df is None or df.empty:
-        return "vacio"
-    # Crear hash de las columnas numéricas
-    datos_str = df.select_dtypes(include=[np.number]).to_string()
-    return hashlib.md5(datos_str.encode()).hexdigest()
-
-# ============================================================
-# FUNCIÓN ROBUSTA PARA CARGAR DATOS
-# ============================================================
-def cargar_datos_robusto(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """
-    Carga datos con múltiples estrategias anti-caché
-    """
-    resultados = []
-    
-    # Estrategia 1: requests con timestamp y headers anti-caché
+# Credenciales desde secrets de Streamlit
+def get_google_sheets_client():
+    """Obtiene cliente de Google Sheets usando secrets"""
     try:
-        t = int(time.time() * 1000)
-        
-        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
-        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
-        
-        headers = {
-            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        # Usar secrets de Streamlit
+        creds_dict = {
+            "type": st.secrets["gcp_service_account"]["type"],
+            "project_id": st.secrets["gcp_service_account"]["project_id"],
+            "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
+            "private_key": st.secrets["gcp_service_account"]["private_key"],
+            "client_email": st.secrets["gcp_service_account"]["client_email"],
+            "client_id": st.secrets["gcp_service_account"]["client_id"],
+            "auth_uri": st.secrets["gcp_service_account"]["auth_uri"],
+            "token_uri": st.secrets["gcp_service_account"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["gcp_service_account"]["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": st.secrets["gcp_service_account"]["client_x509_cert_url"]
         }
         
-        # Descargar con timeout
-        response_sintomas = requests.get(url_sintomas, headers=headers, timeout=30)
-        response_temperaturas = requests.get(url_temperaturas, headers=headers, timeout=30)
-        
-        if response_sintomas.status_code == 200 and response_temperaturas.status_code == 200:
-            df_sintomas = pd.read_csv(io.StringIO(response_sintomas.text))
-            df_temperaturas = pd.read_csv(io.StringIO(response_temperaturas.text))
-            resultados.append(("requests", df_sintomas, df_temperaturas))
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        return client
     except Exception as e:
-        pass
-    
-    # Estrategia 2: pd.read_csv con parámetros anti-caché
-    try:
-        t = int(time.time() * 1000)
-        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
-        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
-        
-        df_sintomas = pd.read_csv(url_sintomas, cache=False)
-        df_temperaturas = pd.read_csv(url_temperaturas, cache=False)
-        resultados.append(("pd_read_csv", df_sintomas, df_temperaturas))
-    except Exception as e:
-        pass
-    
-    # Si no hay resultados, error
-    if not resultados:
-        st.error("❌ No se pudo conectar con Google Sheets")
+        st.error(f"❌ Error al conectar con Google Sheets API: {e}")
         return None
-    
-    # Usar el primer resultado exitoso
-    _, df_sintomas, df_temperaturas = resultados[0]
-    
-    # PROCESAR DATOS
-    def encontrar_columna_fecha(df):
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo']):
-                return col
-        return df.columns[0]
 
-    def encontrar_columna_por_patron(df, patrones):
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            for patron in patrones:
-                if patron.lower() in col_lower:
+# ============================================================
+# FUNCIÓN PARA CARGAR DATOS CON API OFICIAL
+# ============================================================
+def cargar_datos_api(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """Carga datos usando Google Sheets API oficial"""
+    try:
+        client = get_google_sheets_client()
+        if client is None:
+            return None
+        
+        # Abrir la hoja de cálculo
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Obtener datos de síntomas
+        sheet_sint = spreadsheet.worksheet(sheet_sintomas)
+        data_sintomas = sheet_sint.get_all_values()
+        df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
+        
+        # Obtener datos de temperaturas
+        sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
+        data_temperaturas = sheet_temp.get_all_values()
+        df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
+        
+        def encontrar_columna_fecha(df):
+            for col in df.columns:
+                col_lower = col.lower().strip()
+                if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo']):
                     return col
-        return None
+            return df.columns[0]
 
-    def estandarizar_columnas(df, mapeo):
-        for nuevo_nombre, patrones in mapeo.items():
-            col_existente = encontrar_columna_por_patron(df, patrones)
-            if col_existente and col_existente != nuevo_nombre:
-                df.rename(columns={col_existente: nuevo_nombre}, inplace=True)
-        return df
+        def encontrar_columna_por_patron(df, patrones):
+            for col in df.columns:
+                col_lower = col.lower().strip()
+                for patron in patrones:
+                    if patron.lower() in col_lower:
+                        return col
+            return None
 
-    try:
+        def estandarizar_columnas(df, mapeo):
+            for nuevo_nombre, patrones in mapeo.items():
+                col_existente = encontrar_columna_por_patron(df, patrones)
+                if col_existente and col_existente != nuevo_nombre:
+                    df.rename(columns={col_existente: nuevo_nombre}, inplace=True)
+            return df
+
         col_fecha_sintomas = encontrar_columna_fecha(df_sintomas)
         col_fecha_temp = encontrar_columna_fecha(df_temperaturas)
 
@@ -349,17 +322,14 @@ def cargar_datos_robusto(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-
-        # Guardar metadatos
+        
+        # Guardar timestamp
         df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
-        df.attrs['fecha_carga'] = datetime.datetime.now().strftime("%d/%m/%Y")
-        df.attrs['hash'] = calcular_hash_datos(df)
-        df.attrs['registros'] = len(df)
 
         return df
 
     except Exception as e:
-        st.error(f"❌ Error al procesar datos: {e}")
+        st.error(f"❌ Error al cargar datos con API: {e}")
         return None
 
 # ============================================================
@@ -632,23 +602,13 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - CON SISTEMA ROBUSTO
+# MAIN
 # ============================================================
 def main():
-    # Inicializar session_state
-    if 'ultima_actualizacion' not in st.session_state:
-        st.session_state.ultima_actualizacion = None
-    if 'hash_anterior' not in st.session_state:
-        st.session_state.hash_anterior = None
-    if 'datos_cargados' not in st.session_state:
-        st.session_state.datos_cargados = None
-    
-    # Obtener timestamp actual
     now = datetime.datetime.now()
     hora_actual = now.strftime("%H:%M:%S")
     fecha_actual = now.strftime("%d/%m/%Y")
     
-    # Mostrar timestamp
     st.markdown(f"""
     ## 🦙 Monitoreo Diario
     <div class="timestamp"><span></span> Datos cargados: {fecha_actual} {hora_actual}</div>
@@ -683,20 +643,11 @@ def main():
         st.markdown("- Rueda para hacer zoom")
         
         st.markdown("---")
+        st.caption(f"🔄 Última recarga: {hora_actual}")
         
-        # Estado de la actualización
-        if st.session_state.ultima_actualizacion:
-            st.caption(f"🔄 Última recarga: {st.session_state.ultima_actualizacion}")
-        else:
-            st.caption("🔄 Cargando datos...")
-        
-        # Botón de actualización forzada
         if st.button("🔄 Actualizar ahora", use_container_width=True):
-            st.session_state.ultima_actualizacion = hora_actual
+            st.cache_data.clear()
             st.rerun()
-        
-        st.markdown("---")
-        st.caption("⏱️ Auto-actualización cada 30 segundos")
 
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
@@ -713,20 +664,9 @@ def main():
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos_robusto(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+        df = cargar_datos_api(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        # Verificar si los datos cambiaron
-        hash_actual = df.attrs.get('hash', '')
-        if st.session_state.hash_anterior is None:
-            st.session_state.hash_anterior = hash_actual
-        elif st.session_state.hash_anterior != hash_actual:
-            st.session_state.hash_anterior = hash_actual
-            # Mostrar notificación de cambio
-            st.success("🔄 ¡Datos actualizados!")
-        
-        st.session_state.ultima_actualizacion = df.attrs.get('timestamp_carga', hora_actual)
-        
         with st.spinner('📊 Generando gráfica...'):
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
@@ -751,9 +691,6 @@ def main():
                     col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-                
-                # Mostrar metadatos
-                st.caption(f"📊 Registros: {df.attrs.get('registros', 0)} | Hash: {df.attrs.get('hash', '')[:8]}...")
 
             st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
