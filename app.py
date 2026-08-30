@@ -1,4 +1,4 @@
-# app.py - VERSIÓN STREAMLIT (SIN ESPACIO EN BLANCO)
+# app.py - VERSIÓN CON BARRA LATERAL
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,106 +12,36 @@ import os
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# CONFIGURACIÓN DE PÁGINA (ANTES DE CUALQUIER OTRO ELEMENTO)
+# CONFIGURACIÓN DE PÁGINA
 # ============================================================
 st.set_page_config(
     page_title="Gráfica Alpacas Interactiva",
     page_icon="🦙",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # ============================================================
-# ELIMINAR TODO EL ESPACIO EN BLANCO (CSS AGRESIVO)
+# ELIMINAR ESPACIO EN BLANCO
 # ============================================================
 st.markdown("""
 <style>
-    /* Eliminar padding de TODOS los contenedores */
     .main .block-container {
-        padding-top: 0rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
         max-width: 100% !important;
     }
-    
-    /* Eliminar márgenes de títulos */
-    h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        margin-top: -10px !important;
-        margin-bottom: -5px !important;
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-    }
-    
-    /* Eliminar espacio de todos los elementos */
-    .stMarkdown, .stCaption, .stPlotlyChart, .stSpinner, .stAlert {
+    h1, h2, h3 {
         margin-top: 0rem !important;
         margin-bottom: 0rem !important;
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
     }
-    
-    /* Eliminar espacio de la barra superior de Streamlit */
-    header {
-        display: none !important;
-    }
-    
-    /* Eliminar espacio del footer */
-    footer {
-        display: none !important;
-    }
-    
-    /* Eliminar padding del contenedor principal */
-    section.main > div {
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-    }
-    
-    /* Eliminar espacio de la barra de desplazamiento */
-    .stApp {
-        margin-top: -20px !important;
-    }
-    
-    /* Reducir espacio de la barra de herramientas de Plotly */
-    .stPlotlyChart .js-plotly-plot .plotly .modebar {
-        top: 5px !important;
-        right: 5px !important;
-    }
-    
-    /* Reducir margen de la gráfica */
+    header { display: none !important; }
+    footer { display: none !important; }
     .stPlotlyChart > div {
-        margin-top: -25px !important;
-        margin-bottom: -10px !important;
+        margin-top: -10px !important;
     }
-    
-    /* Eliminar espacio de los elementos de la barra lateral */
-    .css-1d391kg, .css-1lcbmhc {
-        padding-top: 0rem !important;
-    }
-    
-    /* Eliminar espacio de los spinners */
-    .stSpinner > div {
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
-    }
-    
-    /* Eliminar espacio de las filas y columnas */
-    .row-widget, .stColumns {
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-    }
-    
-    /* Eliminar espacio de los expanders */
-    .streamlit-expanderHeader {
-        margin-top: 0rem !important;
-        padding-top: 0rem !important;
-    }
-    
-    .streamlit-expanderContent {
-        padding-top: 0rem !important;
-    }
+    /* Ocultar rangeselector de Plotly */
+    .rangeselector { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -271,7 +201,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
 # ============================================================
-def crear_grafica(df, images_paths):
+def crear_grafica(df, images_paths, zoom_meses=None):
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -447,24 +377,35 @@ def crear_grafica(df, images_paths):
         max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    # ZOOM INICIAL
-    año_datos = df['fecha'].max().year
-    fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
-    fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
+    # ZOOM INICIAL (según selección)
+    fecha_inicio = df['fecha'].min()
+    fecha_fin = df['fecha'].max()
     
-    if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
-        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+    if zoom_meses is None:
+        # Zoom por defecto: Mayo-Agosto
+        año_datos = df['fecha'].max().year
+        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
+        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
+        
+        if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
+            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+            fecha_fin_zoom = df['fecha'].max()
+    else:
+        # Zoom según botón seleccionado
         fecha_fin_zoom = df['fecha'].max()
+        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
+        if fecha_inicio_zoom < df['fecha'].min():
+            fecha_inicio_zoom = df['fecha'].min()
 
     # TICKS
     fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
-    # LAYOUT
+    # LAYOUT - SIN rangeselector (los botones están en la sidebar)
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        height=750,  # Aumentado para compensar la falta de espacio
+        height=750,
         dragmode='pan',
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': 13, 'color': '#34495e'}},
@@ -480,24 +421,7 @@ def crear_grafica(df, images_paths):
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
-            'rangeselector': {
-                'buttons': [
-                    {'count': 1, 'label': '1 Mes', 'step': 'month', 'stepmode': 'backward'},
-                    {'count': 3, 'label': '3 Meses', 'step': 'month', 'stepmode': 'backward'},
-                    {'count': 6, 'label': '6 Meses', 'step': 'month', 'stepmode': 'backward'},
-                    {'count': 12, 'label': '1 Año', 'step': 'month', 'stepmode': 'backward'},
-                    {'step': 'all', 'label': 'Todo'}
-                ],
-                'font': {'size': 10, 'color': '#2c3e50'},
-                'bgcolor': 'rgba(240, 240, 240, 0.9)',
-                'activecolor': 'rgba(46, 134, 171, 0.4)',
-                'bordercolor': '#bdc3c7',
-                'borderwidth': 1,
-                'x': 0.02,
-                'xanchor': 'left',
-                'y': 1.02,
-                'yanchor': 'bottom'
-            }
+            # ELIMINADO: rangeselector (los botones están en la sidebar)
         },
         yaxis={
             'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': 13, 'color': '#34495e'}},
@@ -541,7 +465,7 @@ def crear_grafica(df, images_paths):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}  # MÁXIMO REDUCIDO
+        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
@@ -551,10 +475,47 @@ def crear_grafica(df, images_paths):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # Título SUBIDO AL TOPE (sin espacio extra)
-    st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
-   ##st.caption("📊 Datos cargados automáticamente desde Google Sheets")
+    # Título
+    st.markdown("## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    st.caption("📊 Datos cargados automáticamente desde Google Sheets")
     
+    # ============================================================
+    # BARRA LATERAL - CONTROLES
+    # ============================================================
+    with st.sidebar:
+        st.markdown("### 🎛️ Controles")
+        
+        st.markdown("**Seleccionar período:**")
+        
+        # Botones de selección de tiempo
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📅 1 Mes", use_container_width=True):
+                st.session_state.zoom_periodo = 1
+            if st.button("📅 6 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 6
+            if st.button("📅 Todo", use_container_width=True):
+                st.session_state.zoom_periodo = None
+        
+        with col2:
+            if st.button("📅 3 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 3
+            if st.button("📅 1 Año", use_container_width=True):
+                st.session_state.zoom_periodo = 12
+        
+        st.markdown("---")
+        st.markdown("**🖱️ Cómo interactuar:**")
+        st.markdown("""
+        - **Deslizar**: Arrastra el mouse ← →
+        - **Zoom**: Rueda del mouse
+        - **Seleccionar**: Usa botones de la barra de herramientas
+        - **Ver valores**: Pasa el cursor sobre cualquier punto
+        """)
+        
+        if st.button("🔄 Actualizar datos", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
     # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
@@ -569,13 +530,16 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
+    # Obtener zoom seleccionado
+    zoom_meses = st.session_state.get('zoom_periodo', None)
+
     # Cargar datos
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
         with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES)
+            fig = crear_grafica(df, IMAGES, zoom_meses)
 
         if fig is not None:
             # Mostrar gráfica con herramientas en la parte superior
@@ -597,7 +561,7 @@ def main():
                 ]
             })
 
-            # ESTADÍSTICAS
+            # ESTADÍSTICAS (fuera de la gráfica)
             with st.expander("📊 Ver estadísticas de los datos"):
                 col1, col2, col3 = st.columns(3)
                 
@@ -609,15 +573,6 @@ def main():
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
 
                 st.dataframe(df, use_container_width=True)
-
-            st.info("""
-            **🖱️ Cómo interactuar:**
-            - **Deslizar**: Arrastra el mouse horizontalmente ← → 
-            - **Zoom**: Rueda del mouse o botones de zoom
-            - **Seleccionar**: Usa los botones de selección (cuadro, lazo)
-            - **Ver valores**: Pasa el cursor sobre cualquier punto
-            - **Selector de tiempo**: Botones "1 Mes", "3 Meses", etc.
-            """)
 
             st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
