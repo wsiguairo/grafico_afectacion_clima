@@ -1,4 +1,4 @@
-# app.py - SOLUCIÓN DEFINITIVA CON HTML
+# app.py - HTML PURO SIN STREAMLIT
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -22,43 +22,195 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - ELIMINAR TODO EL ESPACIO
+# CSS EXTREMO - FORZAR CAMBIO
 # ============================================================
 st.markdown("""
 <style>
-    /* ELIMINAR TODO */
-    .stApp > header { display: none !important; height: 0 !important; }
-    footer { display: none !important; height: 0 !important; }
-    .main .block-container { 
-        padding: 0 !important; 
-        max-width: 100% !important; 
+    /* FORZAR ELIMINACIÓN TOTAL */
+    .stApp > header {
+        display: none !important;
+        height: 0px !important;
+        min-height: 0px !important;
+        max-height: 0px !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
         margin: 0 !important;
-        padding-top: 0 !important;
+        position: fixed !important;
+        top: -9999px !important;
+        left: -9999px !important;
+        width: 0 !important;
     }
-    h1, h2, h3, p { margin: 0 !important; padding: 0 !important; }
-    h2 { font-size: 0.8rem !important; padding: 2px 0 0 0 !important; }
+    
+    .main .block-container {
+        padding: 0px 0px 0px 0px !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+    }
+    
+    footer {
+        display: none !important;
+        height: 0px !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+    
+    /* ELIMINAR TODO ESPACIO */
+    * {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    h2 {
+        font-size: 0.7rem !important;
+        line-height: 1 !important;
+        padding: 1px 0 0 0 !important;
+        margin: 0 !important;
+    }
+    
+    .stSidebar {
+        padding: 2px !important;
+        margin: 0 !important;
+    }
+    
+    .stButton button {
+        padding: 1px 3px !important;
+        font-size: 0.5rem !important;
+        min-height: 12px !important;
+        height: auto !important;
+        margin: 0 !important;
+    }
+    
+    .stMetric {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .stMetric label {
+        font-size: 0.4rem !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .stMetric div {
+        font-size: 0.6rem !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
         gap: 0 !important;
     }
-    .stSidebar { padding: 2px !important; margin: 0 !important; }
-    .stButton button {
-        padding: 1px 3px !important;
-        font-size: 0.5rem !important;
-        min-height: 14px !important;
-        height: auto !important;
-        margin: 0 !important;
+    
+    .stColumns {
+        gap: 2px !important;
     }
-    .stMetric { padding: 0 !important; margin: 0 !important; }
-    .stMetric label { font-size: 0.5rem !important; }
-    .stMetric div { font-size: 0.7rem !important; }
+    
+    .stColumn {
+        padding: 0 2px !important;
+    }
+    
+    /* FORZAR QUE EL COMPONENTE HTML OCUPE TODO */
+    .stHtml {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
     @media (max-width: 768px) {
-        h2 { font-size: 0.6rem !important; }
-        .stButton button { font-size: 0.4rem !important; padding: 0px 2px !important; min-height: 10px !important; }
+        h2 {
+            font-size: 0.5rem !important;
+            padding: 0px !important;
+        }
+        .stButton button {
+            font-size: 0.4rem !important;
+            padding: 0px 2px !important;
+            min-height: 10px !important;
+        }
+        .stMetric label {
+            font-size: 0.3rem !important;
+        }
+        .stMetric div {
+            font-size: 0.5rem !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# JAVASCRIPT PARA ELIMINAR HEADER
+# ============================================================
+st.components.v1.html("""
+<script>
+    // ELIMINAR HEADER INMEDIATAMENTE
+    function removeHeader() {
+        const headers = document.querySelectorAll('header, .stApp > header, .css-1d391kg');
+        headers.forEach(el => {
+            if (el) {
+                el.style.display = 'none';
+                el.style.height = '0px';
+                el.style.minHeight = '0px';
+                el.style.maxHeight = '0px';
+                el.style.visibility = 'hidden';
+                el.style.opacity = '0';
+                el.style.overflow = 'hidden';
+                el.style.padding = '0';
+                el.style.margin = '0';
+                el.style.position = 'fixed';
+                el.style.top = '-9999px';
+                el.style.left = '-9999px';
+                el.style.width = '0';
+                if (el.parentNode) {
+                    el.parentNode.style.paddingTop = '0px';
+                }
+            }
+        });
+        
+        // Eliminar padding del body
+        document.body.style.paddingTop = '0px';
+        document.body.style.marginTop = '0px';
+        
+        // Ajustar contenedor principal
+        const main = document.querySelector('.main');
+        if (main) {
+            main.style.paddingTop = '0px';
+            main.style.marginTop = '0px';
+        }
+        
+        const blockContainer = document.querySelector('.block-container');
+        if (blockContainer) {
+            blockContainer.style.paddingTop = '0px';
+            blockContainer.style.marginTop = '0px';
+            blockContainer.style.padding = '0px';
+        }
+    }
+    
+    // Ejecutar inmediatamente y repetidamente
+    removeHeader();
+    setTimeout(removeHeader, 10);
+    setTimeout(removeHeader, 50);
+    setTimeout(removeHeader, 100);
+    setTimeout(removeHeader, 200);
+    setTimeout(removeHeader, 500);
+    setTimeout(removeHeader, 1000);
+    
+    // Observar cambios
+    const observer = new MutationObserver(() => {
+        removeHeader();
+    });
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
+</script>
+""", height=0)
 
 # ============================================================
 # DICCIONARIO DE MESES
@@ -73,15 +225,6 @@ def fecha_espanol(fecha):
     if isinstance(fecha, pd.Timestamp):
         return f"{MESES_ES[fecha.month]} {fecha.year}"
     return str(fecha)
-
-def image_to_base64(filepath):
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, 'rb') as f:
-                return base64.b64encode(f.read()).decode()
-        except:
-            return None
-    return None
 
 # ============================================================
 # FUNCIONES DE PROCESAMIENTO
@@ -212,19 +355,19 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA EN HTML
+# GENERAR HTML DE LA GRÁFICA
 # ============================================================
-def crear_grafica_html(df, images_paths, zoom_meses=None):
+def generar_html_grafica(df, zoom_meses=None):
     if df is None or df.empty:
-        return "<div>No se pudieron cargar los datos</div>"
+        return "<div style='padding:20px;text-align:center;'>No se pudieron cargar los datos</div>"
     
-    # Preparar datos para Plotly.js
-    data = []
+    # Preparar datos para Plotly
+    traces = []
     
-    # PRECIPITACIÓN
+    # Precipitación
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         df_precip = df[df['Precipitacion '].notna()]
-        data.append({
+        traces.append({
             'x': df_precip['fecha'].dt.strftime('%Y-%m-%d').tolist(),
             'y': df_precip['Precipitacion '].tolist(),
             'name': 'Precip.',
@@ -233,10 +376,10 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
             'yaxis': 'y2'
         })
     
-    # TEMPERATURA
+    # Temperatura
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         df_temp = df[df['Temperaturas minimas  (°C)'].notna()]
-        data.append({
+        traces.append({
             'x': df_temp['fecha'].dt.strftime('%Y-%m-%d').tolist(),
             'y': df_temp['Temperaturas minimas  (°C)'].tolist(),
             'name': 'Temp.',
@@ -246,12 +389,25 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
             'marker': {'size': 3, 'color': '#2563EB'}
         })
     
-    # ALPACAS ENFERMAS (suavizado)
+    # Viento
+    if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
+        df_wind = df[df['Vel. viento (Km/h)'].notna()]
+        traces.append({
+            'x': df_wind['fecha'].dt.strftime('%Y-%m-%d').tolist(),
+            'y': df_wind['Vel. viento (Km/h)'].tolist(),
+            'name': 'Viento',
+            'type': 'scatter',
+            'mode': 'lines',
+            'line': {'color': '#808080', 'width': 1.5, 'dash': 'dash'},
+            'opacity': 0.5
+        })
+    
+    # Enfermas
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
     
     if len(enfermos_smooth) > 0:
-        data.append({
+        traces.append({
             'x': pd.to_datetime(fecha_smooth).strftime('%Y-%m-%d').tolist(),
             'y': enfermos_smooth.tolist(),
             'name': 'Enfermas',
@@ -263,11 +419,11 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
             'yaxis': 'y2'
         })
     
-    # MUERTOS
+    # Muertas
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
         if not df_muertos.empty:
-            data.append({
+            traces.append({
                 'x': df_muertos['fecha'].dt.strftime('%Y-%m-%d').tolist(),
                 'y': [0.15] * len(df_muertos),
                 'name': 'Muertas',
@@ -279,11 +435,11 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
                 'hovertemplate': '💀 %{customdata:02.0f}<extra></extra>'
             })
     
-    # ABORTOS
+    # Abortos
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
         if not df_abortos.empty:
-            data.append({
+            traces.append({
                 'x': df_abortos['fecha'].dt.strftime('%Y-%m-%d').tolist(),
                 'y': [0.2] * len(df_abortos),
                 'name': 'Abortos',
@@ -329,7 +485,7 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
     
-    # Crear layout
+    # Layout
     layout = {
         'hovermode': 'x unified',
         'template': 'plotly_white',
@@ -388,10 +544,9 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
         },
         'plot_bgcolor': 'white',
         'paper_bgcolor': 'white',
-        'margin': {'t': 0, 'b': 0, 'l': 10, 'r': 15}
+        'margin': {'t': 5, 'b': 5, 'l': 10, 'r': 15}
     }
     
-    # Crear configuración
     config = {
         'displayModeBar': True,
         'displaylogo': False,
@@ -401,44 +556,65 @@ def crear_grafica_html(df, images_paths, zoom_meses=None):
     }
     
     # Convertir a JSON
-    data_json = json.dumps(data)
+    traces_json = json.dumps(traces)
     layout_json = json.dumps(layout)
     config_json = json.dumps(config)
     
-    # Crear HTML
+    # HTML completo
     html = f"""
-    <div id="plotly-chart" style="width:100%;height:100%;min-height:300px;"></div>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script>
-        var data = {data_json};
-        var layout = {layout_json};
-        var config = {config_json};
-        
-        function renderChart() {{
-            var chartDiv = document.getElementById('plotly-chart');
-            if (chartDiv) {{
-                var height = Math.min(window.innerHeight * 0.75, 400);
-                if (window.innerHeight < 600) height = Math.min(window.innerHeight * 0.65, 250);
-                if (window.innerHeight < 400) height = Math.min(window.innerHeight * 0.55, 150);
-                chartDiv.style.height = height + 'px';
-                chartDiv.style.minHeight = '100px';
-                Plotly.newPlot(chartDiv, data, layout, config);
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+        <style>
+            html, body {{
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                background: white !important;
             }}
-        }}
-        
-        renderChart();
-        window.addEventListener('resize', function() {{
-            var chartDiv = document.getElementById('plotly-chart');
-            if (chartDiv) {{
-                var height = Math.min(window.innerHeight * 0.75, 400);
-                if (window.innerHeight < 600) height = Math.min(window.innerHeight * 0.65, 250);
-                if (window.innerHeight < 400) height = Math.min(window.innerHeight * 0.55, 150);
+            #chart {{
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 200px !important;
+                max-height: 80vh !important;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="chart"></div>
+        <script>
+            var traces = {traces_json};
+            var layout = {layout_json};
+            var config = {config_json};
+            
+            function renderChart() {{
+                var chartDiv = document.getElementById('chart');
+                var width = window.innerWidth;
+                var height = Math.min(window.innerHeight * 0.8, 450);
+                if (height < 200) height = 200;
                 chartDiv.style.height = height + 'px';
-                chartDiv.style.minHeight = '100px';
+                chartDiv.style.minHeight = '200px';
+                Plotly.newPlot(chartDiv, traces, layout, config);
+            }}
+            
+            renderChart();
+            
+            window.addEventListener('resize', function() {{
+                var chartDiv = document.getElementById('chart');
+                var height = Math.min(window.innerHeight * 0.8, 450);
+                if (height < 200) height = 200;
+                chartDiv.style.height = height + 'px';
+                chartDiv.style.minHeight = '200px';
                 Plotly.Plots.resize(chartDiv);
-            }}
-        }});
-    </script>
+            }});
+        </script>
+    </body>
+    </html>
     """
     
     return html
@@ -457,15 +633,20 @@ def main():
         with col1:
             if st.button("1M", use_container_width=True):
                 st.session_state.zoom_periodo = 1
+                st.rerun()
             if st.button("6M", use_container_width=True):
                 st.session_state.zoom_periodo = 6
+                st.rerun()
             if st.button("Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
+                st.rerun()
         with col2:
             if st.button("3M", use_container_width=True):
                 st.session_state.zoom_periodo = 3
+                st.rerun()
             if st.button("1A", use_container_width=True):
                 st.session_state.zoom_periodo = 12
+                st.rerun()
         st.markdown("---")
         if st.button("🔄", use_container_width=True):
             st.cache_data.clear()
@@ -476,25 +657,17 @@ def main():
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
-    os.makedirs('imagenes', exist_ok=True)
-    
-    IMAGES = {
-        'enferma': 'imagenes/enferma.png',
-        'muerta': 'imagenes/muerta.png',
-        'aborto': 'imagenes/aborto.png'
-    }
-
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
     with st.spinner('🔄 Cargando...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        with st.spinner('📊 Generando...'):
-            html_grafica = crear_grafica_html(df, IMAGES, zoom_meses)
-
-        # Mostrar gráfica con HTML
-        st.components.v1.html(html_grafica, height=400, scrolling=False)
+        # Generar HTML de la gráfica
+        html_grafica = generar_html_grafica(df, zoom_meses)
+        
+        # Mostrar gráfica
+        st.components.v1.html(html_grafica, height=450, scrolling=False)
         
         # Estadísticas
         col1, col2, col3 = st.columns(3)
