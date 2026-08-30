@@ -1,4 +1,4 @@
-# app.py - VERSIÓN COMPLETA CON VALORES REALES EN HOVER
+# app.py - VERSIÓN COMPLETA CON IMÁGENES PEQUEÑAS Y VALORES REALES EN HOVER
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,8 +8,6 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
-from PIL import Image
-import io
 
 warnings.filterwarnings('ignore')
 
@@ -24,10 +22,11 @@ st.set_page_config(
 )
 
 # ============================================================
-# ESTILOS RESPONSIVE
+# ESTILOS RESPONSIVE CON LOGO SENAMHI
 # ============================================================
 st.markdown("""
 <style>
+    /* ESTILOS GENERALES */
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
@@ -49,8 +48,12 @@ st.markdown("""
         width: 100% !important;
     }
     
+    /* OCULTAR RANGESELECTOR DE PLOTLY */
     .rangeselector { display: none !important; }
     
+    /* ============================================
+       LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
+       ============================================ */
     .logo-senamhi {
         position: fixed;
         top: 10px;
@@ -72,6 +75,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
+    /* Ajuste para celular */
     @media only screen and (max-width: 768px) {
         .logo-senamhi {
             width: 55px;
@@ -110,6 +114,7 @@ st.markdown("""
         .row-widget.stColumns { gap: 0.2rem !important; }
     }
     
+    /* Ajuste para tablet */
     @media only screen and (min-width: 769px) and (max-width: 1024px) {
         .logo-senamhi {
             width: 65px;
@@ -128,6 +133,7 @@ st.markdown("""
         }
     }
     
+    /* Ajuste para PC */
     @media only screen and (min-width: 1025px) {
         .logo-senamhi {
             width: 80px;
@@ -155,60 +161,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# FUNCIÓN ROBUSTA PARA CARGAR IMÁGENES
-# ============================================================
-def cargar_imagen_robusta(filepath):
-    """Carga una imagen de forma robusta con múltiples intentos"""
-    extensiones = ['', '.png', '.PNG', '.jpg', '.JPG', '.jpeg', '.JPEG', '.gif', '.GIF']
-    
-    rutas_posibles = [
-        filepath,
-        filepath.replace('.png', '.PNG'),
-        filepath.replace('.png', '.jpg'),
-        filepath.replace('.png', '.jpeg'),
-        os.path.join('imagenes', os.path.basename(filepath)),
-        os.path.join('assets', os.path.basename(filepath)),
-        os.path.join('static', os.path.basename(filepath)),
-    ]
-    
-    for ext in extensiones:
-        for ruta in rutas_posibles:
-            ruta_completa = ruta if ruta.endswith(ext) else ruta + ext
-            if os.path.exists(ruta_completa):
-                try:
-                    with open(ruta_completa, 'rb') as f:
-                        img_data = f.read()
-                        try:
-                            Image.open(io.BytesIO(img_data))
-                            return base64.b64encode(img_data).decode()
-                        except:
-                            continue
-                except:
-                    continue
-    
-    return None
-
-def image_to_base64_robusta(filepath):
-    """Versión robusta de image_to_base64"""
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, 'rb') as f:
-                img_data = f.read()
-                try:
-                    Image.open(io.BytesIO(img_data))
-                    return base64.b64encode(img_data).decode()
-                except:
-                    pass
-        except:
-            pass
-    
-    return cargar_imagen_robusta(filepath)
-
-# ============================================================
 # MOSTRAR LOGO SENAMHI
 # ============================================================
 def mostrar_logo_senamhi():
     """Muestra el logo de SENAMHI en la esquina superior izquierda"""
+    
     ruta_logo = "fotosenamhi.png"
     
     if os.path.exists(ruta_logo):
@@ -222,11 +179,28 @@ def mostrar_logo_senamhi():
                  alt="Logo SENAMHI"
                  title="SENAMHI - Servicio Nacional de Meteorología e Hidrología">
             """, unsafe_allow_html=True)
-        except:
-            pass
+            
+        except Exception as e:
+            st.markdown("""
+            <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
+                        background: rgba(255,255,255,0.9); padding: 6px 12px; 
+                        border-radius: 8px; font-size: 12px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <b>🌤️ SENAMHI</b>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="position: fixed; top: 10px; left: 10px; z-index: 999999; 
+                    background: rgba(255,255,255,0.9); padding: 6px 12px; 
+                    border-radius: 8px; font-size: 12px; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <b>🌤️ SENAMHI</b>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ============================================================
-# DICCIONARIO DE MESES
+# DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
 # ============================================================
 MESES_ES = {
     1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
@@ -238,6 +212,15 @@ def fecha_espanol(fecha):
     if isinstance(fecha, pd.Timestamp):
         return f"{MESES_ES[fecha.month]} {fecha.year}"
     return str(fecha)
+
+def image_to_base64(filepath):
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'rb') as f:
+                return base64.b64encode(f.read()).decode()
+        except:
+            return None
+    return None
 
 # ============================================================
 # FUNCIONES DE PROCESAMIENTO
@@ -370,7 +353,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - CON VALORES REALES EN HOVER
+# FUNCIÓN PARA CREAR LA GRÁFICA CON VALORES REALES EN HOVER
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -385,15 +368,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
 
-    # Cargar imágenes
-    img_enferma = image_to_base64_robusta(images_paths.get('enferma', ''))
-    img_muerta = image_to_base64_robusta(images_paths.get('muerta', ''))
-    img_aborto = image_to_base64_robusta(images_paths.get('aborto', ''))
+    img_enferma = image_to_base64(images_paths.get('enferma', ''))
+    img_muerta = image_to_base64(images_paths.get('muerta', ''))
+    img_aborto = image_to_base64(images_paths.get('aborto', ''))
 
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - VALOR REAL
+    # PRECIPITACIÓN - VALOR REAL DEL ARCHIVO
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -406,7 +388,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - VALOR REAL
+    # TEMPERATURA - VALOR REAL DEL ARCHIVO
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -421,7 +403,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - VALOR REAL
+    # VIENTO - VALOR REAL DEL ARCHIVO
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -451,7 +433,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
             ),
             yaxis='y2',
-            hoverinfo='skip',  # ✅ DESACTIVADO EL HOVER EN LA CURVA SUAVIZADA
+            hoverinfo='skip',  # ✅ DESACTIVADO: NO muestra valores suavizados
             showlegend=True
         ))
 
@@ -473,12 +455,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                     line=dict(color='white', width=1)
                 ),
                 yaxis='y2',
-                # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
+                # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO (ej: 15)
                 hovertemplate='<b>🦙 Alpacas enfermas:</b> %{y:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
             ))
 
     # ============================================================
-    # ALPACAS MUERTAS - VALOR REAL
+    # ALPACAS MUERTAS - VALOR REAL DEL ARCHIVO
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -495,7 +477,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - VALOR REAL
+    # ABORTOS - VALOR REAL DEL ARCHIVO
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -512,43 +494,57 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # IMÁGENES EN LA GRÁFICA
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
 
     if not es_movil:
-        # IMAGEN ENFERMA
-        if img_enferma and len(enfermos_smooth) > 0:
-            try:
-                for idx in [0, -1]:
-                    if len(fecha_smooth) > abs(idx):
-                        images_plotly.append({
-                            'source': f"data:image/png;base64,{img_enferma}",
-                            'xref': 'x',
-                            'yref': 'y2',
-                            'x': fecha_smooth[idx],
-                            'y': float(enfermos_smooth[idx]) if idx >= 0 else float(enfermos_smooth[len(enfermos_smooth)-1]),
-                            'sizex': 8,
-                            'sizey': 8,
-                            'xanchor': 'center',
-                            'yanchor': 'middle',
-                            'layer': 'above'
-                        })
-            except:
-                pass
+        # IMAGEN ENFERMA - Tamaño 8
+        if img_enferma is not None and len(enfermos_smooth) > 0:
+            for idx in [0, -1]:
+                images_plotly.append({
+                    'source': f"data:image/png;base64,{img_enferma}",
+                    'xref': 'x',
+                    'yref': 'y2',
+                    'x': fecha_smooth[idx],
+                    'y': float(enfermos_smooth[idx]),
+                    'sizex': 8,
+                    'sizey': 8,
+                    'xanchor': 'center',
+                    'yanchor': 'middle',
+                    'layer': 'above'
+                })
 
-        # IMAGEN MUERTA
-        if img_muerta and 'Muertos' in df.columns:
-            try:
-                df_muertos_varios = df[df['Muertos'] >= 1].copy()
-                if not df_muertos_varios.empty:
-                    for _, row in df_muertos_varios.iterrows():
+        # IMAGEN MUERTA - Tamaño 8
+        if img_muerta is not None and 'Muertos' in df.columns:
+            df_muertos_varios = df[df['Muertos'] >= 3].copy()
+            if not df_muertos_varios.empty:
+                for _, row in df_muertos_varios.iterrows():
+                    images_plotly.append({
+                        'source': f"data:image/png;base64,{img_muerta}",
+                        'xref': 'x',
+                        'yref': 'y2',
+                        'x': row['fecha'],
+                        'y': y_offset,
+                        'sizex': 8,
+                        'sizey': 8,
+                        'xanchor': 'center',
+                        'yanchor': 'middle',
+                        'layer': 'above'
+                    })
+
+        # IMAGEN ABORTO - Tamaño 8
+        if img_aborto is not None and 'Abortos' in df.columns:
+            df_abortos_pos = df[df['Abortos'] > 0].copy()
+            if not df_abortos_pos.empty:
+                for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
+                    if idx < len(df_abortos_pos):
                         images_plotly.append({
-                            'source': f"data:image/png;base64,{img_muerta}",
+                            'source': f"data:image/png;base64,{img_aborto}",
                             'xref': 'x',
                             'yref': 'y2',
-                            'x': row['fecha'],
+                            'x': df_abortos_pos['fecha'].iloc[idx],
                             'y': y_offset,
                             'sizex': 8,
                             'sizey': 8,
@@ -556,32 +552,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                             'yanchor': 'middle',
                             'layer': 'above'
                         })
-            except:
-                pass
-
-        # IMAGEN ABORTO
-        if img_aborto and 'Abortos' in df.columns:
-            try:
-                df_abortos_pos = df[df['Abortos'] >= 1].copy()
-                if not df_abortos_pos.empty:
-                    for idx in range(min(3, len(df_abortos_pos))):
-                        images_plotly.append({
-                            'source': f"data:image/png;base64,{img_aborto}",
-                            'xref': 'x',
-                            'yref': 'y2',
-                            'x': df_abortos_pos['fecha'].iloc[idx],
-                            'y': y_offset + 0.05,
-                            'sizex': 8,
-                            'sizey': 8,
-                            'xanchor': 'center',
-                            'yanchor': 'middle',
-                            'layer': 'above'
-                        })
-            except:
-                pass
 
     # ============================================================
-    # RANGOS Y ESCALAS
+    # RANGOS
     # ============================================================
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
     max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 10
@@ -625,7 +598,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # TICKS
     # ============================================================
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        if len(df) > 30:
+            freq = 'MS'
+        else:
+            freq = 'MS'
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq=freq)
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
@@ -640,7 +617,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         height = 750
 
     # ============================================================
-    # LAYOUT DE LA GRÁFICA
+    # LAYOUT
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
@@ -721,7 +698,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 # ============================================================
 def main():
     
-    # MOSTRAR LOGO SENAMHI
+    # ============================================================
+    # MOSTRAR LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
+    # ============================================================
     mostrar_logo_senamhi()
     
     # Título
@@ -731,7 +710,9 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # BARRA LATERAL
+    # ============================================================
+    # BARRA LATERAL - CONTROLES
+    # ============================================================
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
@@ -756,10 +737,9 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el puntero** sobre los puntos rojos para ver los valores exactos del archivo
+            - **🖱️ Pasa el cursor** sobre los puntos rojos para ver el valor real del archivo
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse o pellizcar
-            - **👆 Seleccionar**: Usa botones de la barra
             - **📊 Ver valores**: Pasa el cursor sobre los puntos rojos (datos reales)
             """)
         
@@ -776,9 +756,9 @@ def main():
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
-        'enferma': os.path.join('imagenes', 'enferma.png'),
-        'muerta': os.path.join('imagenes', 'muerta.png'),
-        'aborto': os.path.join('imagenes', 'aborto.png')
+        'enferma': 'imagenes/enferma.png',
+        'muerta': 'imagenes/muerta.png',
+        'aborto': 'imagenes/aborto.png'
     }
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
@@ -810,38 +790,25 @@ def main():
                 ]
             })
 
-            # ============================================================
-            # ESTADÍSTICAS Y VERIFICACIÓN
-            # ============================================================
             with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                col1, col2, col3 = st.columns(3)
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)
+                else:
+                    col1, col2, col3 = st.columns(3)
                 
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                     col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
                     col1.caption(f"📊 Rango: {df['Enfermos'].min():.0f} - {df['Enfermos'].max():.0f}")
-                
                 if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
                     col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                     col2.caption(f"📊 Rango: {df['Muertos'].min():.0f} - {df['Muertos'].max():.0f}")
-                
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
                     col3.caption(f"📊 Rango: {df['Abortos'].min():.0f} - {df['Abortos'].max():.0f}")
 
                 st.dataframe(df, use_container_width=True)
-                
-                # ✅ VERIFICACIÓN DE VALORES
-                st.markdown("### ✅ Verificación de valores mostrados:")
-                st.markdown("""
-                **Cuando pases el puntero sobre los puntos rojos (datos reales) verás:**
-                - 🦙 **Alpacas enfermas**: El valor EXACTO del archivo
-                - 💀 **Alpacas muertas**: El valor EXACTO del archivo  
-                - ⚠️ **Abortos**: El valor EXACTO del archivo
-                
-                **La línea roja (tendencia) es solo visual, NO muestra valores en hover**
-                """)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el puntero sobre los PUNTOS ROJOS para ver los valores exactos del archivo.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre los PUNTOS ROJOS para ver el valor real del archivo.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
