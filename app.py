@@ -1,4 +1,4 @@
-# app.py - VERSIÓN QUE SÍ FUNCIONA (CON ACTUALIZACIÓN AUTOMÁTICA)
+# app.py - VERSIÓN CON BARRA LATERAL
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,10 +8,6 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
-import time
-import datetime
-import requests
-import io
 
 warnings.filterwarnings('ignore')
 
@@ -19,121 +15,43 @@ warnings.filterwarnings('ignore')
 # CONFIGURACIÓN DE PÁGINA
 # ============================================================
 st.set_page_config(
-    page_title="Gráfica Alpacas",
+    page_title="Gráfica Alpacas Interactiva",
     page_icon="🦙",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # ============================================================
-# CSS - COMPACTO
+# ELIMINAR ESPACIO EN BLANCO
 # ============================================================
 st.markdown("""
 <style>
-    .stApp > header { display: none !important; height: 0 !important; }
-    footer { display: none !important; height: 0 !important; }
-    .main .block-container { 
-        padding: 0px 10px 5px 10px !important;
-        max-width: 1200px !important;
-        margin: 0 auto !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-    }
-    h1, h2, h3, p { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
-    h2 { font-size: 1rem !important; padding: 2px 0 2px 0 !important; margin: 0 !important; line-height: 1 !important; }
-    .stPlotlyChart {
-        width: 100% !important;
+    .main .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0rem !important;
         max-width: 100% !important;
-        min-width: 100% !important;
-        height: 450px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        margin-top: -5px !important;
     }
+    h1, h2, h3 {
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+    }
+    header { display: none !important; }
+    footer { display: none !important; }
     .stPlotlyChart > div {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 100% !important;
-        height: 450px !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        margin-top: -10px !important;
     }
-    .modebar { transform: scale(0.6) !important; transform-origin: top right !important; top: 2px !important; right: 2px !important; }
-    .stSidebar { padding: 8px !important; margin: 0 !important; }
-    .stButton button { padding: 3px 6px !important; font-size: 0.7rem !important; min-height: 24px !important; margin: 0 !important; }
-    .stMetric { padding: 0 !important; margin: 0 !important; }
-    .stMetric label { font-size: 0.6rem !important; padding: 0 !important; margin: 0 !important; }
-    .stMetric div { font-size: 0.8rem !important; padding: 0 !important; margin: 0 !important; }
-    .element-container, .stMarkdown, .stColumns, .stColumn {
-        margin: 0 !important;
-        padding: 0 !important;
-        gap: 0 !important;
-    }
-    .stColumns { gap: 3px !important; margin: 0 !important; padding: 0 !important; }
-    .stColumn { padding: 0 3px !important; margin: 0 !important; }
-    .timestamp {
-        font-size: 0.7rem;
-        color: #0066cc;
-        padding: 0 !important;
-        margin: 0 !important;
-        font-weight: bold;
-    }
-    .timestamp span {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background-color: #00cc00;
-        border-radius: 50%;
-        margin-right: 5px;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.3; }
-        100% { opacity: 1; }
-    }
-    .refresh-status {
-        font-size: 0.6rem;
-        color: #888;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    @media (max-width: 768px) {
-        .main .block-container { padding: 0px 5px 2px 5px !important; }
-        .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
-        .stPlotlyChart > div { height: 300px !important; }
-        h2 { font-size: 0.8rem !important; padding: 1px 0 !important; }
-        .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 18px !important; }
-        .modebar { transform: scale(0.5) !important; }
-        .timestamp { font-size: 0.5rem !important; }
-    }
-    @media (max-width: 480px) {
-        .stPlotlyChart { height: 220px !important; }
-        .stPlotlyChart > div { height: 220px !important; }
-        h2 { font-size: 0.7rem !important; }
-        .stButton button { font-size: 0.5rem !important; padding: 1px 3px !important; min-height: 14px !important; }
-    }
+    /* Ocultar rangeselector de Plotly */
+    .rangeselector { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# JAVASCRIPT PARA AUTO-REFRESH CADA 30 SEGUNDOS
-# ============================================================
-st.components.v1.html("""
-<script>
-    setInterval(function() {
-        location.reload();
-    }, 30000);
-</script>
-""", height=0)
-
-# ============================================================
-# DICCIONARIO DE MESES
+# DICCIONARIO DE MESES Y DÍAS EN ESPAÑOL
 # ============================================================
 MESES_ES = {
-    1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr',
-    5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago',
-    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+    1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+    5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+    9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
 }
 
 def fecha_espanol(fecha):
@@ -151,35 +69,17 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIÓN PARA CARGAR DATOS - SIN CACHÉ
+# FUNCIONES DE PROCESAMIENTO
 # ============================================================
-def cargar_datos_sin_cache(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos desde Google Sheets SIN CACHÉ usando exportación CSV"""
+@st.cache_data(ttl=3600)
+def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
+    """Carga datos desde Google Sheets con caché"""
     try:
-        # Agregar timestamp para evitar caché
-        t = int(time.time() * 1000)
+        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}"
+        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}"
         
-        url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}&_={t}"
-        url_temperaturas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_temperaturas}&_={t}"
-        
-        # Headers para evitar caché
-        headers = {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        }
-        
-        # Descargar con requests
-        response_sintomas = requests.get(url_sintomas, headers=headers, timeout=30)
-        response_temperaturas = requests.get(url_temperaturas, headers=headers, timeout=30)
-        
-        if response_sintomas.status_code != 200:
-            raise Exception(f"Error al descargar síntomas: {response_sintomas.status_code}")
-        if response_temperaturas.status_code != 200:
-            raise Exception(f"Error al descargar temperaturas: {response_temperaturas.status_code}")
-        
-        df_sintomas = pd.read_csv(io.StringIO(response_sintomas.text))
-        df_temperaturas = pd.read_csv(io.StringIO(response_temperaturas.text))
+        df_sintomas = pd.read_csv(url_sintomas)
+        df_temperaturas = pd.read_csv(url_temperaturas)
 
         def encontrar_columna_fecha(df):
             for col in df.columns:
@@ -291,7 +191,6 @@ def cargar_datos_sin_cache(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-        df.attrs['timestamp_carga'] = datetime.datetime.now().strftime("%H:%M:%S")
 
         return df
 
@@ -329,7 +228,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             name='Precipitación',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
-            hovertemplate='💧 %{y:02.0f} mm<extra></extra>'
+            hovertemplate='<b>💧 Precipitación:</b> %{y:02.0f} mm<extra></extra>'
         ))
 
     # TEMPERATURA
@@ -338,10 +237,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             x=df['fecha'],
             y=df['Temperaturas minimas  (°C)'],
             mode='lines+markers',
-            name='Temperatura',
+            name='Temperatura mínima',
             line=dict(color='#2563EB', width=2.5),
             marker=dict(size=4, color='#2563EB'),
-            hovertemplate='🌡️ %{y:.0f}°C<extra></extra>'
+            opacity=0.9,
+            hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.0f} °C<extra></extra>'
         ))
 
     # VIENTO
@@ -353,7 +253,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             name='Viento',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
-            hovertemplate='💨 %{y:.0f} Km/h<extra></extra>'
+            hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'
         ))
 
     # ALPACAS ENFERMAS
@@ -371,7 +271,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
             ),
             yaxis='y2',
-            hovertemplate='🦙 %{y:02.0f}<extra></extra>'
+            hovertemplate='<b>🦙 Alpacas enfermas:</b> %{y:02.0f}<extra></extra>'
         ))
 
     # MUERTOS
@@ -382,11 +282,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 x=df_muertos['fecha'],
                 y=[0.2] * len(df_muertos),
                 mode='markers',
-                name='Muertas',
+                name='Alpacas muertas',
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
-                hovertemplate='💀 %{customdata:02.0f}<extra></extra>'
+                hovertemplate='<b>💀 Alpacas muertas:</b> %{customdata:02.0f}<extra></extra>'
             ))
 
     # ABORTOS
@@ -401,7 +301,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
-                hovertemplate='⚠️ %{customdata:02.0f}<extra></extra>'
+                hovertemplate='<b>⚠️ Abortos:</b> %{customdata:02.0f}<extra></extra>'
             ))
 
     # IMÁGENES
@@ -477,8 +377,12 @@ def crear_grafica(df, images_paths, zoom_meses=None):
         max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    # ZOOM
+    # ZOOM INICIAL (según selección)
+    fecha_inicio = df['fecha'].min()
+    fecha_fin = df['fecha'].max()
+    
     if zoom_meses is None:
+        # Zoom por defecto: Mayo-Agosto
         año_datos = df['fecha'].max().year
         fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
         fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
@@ -487,6 +391,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
             fecha_fin_zoom = df['fecha'].max()
     else:
+        # Zoom según botón seleccionado
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
@@ -496,35 +401,33 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
-    # ============================================================
-    # LAYOUT
-    # ============================================================
+    # LAYOUT - SIN rangeselector (los botones están en la sidebar)
     fig.update_layout(
         hovermode='x unified',
         template='plotly_white',
-        autosize=True,
-        height=450,
+        height=750,
         dragmode='pan',
         xaxis={
-            'title': {'text': 'Meses', 'font': {'size': 11}},
+            'title': {'text': 'Meses', 'font': {'size': 13, 'color': '#34495e'}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': 9},
+            'tickfont': {'size': 11, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
+            # ELIMINADO: rangeselector (los botones están en la sidebar)
         },
         yaxis={
-            'title': {'text': 'Temperatura (°C)', 'font': {'size': 11}},
+            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': 13, 'color': '#34495e'}},
             'range': [y1_min, y1_max],
-            'tickformat': '.0f',
-            'tickfont': {'size': 9},
+            'tickformat': '.1f',
+            'tickfont': {'size': 11, 'color': '#2c3e50'},
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'zeroline': True,
@@ -534,11 +437,11 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'side': 'left'
         },
         yaxis2={
-            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 11}},
+            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 13, 'color': '#34495e'}},
             'range': [0, max_y2],
             'tickformat': 'd',
             'dtick': max(2, int(max_y2 / 8)),
-            'tickfont': {'size': 9},
+            'tickfont': {'size': 11, 'color': '#2c3e50'},
             'overlaying': 'y',
             'side': 'right',
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
@@ -556,71 +459,69 @@ def crear_grafica(df, images_paths, zoom_meses=None):
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 1,
-            'font': {'size': 9},
-            'itemwidth': 25,
+            'font': {'size': 11, 'color': '#2c3e50'},
+            'itemwidth': 30,
             'tracegroupgap': 5
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 15, 'b': 20, 'l': 40, 'r': 50}
+        margin={'t': 30, 'b': 30, 'l': 50, 'r': 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
     return fig
 
 # ============================================================
-# MAIN
+# MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    now = datetime.datetime.now()
-    hora_actual = now.strftime("%H:%M:%S")
-    fecha_actual = now.strftime("%d/%m/%Y")
+    # Título
+    st.markdown("## 🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
     
-    st.markdown(f"""
-    ## 🦙 Monitoreo Diario - Actualización Automática
-    <div class="timestamp"><span></span> 📊 Datos cargados: {fecha_actual} {hora_actual}</div>
-    <div class="refresh-status">🔄 Auto-actualización cada 30 segundos</div>
-    """, unsafe_allow_html=True)
-    
+    # ============================================================
+    # BARRA LATERAL - CONTROLES
+    # ============================================================
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
+        
         st.markdown("**Seleccionar período:**")
         
+        # Botones de selección de tiempo
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📅 1 Mes", use_container_width=True):
                 st.session_state.zoom_periodo = 1
-                st.rerun()
             if st.button("📅 6 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 6
-                st.rerun()
             if st.button("📅 Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
-                st.rerun()
+        
         with col2:
             if st.button("📅 3 Meses", use_container_width=True):
                 st.session_state.zoom_periodo = 3
-                st.rerun()
             if st.button("📅 1 Año", use_container_width=True):
                 st.session_state.zoom_periodo = 12
-                st.rerun()
         
         st.markdown("---")
-        st.markdown("**🖱️ Interactuar:**")
-        st.markdown("- Arrastra para deslizar")
-        st.markdown("- Rueda para hacer zoom")
+        st.markdown("**🖱️ Cómo interactuar:**")
+        st.markdown("""
+        - **Deslizar**: Arrastra el mouse ← →
+        - **Zoom**: Rueda del mouse
+        - **Seleccionar**: Usa botones de la barra de herramientas
+        - **Ver valores**: Pasa el cursor sobre cualquier punto
+        """)
         
-        st.markdown("---")
-        st.caption(f"🔄 Última recarga: {hora_actual}")
-        
-        if st.button("🔄 Actualizar ahora", use_container_width=True):
+        if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
+    # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
+    # IMÁGENES
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
@@ -629,36 +530,49 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
+    # Obtener zoom seleccionado
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
-    with st.spinner('🔄 Cargando datos...'):
-        df = cargar_datos_sin_cache(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+    # Cargar datos
+    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
+        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica...'):
+        with st.spinner('📊 Generando gráfica interactiva...'):
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
         if fig is not None:
-            st.plotly_chart(
-                fig, 
-                use_container_width=True,
-                config={
-                    'displayModeBar': True,
-                    'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
-                    'displaylogo': False,
-                    'scrollZoom': True,
-                    'responsive': True,
-                }
-            )
+            # Mostrar gráfica con herramientas en la parte superior
+            st.plotly_chart(fig, use_container_width=True, config={
+                'displayModeBar': True,
+                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
+                'displaylogo': False,
+                'scrollZoom': True,
+                'responsive': True,
+                'modeBarButtonsToAdd': [
+                    'zoom2d',
+                    'pan2d',
+                    'select2d',
+                    'lasso2d',
+                    'zoomIn2d',
+                    'zoomOut2d',
+                    'autoScale2d',
+                    'resetScale2d'
+                ]
+            })
 
-            with st.expander("📊 Ver estadísticas"):
+            # ESTADÍSTICAS (fuera de la gráfica)
+            with st.expander("📊 Ver estadísticas de los datos"):
                 col1, col2, col3 = st.columns(3)
+                
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                     col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
                 if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
                     col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+
+                st.dataframe(df, use_container_width=True)
 
             st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
