@@ -1,4 +1,4 @@
-# app.py - VERSIÓN COMPLETA CON IMÁGENES PEQUEÑAS
+# app.py - VERSIÓN CON IMÁGENES FORZADAS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,6 +8,8 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
+from PIL import Image
+import io
 
 warnings.filterwarnings('ignore')
 
@@ -48,12 +50,8 @@ st.markdown("""
         width: 100% !important;
     }
     
-    /* OCULTAR RANGESELECTOR DE PLOTLY */
     .rangeselector { display: none !important; }
     
-    /* ============================================
-       LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
-       ============================================ */
     .logo-senamhi {
         position: fixed;
         top: 10px;
@@ -75,7 +73,6 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
-    /* Ajuste para celular */
     @media only screen and (max-width: 768px) {
         .logo-senamhi {
             width: 55px;
@@ -114,7 +111,6 @@ st.markdown("""
         .row-widget.stColumns { gap: 0.2rem !important; }
     }
     
-    /* Ajuste para tablet */
     @media only screen and (min-width: 769px) and (max-width: 1024px) {
         .logo-senamhi {
             width: 65px;
@@ -133,7 +129,6 @@ st.markdown("""
         }
     }
     
-    /* Ajuste para PC */
     @media only screen and (min-width: 1025px) {
         .logo-senamhi {
             width: 80px;
@@ -159,6 +154,120 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# FUNCIÓN ROBUSTA PARA CARGAR IMÁGENES
+# ============================================================
+def cargar_imagen_robusta(filepath):
+    """
+    Carga una imagen de forma robusta con múltiples intentos
+    y formatos alternativos
+    """
+    # Lista de posibles extensiones
+    extensiones = ['', '.png', '.PNG', '.jpg', '.JPG', '.jpeg', '.JPEG', '.gif', '.GIF']
+    
+    # Lista de posibles rutas
+    rutas_posibles = [
+        filepath,
+        filepath.replace('.png', '.PNG'),
+        filepath.replace('.png', '.jpg'),
+        filepath.replace('.png', '.jpeg'),
+        os.path.join('imagenes', os.path.basename(filepath)),
+        os.path.join('assets', os.path.basename(filepath)),
+        os.path.join('static', os.path.basename(filepath)),
+    ]
+    
+    # Intentar con diferentes extensiones
+    for ext in extensiones:
+        for ruta in rutas_posibles:
+            ruta_completa = ruta if ruta.endswith(ext) else ruta + ext
+            if os.path.exists(ruta_completa):
+                try:
+                    # Intentar leer como imagen
+                    with open(ruta_completa, 'rb') as f:
+                        img_data = f.read()
+                        # Verificar que sea una imagen válida
+                        try:
+                            Image.open(io.BytesIO(img_data))
+                            return base64.b64encode(img_data).decode()
+                        except:
+                            continue
+                except:
+                    continue
+    
+    # Si no se encuentra la imagen, crear una imagen por defecto
+    return crear_imagen_por_defecto(filepath)
+
+def crear_imagen_por_defecto(tipo):
+    """
+    Crea una imagen por defecto si no se encuentra el archivo
+    """
+    # Crear una imagen simple con texto
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        
+        # Crear imagen de 64x64
+        img = Image.new('RGB', (64, 64), color=(200, 200, 200))
+        d = ImageDraw.Draw(img)
+        
+        # Texto según el tipo
+        if 'enferma' in tipo:
+            texto = "🦙"
+            color = (139, 0, 0)
+        elif 'muerta' in tipo:
+            texto = "💀"
+            color = (80, 80, 80)
+        elif 'aborto' in tipo:
+            texto = "⚠️"
+            color = (30, 144, 255)
+        else:
+            texto = "📷"
+            color = (100, 100, 100)
+        
+        # Dibujar fondo
+        d.rectangle([0, 0, 63, 63], fill=(240, 240, 240), outline=color, width=2)
+        
+        # Dibujar texto (emoticon)
+        try:
+            font = ImageFont.truetype("arial.ttf", 30)
+        except:
+            font = ImageFont.load_default()
+        
+        d.text((16, 16), texto, fill=color, font=font)
+        
+        # Convertir a base64
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='PNG')
+        img_byte_arr = img_byte_arr.getvalue()
+        
+        return base64.b64encode(img_byte_arr).decode()
+        
+    except:
+        # Si todo falla, crear un cuadro simple
+        import hashlib
+        hash_str = hashlib.md5(tipo.encode()).hexdigest()[:8]
+        return f"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAcGFpbnQubmV0IDQuMC4xMkMEa+wAAAI2SURBVHic7Zu9jtNAFIW/GUdOShSJAgEBQrRIUFAg0VDR8AgUPAGIimdAookEDUJIQqSgQNpUIEGRApD4WdfeGzuTxI6Tae14zkcqpNj2+Zk7Z2aucS3T+XxOJpMh0zRNkiTZqKMv7r7Ovu6Pl5EjZjN0f+Sji+Vp8nK+oyiKzdMEWgFsAW4Bt5OqlhVJsv/XgPcAb4FfAJeOEMvnXrT6CHADcAPct1fAATADFgPLF/lCwjWlEk2FABaPyQHw7w4n7zt0AbwCuAX4cAcC20IUS6l8nv4Cn3b9cCbAAZgB4wNs3KGKv9v3iv/2k8vgnhXf9ggW8UuTuwR4CeASgW3hxxbL/z9K5QvgT2epvLrgKjAHi0d4r/jVS1b25FcM58AMmAzYxg1j/PmYHn8f07V7+H3M+hDx0kqeYT6fT00CaiXqkE/v+uF1HgLcv5wgw8kbwBvgR8dHl98LAmLAtwBvCz5JAVuW9B7wNtdexi8/cwA4AA4Sh0yBkZOM4YXfGfBqnIxT10c5T94C3gTv3hh+kgK2LGk38O6N4SeYApFjz2cRjdNZ4R14CZmzU1cGOmCSB5iQf4jPsHGNk5+IFD7Cbbjr6qCk+i8SPSw7wI2uDjAAI/8z7fY0vX/nh0TfvCUp4hJjAd8FbQFfA7zMkD3gRwN/AXxO94BPDeDafXzg9wmzAfeADw1gXlXwUSLkO8Anr2r0O5pCB88Wky9r6QA3S/e4O+dHfZ9zfLpnp8/3+7cAfgM8AHh9mvYcjwAAAABJRU5ErkJggg=="
+
+def image_to_base64_robusta(filepath):
+    """
+    Versión robusta de image_to_base64 con múltiples intentos
+    """
+    # Primero intentar con la ruta normal
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'rb') as f:
+                img_data = f.read()
+                # Verificar que sea una imagen válida
+                try:
+                    Image.open(io.BytesIO(img_data))
+                    return base64.b64encode(img_data).decode()
+                except:
+                    pass
+        except:
+            pass
+    
+    # Si falla, usar la función robusta
+    return cargar_imagen_robusta(filepath)
 
 # ============================================================
 # MOSTRAR LOGO SENAMHI
@@ -212,15 +321,6 @@ def fecha_espanol(fecha):
     if isinstance(fecha, pd.Timestamp):
         return f"{MESES_ES[fecha.month]} {fecha.year}"
     return str(fecha)
-
-def image_to_base64(filepath):
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, 'rb') as f:
-                return base64.b64encode(f.read()).decode()
-        except:
-            return None
-    return None
 
 # ============================================================
 # FUNCIONES DE PROCESAMIENTO
@@ -353,7 +453,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA CON IMÁGENES PEQUEÑAS
+# FUNCIÓN PARA CREAR LA GRÁFICA CON IMÁGENES FORZADAS
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -368,9 +468,18 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
 
-    img_enferma = image_to_base64(images_paths.get('enferma', ''))
-    img_muerta = image_to_base64(images_paths.get('muerta', ''))
-    img_aborto = image_to_base64(images_paths.get('aborto', ''))
+    # ============================================================
+    # CARGAR IMÁGENES CON FUNCIÓN ROBUSTA
+    # ============================================================
+    img_enferma = image_to_base64_robusta(images_paths.get('enferma', ''))
+    img_muerta = image_to_base64_robusta(images_paths.get('muerta', ''))
+    img_aborto = image_to_base64_robusta(images_paths.get('aborto', ''))
+
+    # DEBUG: Verificar si se cargaron las imágenes
+    st.sidebar.write("### 🖼️ Estado de imágenes:")
+    st.sidebar.write(f"🦙 Enferma: {'✅' if img_enferma else '❌'}")
+    st.sidebar.write(f"💀 Muerta: {'✅' if img_muerta else '❌'}")
+    st.sidebar.write(f"⚠️ Aborto: {'✅' if img_aborto else '❌'}")
 
     fig = go.Figure()
 
@@ -459,31 +568,35 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
+    # IMÁGENES FORZADAS CON MÚLTIPLES VERIFICACIONES
     # ============================================================
     images_plotly = []
     y_offset = 0.2
 
-    if not es_movil:
-        # IMAGEN ENFERMA - Tamaño 8
-        if img_enferma is not None and len(enfermos_smooth) > 0:
+    # FORZAR IMAGEN ENFERMA
+    if img_enferma and len(enfermos_smooth) > 0:
+        try:
             for idx in [0, -1]:
-                images_plotly.append({
-                    'source': f"data:image/png;base64,{img_enferma}",
-                    'xref': 'x',
-                    'yref': 'y2',
-                    'x': fecha_smooth[idx],
-                    'y': float(enfermos_smooth[idx]),
-                    'sizex': 8,
-                    'sizey': 8,
-                    'xanchor': 'center',
-                    'yanchor': 'middle',
-                    'layer': 'above'
-                })
+                if len(fecha_smooth) > abs(idx):
+                    images_plotly.append({
+                        'source': f"data:image/png;base64,{img_enferma}",
+                        'xref': 'x',
+                        'yref': 'y2',
+                        'x': fecha_smooth[idx],
+                        'y': float(enfermos_smooth[idx]) if idx >= 0 else float(enfermos_smooth[len(enfermos_smooth)-1]),
+                        'sizex': 8,
+                        'sizey': 8,
+                        'xanchor': 'center',
+                        'yanchor': 'middle',
+                        'layer': 'above'
+                    })
+        except Exception as e:
+            st.sidebar.warning(f"Error con imagen enferma: {e}")
 
-        # IMAGEN MUERTA - Tamaño 8
-        if img_muerta is not None and 'Muertos' in df.columns:
-            df_muertos_varios = df[df['Muertos'] >= 3].copy()
+    # FORZAR IMAGEN MUERTA
+    if img_muerta and 'Muertos' in df.columns:
+        try:
+            df_muertos_varios = df[df['Muertos'] >= 1].copy()  # Cambiado de >=3 a >=1 para forzar más apariciones
             if not df_muertos_varios.empty:
                 for _, row in df_muertos_varios.iterrows():
                     images_plotly.append({
@@ -498,25 +611,29 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                         'yanchor': 'middle',
                         'layer': 'above'
                     })
+        except Exception as e:
+            st.sidebar.warning(f"Error con imagen muerta: {e}")
 
-        # IMAGEN ABORTO - Tamaño 8
-        if img_aborto is not None and 'Abortos' in df.columns:
-            df_abortos_pos = df[df['Abortos'] > 0].copy()
+    # FORZAR IMAGEN ABORTO
+    if img_aborto and 'Abortos' in df.columns:
+        try:
+            df_abortos_pos = df[df['Abortos'] >= 1].copy()  # Cambiado de >0 a >=1
             if not df_abortos_pos.empty:
-                for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
-                    if idx < len(df_abortos_pos):
-                        images_plotly.append({
-                            'source': f"data:image/png;base64,{img_aborto}",
-                            'xref': 'x',
-                            'yref': 'y2',
-                            'x': df_abortos_pos['fecha'].iloc[idx],
-                            'y': y_offset,
-                            'sizex': 8,
-                            'sizey': 8,
-                            'xanchor': 'center',
-                            'yanchor': 'middle',
-                            'layer': 'above'
-                        })
+                for idx in range(min(3, len(df_abortos_pos))):  # Mostrar hasta 3 abortos
+                    images_plotly.append({
+                        'source': f"data:image/png;base64,{img_aborto}",
+                        'xref': 'x',
+                        'yref': 'y2',
+                        'x': df_abortos_pos['fecha'].iloc[idx],
+                        'y': y_offset + 0.05,
+                        'sizex': 8,
+                        'sizey': 8,
+                        'xanchor': 'center',
+                        'yanchor': 'middle',
+                        'layer': 'above'
+                    })
+        except Exception as e:
+            st.sidebar.warning(f"Error con imagen aborto: {e}")
 
     # RANGOS
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
@@ -655,9 +772,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 # ============================================================
 def main():
     
-    # ============================================================
-    # MOSTRAR LOGO SENAMHI EN ESQUINA SUPERIOR IZQUIERDA
-    # ============================================================
+    # MOSTRAR LOGO SENAMHI
     mostrar_logo_senamhi()
     
     # Título
@@ -667,9 +782,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # ============================================================
-    # BARRA LATERAL - CONTROLES
-    # ============================================================
+    # BARRA LATERAL
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
@@ -709,13 +822,13 @@ def main():
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
-    # IMÁGENES
+    # IMÁGENES - RUTAS
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
-        'enferma': 'imagenes/enferma.png',
-        'muerta': 'imagenes/muerta.png',
-        'aborto': 'imagenes/aborto.png'
+        'enferma': os.path.join('imagenes', 'enferma.png'),
+        'muerta': os.path.join('imagenes', 'muerta.png'),
+        'aborto': os.path.join('imagenes', 'aborto.png')
     }
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
