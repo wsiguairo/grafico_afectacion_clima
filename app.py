@@ -1,4 +1,4 @@
-# app.py - ACTUALIZACIÓN AUTOMÁTICA CON API - VERSIÓN FINAL
+# app.py - CON DIAGNÓSTICO PARA VERIFICAR CONEXIÓN
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -26,13 +26,12 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - COMPACTO
+# CSS
 # ============================================================
 st.markdown("""
 <style>
     .stApp > header { display: none !important; height: 0 !important; }
     footer { display: none !important; height: 0 !important; }
-    
     .main .block-container { 
         padding: 0px 10px 5px 10px !important;
         max-width: 1200px !important;
@@ -40,10 +39,8 @@ st.markdown("""
         padding-top: 0px !important;
         padding-bottom: 0px !important;
     }
-    
     h1, h2, h3, p { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
     h2 { font-size: 1rem !important; padding: 2px 0 2px 0 !important; margin: 0 !important; line-height: 1 !important; }
-    
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
@@ -53,7 +50,6 @@ st.markdown("""
         padding: 0 !important;
         margin-top: -5px !important;
     }
-    
     .stPlotlyChart > div {
         width: 100% !important;
         max-width: 100% !important;
@@ -62,15 +58,12 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
-    
     .modebar { transform: scale(0.6) !important; transform-origin: top right !important; top: 2px !important; right: 2px !important; }
     .stSidebar { padding: 8px !important; margin: 0 !important; }
     .stButton button { padding: 3px 6px !important; font-size: 0.7rem !important; min-height: 24px !important; margin: 0 !important; }
-    
     .stMetric { padding: 0 !important; margin: 0 !important; }
     .stMetric label { font-size: 0.6rem !important; padding: 0 !important; margin: 0 !important; }
     .stMetric div { font-size: 0.8rem !important; padding: 0 !important; margin: 0 !important; }
-    
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
@@ -78,7 +71,6 @@ st.markdown("""
     }
     .stColumns { gap: 3px !important; margin: 0 !important; padding: 0 !important; }
     .stColumn { padding: 0 3px !important; margin: 0 !important; }
-    
     .timestamp {
         font-size: 0.7rem;
         color: #0066cc;
@@ -100,14 +92,29 @@ st.markdown("""
         50% { opacity: 0.3; }
         100% { opacity: 1; }
     }
-    
     .refresh-status {
         font-size: 0.6rem;
         color: #888;
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+    .diagnostico {
+        font-size: 0.8rem;
+        color: #333;
+        padding: 10px !important;
+        margin: 5px 0 !important;
+        background: #f0f0f0;
+        border-radius: 5px;
+        border-left: 4px solid #0066cc;
+    }
+    .diagnostico.error {
+        border-left-color: #ff0000;
+        background: #fff0f0;
+    }
+    .diagnostico.success {
+        border-left-color: #00cc00;
+        background: #f0fff0;
+    }
     @media (max-width: 768px) {
         .main .block-container { padding: 0px 5px 2px 5px !important; }
         .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
@@ -116,8 +123,8 @@ st.markdown("""
         .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 18px !important; }
         .modebar { transform: scale(0.5) !important; }
         .timestamp { font-size: 0.5rem !important; }
+        .diagnostico { font-size: 0.6rem !important; padding: 5px !important; }
     }
-    
     @media (max-width: 480px) {
         .stPlotlyChart { height: 220px !important; }
         .stPlotlyChart > div { height: 220px !important; }
@@ -162,11 +169,15 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# CONEXIÓN A GOOGLE SHEETS
+# CONEXIÓN A GOOGLE SHEETS CON DIAGNÓSTICO
 # ============================================================
 def conectar_google_sheets():
     """Conecta a Google Sheets usando credenciales de secrets"""
     try:
+        # Verificar que existen los secrets
+        if "gcp_service_account" not in st.secrets:
+            return None, "❌ No se encontraron las credenciales en Secrets. Debes configurarlas."
+        
         creds_dict = {
             "type": st.secrets["gcp_service_account"]["type"],
             "project_id": st.secrets["gcp_service_account"]["project_id"],
@@ -183,33 +194,52 @@ def conectar_google_sheets():
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        return client
+        return client, "✅ Conexión exitosa a Google Sheets"
     except Exception as e:
-        st.error(f"❌ Error de conexión: {e}")
-        return None
+        return None, f"❌ Error de conexión: {str(e)}"
 
 # ============================================================
-# CARGAR DATOS EN TIEMPO REAL
+# CARGAR DATOS EN TIEMPO REAL CON DIAGNÓSTICO
 # ============================================================
 def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
-    """Carga datos EN TIEMPO REAL desde Google Sheets"""
+    """Carga datos EN TIEMPO REAL desde Google Sheets con diagnóstico"""
+    diagnostico = []
+    
     try:
-        client = conectar_google_sheets()
+        # Paso 1: Conectar
+        client, msg = conectar_google_sheets()
+        diagnostico.append(f"🔌 Conexión: {msg}")
+        
         if client is None:
-            return None
+            return None, diagnostico
         
-        # Abrir la hoja principal "Sintomas_graf"
-        spreadsheet = client.open_by_key(sheet_id)
+        # Paso 2: Abrir la hoja
+        try:
+            spreadsheet = client.open_by_key(sheet_id)
+            diagnostico.append(f"📂 Hoja abierta: {sheet_id}")
+        except Exception as e:
+            diagnostico.append(f"❌ Error al abrir hoja: {str(e)}")
+            return None, diagnostico
         
-        # Leer datos de la pestaña "sintomas"
-        sheet_sint = spreadsheet.worksheet(sheet_sintomas)
-        data_sintomas = sheet_sint.get_all_values()
-        df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
+        # Paso 3: Leer pestaña síntomas
+        try:
+            sheet_sint = spreadsheet.worksheet(sheet_sintomas)
+            data_sintomas = sheet_sint.get_all_values()
+            df_sintomas = pd.DataFrame(data_sintomas[1:], columns=data_sintomas[0])
+            diagnostico.append(f"✅ Pestaña '{sheet_sintomas}' leída: {len(df_sintomas)} filas")
+        except Exception as e:
+            diagnostico.append(f"❌ Error al leer '{sheet_sintomas}': {str(e)}")
+            return None, diagnostico
         
-        # Leer datos de la pestaña "temperaturas"
-        sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
-        data_temperaturas = sheet_temp.get_all_values()
-        df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
+        # Paso 4: Leer pestaña temperaturas
+        try:
+            sheet_temp = spreadsheet.worksheet(sheet_temperaturas)
+            data_temperaturas = sheet_temp.get_all_values()
+            df_temperaturas = pd.DataFrame(data_temperaturas[1:], columns=data_temperaturas[0])
+            diagnostico.append(f"✅ Pestaña '{sheet_temperaturas}' leída: {len(df_temperaturas)} filas")
+        except Exception as e:
+            diagnostico.append(f"❌ Error al leer '{sheet_temperaturas}': {str(e)}")
+            return None, diagnostico
         
         # PROCESAR DATOS
         def encontrar_columna_fecha(df):
@@ -217,7 +247,7 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
                 col_lower = col.lower().strip()
                 if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo']):
                     return col
-            return df.columns[0]
+            return df.columns[0] if len(df.columns) > 0 else None
 
         def encontrar_columna_por_patron(df, patrones):
             for col in df.columns:
@@ -236,6 +266,13 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
 
         col_fecha_sintomas = encontrar_columna_fecha(df_sintomas)
         col_fecha_temp = encontrar_columna_fecha(df_temperaturas)
+        
+        if col_fecha_sintomas is None:
+            diagnostico.append("❌ No se encontró columna de fecha en 'sintomas'")
+            return None, diagnostico
+        if col_fecha_temp is None:
+            diagnostico.append("❌ No se encontró columna de fecha en 'temperaturas'")
+            return None, diagnostico
 
         mapeo_sintomas = {
             'Enfermos': ['enfermos', 'enfermo', 'enfermas'],
@@ -326,11 +363,12 @@ def cargar_datos_tiempo_real(sheet_id, sheet_sintomas, sheet_temperaturas):
         df.attrs['fecha_carga'] = datetime.datetime.now().strftime("%d/%m/%Y")
         df.attrs['registros'] = len(df)
 
-        return df
+        diagnostico.append(f"✅ Datos procesados: {len(df)} registros")
+        return df, diagnostico
 
     except Exception as e:
-        st.error(f"❌ Error al cargar datos: {e}")
-        return None
+        diagnostico.append(f"❌ Error general: {str(e)}")
+        return None, diagnostico
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
@@ -602,7 +640,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN
+# MAIN CON DIAGNÓSTICO
 # ============================================================
 def main():
     now = datetime.datetime.now()
@@ -651,12 +689,11 @@ def main():
             st.rerun()
 
     # ============================================================
-    # CONFIGURACIÓN DE HOJAS - ¡CORRECTO!
+    # CONFIGURACIÓN DE HOJAS
     # ============================================================
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'sintomas'        # ← Pestaña interna
-    SHEET_NAME_TEMPERATURAS = 'temperaturas' # ← Pestaña interna
-    # La hoja principal se llama "Sintomas_graf"
+    SHEET_NAME_SINTOMAS = 'sintomas'
+    SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
     os.makedirs('imagenes', exist_ok=True)
     
@@ -668,10 +705,26 @@ def main():
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
 
+    # ============================================================
+    # MOSTRAR DIAGNÓSTICO
+    # ============================================================
+    st.markdown("### 🔍 Diagnóstico de conexión")
+    
     with st.spinner('🔄 Cargando datos en tiempo real...'):
-        df = cargar_datos_tiempo_real(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+        df, diagnostico = cargar_datos_tiempo_real(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+    
+    # Mostrar diagnóstico
+    for msg in diagnostico:
+        if "❌" in msg:
+            st.markdown(f'<div class="diagnostico error">{msg}</div>', unsafe_allow_html=True)
+        elif "✅" in msg:
+            st.markdown(f'<div class="diagnostico success">{msg}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="diagnostico">{msg}</div>', unsafe_allow_html=True)
 
     if df is not None and not df.empty:
+        st.success(f"✅ Datos cargados exitosamente: {len(df)} registros")
+        
         with st.spinner('📊 Generando gráfica...'):
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
@@ -698,12 +751,13 @@ def main():
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
                 
                 st.caption(f"📊 Registros cargados: {df.attrs.get('registros', 0)}")
+                st.caption(f"🕐 Última carga: {df.attrs.get('timestamp_carga', 'N/A')}")
 
             st.success("✅ ¡Gráfica cargada exitosamente! Los datos se actualizan automáticamente.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos. Verifica que las pestañas 'sintomas' y 'temperaturas' existan en la hoja 'Sintomas_graf'.")
+        st.error("❌ No se pudieron cargar los datos. Revisa el diagnóstico arriba.")
 
 if __name__ == "__main__":
     main()
