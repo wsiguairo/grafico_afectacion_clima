@@ -370,9 +370,9 @@ def crear_grafica(df, images_paths):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # LAYOUT
-   # fig.update_layout(
+    fig.update_layout(
         title={
-            'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',
+            'text': 'Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',                  # titulo de la grafica 
             'font': {'size': 20, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
             'x': 0.5,
             'xanchor': 'center'
@@ -467,11 +467,11 @@ def crear_grafica(df, images_paths):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    st.title("🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    st.markdown("🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
     st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
     # CONFIGURACIÓN
-    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
+    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'    # el codigo el archivo
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
