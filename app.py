@@ -33,7 +33,7 @@ def main():
                 font-weight: bold; 
                 margin-bottom: 0px; 
                 color: #31333F;
-                font-size: 13px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN PC */
+                font-size: 12px; /* 👈 CAMBIA ESTE NÚMERO PARA EL TÍTULO EN PC */
             }
             
             .subtitulo-micro {
