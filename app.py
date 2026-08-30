@@ -1,4 +1,4 @@
-# app.py - TÍTULO MÁS ARRIBA
+# app.py - CON ACTUALIZACIÓN AUTOMÁTICA DE DATOS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,6 +8,7 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
+import time
 
 warnings.filterwarnings('ignore')
 
@@ -22,20 +23,13 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS - TÍTULO MÁS ARRIBA Y COMPACTO
+# CSS - TÍTULO MÁS ARRIBA
 # ============================================================
 st.markdown("""
 <style>
-    /* ELIMINAR HEADER */
-    .stApp > header { 
-        display: none !important; 
-        height: 0 !important;
-        min-height: 0 !important;
-        max-height: 0 !important;
-    }
+    .stApp > header { display: none !important; height: 0 !important; }
     footer { display: none !important; height: 0 !important; }
     
-    /* CONTENEDOR PRINCIPAL - MÁRGENES MÍNIMOS */
     .main .block-container { 
         padding: 0px 10px 5px 10px !important;
         max-width: 1200px !important;
@@ -44,21 +38,9 @@ st.markdown("""
         padding-bottom: 0px !important;
     }
     
-    /* TÍTULO - MÁS ARRIBA */
-    h1, h2, h3, p { 
-        margin: 0 !important; 
-        padding: 0 !important;
-        line-height: 1 !important;
-    }
+    h1, h2, h3, p { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
+    h2 { font-size: 1rem !important; padding: 2px 0 2px 0 !important; margin: 0 !important; line-height: 1 !important; }
     
-    h2 { 
-        font-size: 1rem !important; 
-        padding: 2px 0 2px 0 !important;
-        margin: 0 !important;
-        line-height: 1 !important;
-    }
-    
-    /* GRÁFICA */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
@@ -78,119 +60,78 @@ st.markdown("""
         padding: 0 !important;
     }
     
-    /* BARRA DE HERRAMIENTAS */
-    .modebar {
-        transform: scale(0.6) !important;
-        transform-origin: top right !important;
-        top: 2px !important;
-        right: 2px !important;
-    }
+    .modebar { transform: scale(0.6) !important; transform-origin: top right !important; top: 2px !important; right: 2px !important; }
+    .stSidebar { padding: 8px !important; margin: 0 !important; }
+    .stButton button { padding: 3px 6px !important; font-size: 0.7rem !important; min-height: 24px !important; margin: 0 !important; }
     
-    /* SIDEBAR */
-    .stSidebar { 
-        padding: 8px !important;
-        margin: 0 !important;
-    }
-    .stSidebar .sidebar-content {
-        padding: 0 !important;
-    }
+    .stMetric { padding: 0 !important; margin: 0 !important; }
+    .stMetric label { font-size: 0.6rem !important; padding: 0 !important; margin: 0 !important; }
+    .stMetric div { font-size: 0.8rem !important; padding: 0 !important; margin: 0 !important; }
     
-    .stButton button {
-        padding: 3px 6px !important;
-        font-size: 0.7rem !important;
-        min-height: 24px !important;
-        margin: 0 !important;
-    }
-    
-    /* MÉTRICAS */
-    .stMetric { 
-        padding: 0 !important; 
-        margin: 0 !important; 
-    }
-    .stMetric label { 
-        font-size: 0.6rem !important; 
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    .stMetric div { 
-        font-size: 0.8rem !important; 
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    
-    /* ELIMINAR ESPACIOS */
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
         gap: 0 !important;
     }
-    .stColumns { 
-        gap: 3px !important; 
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    .stColumn { 
-        padding: 0 3px !important; 
-        margin: 0 !important;
-    }
+    .stColumns { gap: 3px !important; margin: 0 !important; padding: 0 !important; }
+    .stColumn { padding: 0 3px !important; margin: 0 !important; }
     
-    /* EXPANDER COMPACTO */
-    .streamlit-expanderHeader {
-        font-size: 0.8rem !important;
-        padding: 2px 0 !important;
-        margin: 0 !important;
-    }
-    .streamlit-expanderContent {
+    .streamlit-expanderHeader { font-size: 0.8rem !important; padding: 2px 0 !important; margin: 0 !important; }
+    .streamlit-expanderContent { padding: 0 !important; margin: 0 !important; }
+    
+    /* AUTO-REFRESH INDICATOR */
+    .auto-refresh {
+        font-size: 0.7rem;
+        color: #666;
         padding: 0 !important;
         margin: 0 !important;
     }
+    .auto-refresh span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #00cc00;
+        border-radius: 50%;
+        margin-right: 5px;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.3; }
+        100% { opacity: 1; }
+    }
     
-    /* MÓVIL */
     @media (max-width: 768px) {
-        .main .block-container { 
-            padding: 0px 5px 2px 5px !important;
-        }
-        .stPlotlyChart {
-            height: 300px !important;
-            margin-top: -3px !important;
-        }
-        .stPlotlyChart > div {
-            height: 300px !important;
-        }
-        h2 { 
-            font-size: 0.8rem !important;
-            padding: 1px 0 !important;
-        }
-        .stButton button { 
-            font-size: 0.6rem !important; 
-            padding: 2px 4px !important; 
-            min-height: 18px !important;
-        }
-        .modebar {
-            transform: scale(0.5) !important;
-        }
+        .main .block-container { padding: 0px 5px 2px 5px !important; }
+        .stPlotlyChart { height: 300px !important; margin-top: -3px !important; }
+        .stPlotlyChart > div { height: 300px !important; }
+        h2 { font-size: 0.8rem !important; padding: 1px 0 !important; }
+        .stButton button { font-size: 0.6rem !important; padding: 2px 4px !important; min-height: 18px !important; }
+        .modebar { transform: scale(0.5) !important; }
     }
     
     @media (max-width: 480px) {
-        .stPlotlyChart {
-            height: 220px !important;
-        }
-        .stPlotlyChart > div {
-            height: 220px !important;
-        }
-        h2 { 
-            font-size: 0.7rem !important;
-        }
-        .stButton button { 
-            font-size: 0.5rem !important; 
-            padding: 1px 3px !important; 
-            min-height: 14px !important;
-        }
+        .stPlotlyChart { height: 220px !important; }
+        .stPlotlyChart > div { height: 220px !important; }
+        h2 { font-size: 0.7rem !important; }
+        .stButton button { font-size: 0.5rem !important; padding: 1px 3px !important; min-height: 14px !important; }
         .stMetric label { font-size: 0.5rem !important; }
         .stMetric div { font-size: 0.6rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# JAVASCRIPT PARA AUTO-REFRESH CADA 60 SEGUNDOS
+# ============================================================
+st.components.v1.html("""
+<script>
+    // Recargar la página cada 60 segundos para actualizar datos
+    setTimeout(function() {
+        location.reload();
+    }, 60000); // 60,000 ms = 60 segundos
+</script>
+""", height=0)
 
 # ============================================================
 # DICCIONARIO DE MESES
@@ -216,9 +157,9 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIONES DE PROCESAMIENTO
+# FUNCIONES DE PROCESAMIENTO - SIN CACHÉ
 # ============================================================
-@st.cache_data(ttl=3600)
+# ELIMINAMOS @st.cache_data para que siempre cargue datos frescos
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
     try:
         url_sintomas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_sintomas}"
@@ -344,7 +285,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - ESTRUCTURA SIN CAMBIOS
+# FUNCIÓN PARA CREAR LA GRÁFICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None):
     if df is None or df.empty:
@@ -541,7 +482,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT - COMPACTO
+    # LAYOUT
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
@@ -613,11 +554,14 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     return fig
 
 # ============================================================
-# MAIN - TÍTULO MÁS ARRIBA
+# MAIN - CON AUTO-REFRESH
 # ============================================================
 def main():
-    # TÍTULO - CON MÍNIMO ESPACIO
-    st.markdown("## 🦙 Monitoreo Diario")
+    # TÍTULO CON INDICADOR DE ACTUALIZACIÓN
+    st.markdown("""
+    ## 🦙 Monitoreo Diario
+    <div class="auto-refresh"><span></span> Actualización automática cada 60 segundos</div>
+    """, unsafe_allow_html=True)
     
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
@@ -647,7 +591,11 @@ def main():
         st.markdown("- Arrastra para deslizar")
         st.markdown("- Rueda para hacer zoom")
         
-        if st.button("🔄 Actualizar", use_container_width=True):
+        # ÚLTIMA ACTUALIZACIÓN
+        st.markdown("---")
+        st.caption(f"🔄 Última actualización: {time.strftime('%H:%M:%S')}")
+        
+        if st.button("🔄 Actualizar ahora", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
