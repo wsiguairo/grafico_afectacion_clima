@@ -1,4 +1,4 @@
-# app.py - VERSIÓN AUTOMATIZADA Y VERIFICADA
+# app.py - VERSIÓN CON VALORES EXACTOS EN HOVER
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -370,7 +370,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - CON HOVER VERIFICADO
+# FUNCIÓN PARA CREAR LA GRÁFICA - CON VALORES EXACTOS
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -390,29 +390,10 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     img_muerta = image_to_base64_robusta(images_paths.get('muerta', ''))
     img_aborto = image_to_base64_robusta(images_paths.get('aborto', ''))
 
-    # ============================================================
-    # VERIFICACIÓN DE DATOS PARA HOVER
-    # ============================================================
-    # Mostrar en sidebar qué valores se están mostrando
-    with st.sidebar:
-        st.markdown("### 📊 Datos cargados:")
-        if 'Enfermos' in df.columns:
-            st.write(f"🦙 Enfermos: {df['Enfermos'].sum():.0f} total")
-        if 'Muertos' in df.columns:
-            st.write(f"💀 Muertos: {df['Muertos'].sum():.0f} total")
-        if 'Abortos' in df.columns:
-            st.write(f"⚠️ Abortos: {df['Abortos'].sum():.0f} total")
-        if 'Temperaturas minimas  (°C)' in df.columns:
-            st.write(f"🌡️ Temp: {df['Temperaturas minimas  (°C)'].mean():.1f}°C promedio")
-        if 'Precipitacion ' in df.columns:
-            st.write(f"💧 Precip: {df['Precipitacion '].mean():.1f} mm promedio")
-        if 'Vel. viento (Km/h)' in df.columns:
-            st.write(f"💨 Viento: {df['Vel. viento (Km/h)'].mean():.1f} Km/h promedio")
-
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - HOVER VERIFICADO
+    # PRECIPITACIÓN - VALOR EXACTO
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -421,12 +402,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Precipitación',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
-            # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
             hovertemplate='<b>💧 Precipitación:</b> %{y:.0f} mm<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
         ))
 
     # ============================================================
-    # TEMPERATURA - HOVER VERIFICADO
+    # TEMPERATURA - VALOR EXACTO
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -435,14 +415,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             mode='lines+markers',
             name='Temperatura mínima',
             line=dict(color='#2563EB', width=2.5),
-            marker=dict(size=4, color='#2563EB'),
+            marker=dict(size=6, color='#2563EB'),
             opacity=0.9,
-            # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
             hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
         ))
 
     # ============================================================
-    # VIENTO - HOVER VERIFICADO
+    # VIENTO - VALOR EXACTO
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -452,43 +431,56 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Viento',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
-            # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
             hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - HOVER VERIFICADO
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SOLO LÍNEA)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
             x=fecha_smooth,
             y=enfermos_smooth,
             mode='lines',
-            name='Alpacas enfermas',
-            line=dict(color='#8B0000', width=2.5),
-            opacity=0.8,
-            fill='tozeroy',
-            fillgradient=dict(
-                type='vertical',
-                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
-            ),
+            name='Tendencia enfermos',
+            line=dict(color='#8B0000', width=2.5, dash='dot'),
+            opacity=0.6,
             yaxis='y2',
-            # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
-            hovertemplate='<b>🦙 Alpacas enfermas:</b> %{y:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+            hoverinfo='skip',  # ✅ NO muestra hover en la curva suavizada
+            showlegend=True
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - HOVER VERIFICADO
+    # ALPACAS ENFERMAS - PUNTOS REALES CON VALORES EXACTOS
+    # ============================================================
+    if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+        df_enfermos = df[df['Enfermos'] > 0].copy()
+        if not df_enfermos.empty:
+            fig.add_trace(go.Scatter(
+                x=df_enfermos['fecha'],
+                y=df_enfermos['Enfermos'],
+                mode='markers+lines',
+                name='Alpacas enfermas (valores reales)',
+                line=dict(color='#8B0000', width=2.5),
+                marker=dict(size=10, color='#8B0000', line=dict(color='white', width=1)),
+                yaxis='y2',
+                customdata=df_enfermos['Enfermos'],  # ✅ DATOS EXACTOS
+                # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
+                hovertemplate='<b>🦙 Alpacas enfermas:</b> %{customdata:.0f}<br><b>📅 Fecha:</b> %{x|%d/%m/%Y}<extra></extra>'
+            ))
+
+    # ============================================================
+    # ALPACAS MUERTAS - VALOR EXACTO
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
         if not df_muertos.empty:
             fig.add_trace(go.Scatter(
                 x=df_muertos['fecha'],
-                y=[0.2] * len(df_muertos),
+                y=df_muertos['Muertos'],
                 mode='markers',
                 name='Alpacas muertas',
-                marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
+                marker=dict(size=14, color='#555555', line=dict(color='black', width=1)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],  # ✅ DATOS EXACTOS
                 # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
@@ -496,17 +488,17 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - HOVER VERIFICADO
+    # ABORTOS - VALOR EXACTO
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
         if not df_abortos.empty:
             fig.add_trace(go.Scatter(
                 x=df_abortos['fecha'],
-                y=[0.25] * len(df_abortos),
+                y=df_abortos['Abortos'],
                 mode='markers',
                 name='Abortos',
-                marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
+                marker=dict(size=14, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],  # ✅ DATOS EXACTOS
                 # ✅ MUESTRA EL VALOR EXACTO DEL ARCHIVO
@@ -520,23 +512,26 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y_offset = 0.2
 
     if not es_movil:
-        # IMAGEN ENFERMA
-        if img_enferma and len(enfermos_smooth) > 0:
+        # IMAGEN ENFERMA - En los puntos reales
+        if img_enferma and 'Enfermos' in df.columns:
             try:
-                for idx in [0, -1]:
-                    if len(fecha_smooth) > abs(idx):
-                        images_plotly.append({
-                            'source': f"data:image/png;base64,{img_enferma}",
-                            'xref': 'x',
-                            'yref': 'y2',
-                            'x': fecha_smooth[idx],
-                            'y': float(enfermos_smooth[idx]) if idx >= 0 else float(enfermos_smooth[len(enfermos_smooth)-1]),
-                            'sizex': 8,
-                            'sizey': 8,
-                            'xanchor': 'center',
-                            'yanchor': 'middle',
-                            'layer': 'above'
-                        })
+                df_enfermos_img = df[df['Enfermos'] > 0].copy()
+                if not df_enfermos_img.empty:
+                    for idx in [0, -1] if len(df_enfermos_img) > 1 else [0]:
+                        if idx < len(df_enfermos_img):
+                            row = df_enfermos_img.iloc[idx]
+                            images_plotly.append({
+                                'source': f"data:image/png;base64,{img_enferma}",
+                                'xref': 'x',
+                                'yref': 'y2',
+                                'x': row['fecha'],
+                                'y': float(row['Enfermos']),
+                                'sizex': 8,
+                                'sizey': 8,
+                                'xanchor': 'center',
+                                'yanchor': 'middle',
+                                'layer': 'above'
+                            })
             except:
                 pass
 
@@ -551,7 +546,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                             'xref': 'x',
                             'yref': 'y2',
                             'x': row['fecha'],
-                            'y': y_offset,
+                            'y': float(row['Muertos']),
                             'sizex': 8,
                             'sizey': 8,
                             'xanchor': 'center',
@@ -564,15 +559,16 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         # IMAGEN ABORTO
         if img_aborto and 'Abortos' in df.columns:
             try:
-                df_abortos_pos = df[df['Abortos'] >= 1].copy()
-                if not df_abortos_pos.empty:
-                    for idx in range(min(3, len(df_abortos_pos))):
+                df_abortos_img = df[df['Abortos'] >= 1].copy()
+                if not df_abortos_img.empty:
+                    for idx in range(min(3, len(df_abortos_img))):
+                        row = df_abortos_img.iloc[idx]
                         images_plotly.append({
                             'source': f"data:image/png;base64,{img_aborto}",
                             'xref': 'x',
                             'yref': 'y2',
-                            'x': df_abortos_pos['fecha'].iloc[idx],
-                            'y': y_offset + 0.05,
+                            'x': row['fecha'],
+                            'y': float(row['Abortos']),
                             'sizex': 8,
                             'sizey': 8,
                             'xanchor': 'center',
@@ -593,8 +589,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
     max_y2 = 1
-    if len(enfermos_smooth) > 0:
-        max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
+    if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+        max_y2 = max(max_y2, df['Enfermos'].max() * 1.4)
     if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
         max_y2 = max(max_y2, df['Muertos'].max() * 1.5)
     if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
@@ -754,11 +750,11 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el puntero** sobre cualquier punto para ver los valores exactos
+            - **🖱️ Pasa el puntero** sobre los puntos rojos para ver el valor exacto del archivo
+            - **📊 La línea roja punteada** muestra la tendencia suavizada
+            - **🔴 Los puntos rojos** son los valores reales del archivo
             - **🖱️ Deslizar**: Arrastra el mouse ← →
-            - **🔍 Zoom**: Rueda del mouse o pellizcar
-            - **👆 Seleccionar**: Usa botones de la barra
-            - **📊 Ver valores**: Pasa el cursor sobre cualquier punto
+            - **🔍 Zoom**: Rueda del mouse
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
@@ -808,9 +804,6 @@ def main():
                 ]
             })
 
-            # ============================================================
-            # VERIFICACIÓN DE DATOS EN PANTALLA
-            # ============================================================
             with st.expander("📊 Ver estadísticas de los datos", expanded=False):
                 col1, col2, col3 = st.columns(3)
                 
@@ -826,21 +819,10 @@ def main():
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
                     col3.caption(f"📊 Rango: {df['Abortos'].min():.0f} - {df['Abortos'].max():.0f}")
 
+                # Mostrar los datos para verificar
                 st.dataframe(df, use_container_width=True)
-                
-                # ✅ VERIFICACIÓN DE VALORES
-                st.markdown("### ✅ Verificación de valores mostrados:")
-                st.markdown("""
-                **Cuando pases el puntero sobre la gráfica verás:**
-                - 🦙 **Alpacas enfermas**: El valor exacto del archivo (ej: 12)
-                - 💀 **Alpacas muertas**: El valor exacto del archivo (ej: 3)
-                - ⚠️ **Abortos**: El valor exacto del archivo (ej: 2)
-                - 🌡️ **Temperatura**: El valor exacto del archivo (ej: 5.0 °C)
-                - 💧 **Precipitación**: El valor exacto del archivo (ej: 15 mm)
-                - 💨 **Viento**: El valor exacto del archivo (ej: 20 Km/h)
-                """)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el puntero para ver los valores exactos.")
+            st.success("✅ ¡Gráfica cargada! Pasa el puntero sobre los puntos rojos para ver los valores exactos del archivo.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
