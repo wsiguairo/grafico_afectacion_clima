@@ -369,14 +369,8 @@ def crear_grafica(df, images_paths):
     fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
-    # LAYOUT
+    # LAYOUT (SIN TÍTULO DENTRO DE LA GRÁFICA)
     fig.update_layout(
-        title={
-            'text': '🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas',                  # titulo de la grafica 
-            'font': {'size': 28, 'family': 'Arial, sans-serif', 'color': '#2c3e50'},
-            'x': 0.5,
-            'xanchor': 'center'
-        },
         hovermode='x unified',
         template='plotly_white',
         height=700,
@@ -458,7 +452,6 @@ def crear_grafica(df, images_paths):
         paper_bgcolor='white',
         margin={'t': 80, 'b': 100, 'l': 80, 'r': 120}
     )
-
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
     return fig
@@ -467,9 +460,8 @@ def crear_grafica(df, images_paths):
 # MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    #st.markdown(" ## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
-    #st.caption("📊 Datos cargados automáticamente desde Google Sheets")
-    placeholder = st.empty()  # Contenedor invisible que ocupa 0 espacio
+    st.markdown(" ## 🦙 Variación Diaria - Temperatura, Precipitación y Afectación de Alpacas")
+    st.caption("📊 Datos cargados automáticamente desde Google Sheets")
 
     # CONFIGURACIÓN
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'    # el codigo el archivo
