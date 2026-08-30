@@ -1,4 +1,3 @@
-# app.py - CONTROL TOTAL DEL LAYOUT
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,38 +21,28 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS EXTREMO - ELIMINAR TODO ESPACIO
+# CSS EXTREMO - ÚLTIMO RECURSO
 # ============================================================
 st.markdown("""
 <style>
-    /* ELIMINAR TODO - RESET COMPLETO */
+    /* Reset global */
     * {
         margin: 0 !important;
         padding: 0 !important;
         box-sizing: border-box !important;
     }
-    
-    html, body, .stApp, .stApp > div, .main, .main > div {
+
+    html, body, .stApp, .stApp > div, .main, .main > div, .block-container {
         margin: 0 !important;
         padding: 0 !important;
         max-width: 100% !important;
         width: 100% !important;
         overflow: hidden !important;
-    }
-    
-    .stApp {
         background: white !important;
     }
-    
-    .main .block-container {
-        padding: 0px 0px 0px 0px !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        margin: 0 !important;
-    }
-    
-    /* ELIMINAR HEADER */
-    header, .stApp > header, .css-1d391kg, #MainMenu {
+
+    /* Ocultar header y footer */
+    header, .stApp > header, .css-1d391kg, #MainMenu, footer {
         display: none !important;
         height: 0 !important;
         min-height: 0 !important;
@@ -64,59 +53,51 @@ st.markdown("""
         padding: 0 !important;
         margin: 0 !important;
     }
-    
-    /* ELIMINAR FOOTER */
-    footer, .stApp > footer {
-        display: none !important;
-        height: 0 !important;
-    }
-    
-    /* TÍTULO - MÍNIMO ESPACIO */
+
+    /* Título */
     h2 {
         font-size: 0.9rem !important;
         line-height: 1.2 !important;
         padding: 2px 0 0 0 !important;
         margin: 0 !important;
-        height: auto !important;
-        min-height: 0 !important;
     }
-    
-    /* GRÁFICA - OCUPA TODO EL ESPACIO */
+
+    /* Contenedor de la gráfica */
     .stPlotlyChart {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
         height: auto !important;
-        min-height: 200px !important;
+        min-height: 250px !important;
         flex: 1 !important;
         margin: 0 !important;
         padding: 0 !important;
     }
-    
+
     .stPlotlyChart > div {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 100% !important;
         height: 100% !important;
-        min-height: 200px !important;
+        min-height: 250px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
-    
-    /* BARRA DE HERRAMIENTAS - MÁS PEQUEÑA */
+
+    /* Barra de herramientas */
     .modebar {
-        transform: scale(0.4) !important;
+        transform: scale(0.5) !important;
         transform-origin: top right !important;
         top: 0 !important;
         right: 0 !important;
     }
-    
-    /* SIDEBAR */
+
+    /* Sidebar */
     .css-1d391kg, .stSidebar {
         padding: 2px 4px !important;
         margin: 0 !important;
     }
-    
+
     .stButton button {
         padding: 1px 4px !important;
         font-size: 0.6rem !important;
@@ -124,8 +105,8 @@ st.markdown("""
         height: auto !important;
         margin: 0 !important;
     }
-    
-    /* MÉTRICAS */
+
+    /* Métricas */
     .stMetric {
         padding: 0 !important;
         margin: 0 !important;
@@ -140,29 +121,29 @@ st.markdown("""
         padding: 0 !important;
         margin: 0 !important;
     }
-    
-    /* ELIMINAR ESPACIOS DE STREAMLIT */
+
+    /* Eliminar espacios de Streamlit */
     .element-container, .stMarkdown, .stColumns, .stColumn {
         margin: 0 !important;
         padding: 0 !important;
         gap: 0 !important;
     }
-    
+
     .stColumns {
         gap: 2px !important;
     }
-    
+
     .stColumn {
         padding: 0 2px !important;
     }
-    
-    /* MÓVIL */
+
+    /* Móvil */
     @media (max-width: 768px) {
         .stPlotlyChart {
-            min-height: 150px !important;
+            min-height: 180px !important;
         }
         .stPlotlyChart > div {
-            min-height: 150px !important;
+            min-height: 180px !important;
         }
         h2 {
             font-size: 0.7rem !important;
@@ -182,20 +163,10 @@ st.markdown("""
 st.components.v1.html("""
 <script>
     function forceResize() {
-        // Eliminar todos los espacios
-        document.querySelectorAll('*').forEach(el => {
-            if (el.style) {
-                el.style.margin = '0';
-                el.style.padding = '0';
-            }
-        });
-        
-        // Redimensionar gráfica
         const charts = document.querySelectorAll('.stPlotlyChart');
         charts.forEach((chart) => {
             const parent = chart.parentElement;
             if (parent) {
-                // Altura dinámica basada en ventana
                 const h = window.innerHeight;
                 let height = Math.min(h * 0.75, 500);
                 if (h < 600) height = Math.min(h * 0.65, 300);
@@ -221,7 +192,6 @@ st.components.v1.html("""
         });
     }
     
-    // Ejecutar inmediatamente y repetidamente
     forceResize();
     setTimeout(forceResize, 50);
     setTimeout(forceResize, 100);
@@ -229,20 +199,10 @@ st.components.v1.html("""
     setTimeout(forceResize, 500);
     setTimeout(forceResize, 1000);
     
-    // Redimensionar al cambiar tamaño
     let timer;
     window.addEventListener('resize', () => {
         clearTimeout(timer);
         timer = setTimeout(forceResize, 50);
-    });
-    
-    // Observar cambios
-    const observer = new MutationObserver(() => {
-        forceResize();
-    });
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
     });
 </script>
 """, height=0)
@@ -596,7 +556,7 @@ def crear_grafica(df, images_paths, zoom_meses=None):
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
 
     # ============================================================
-    # LAYOUT - MÁRGENES MÍNIMOS ABSOLUTOS
+    # LAYOUT - MÁRGENES MÍNIMOS
     # ============================================================
     fig.update_layout(
         hovermode='x unified',
@@ -671,17 +631,17 @@ def crear_grafica(df, images_paths, zoom_meses=None):
 # MAIN
 # ============================================================
 def main():
-    # USAR UN CONTENEDOR VACÍO PARA CONTROL TOTAL
-    container = st.container()
+    # Crear un layout con columnas para forzar un espacio mínimo
+    # La columna principal contendrá la gráfica y ocupará casi todo
+    col_main, col_dummy = st.columns([0.99, 0.01])
     
-    with container:
-        # Título - sin espacio
+    with col_main:
+        # Título
         st.markdown("## 🦙 Monitoreo Diario")
         
-        # BARRA LATERAL
+        # Sidebar (se renderiza pero la ponemos en su propio espacio)
         with st.sidebar:
-            st.markdown("### ⏱️")
-            
+            st.markdown("### ⏱️ Período")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("1M", use_container_width=True):
@@ -690,13 +650,11 @@ def main():
                     st.session_state.zoom_periodo = 6
                 if st.button("Todo", use_container_width=True):
                     st.session_state.zoom_periodo = None
-            
             with col2:
                 if st.button("3M", use_container_width=True):
                     st.session_state.zoom_periodo = 3
                 if st.button("1A", use_container_width=True):
                     st.session_state.zoom_periodo = 12
-            
             st.markdown("---")
             if st.button("🔄", use_container_width=True):
                 st.cache_data.clear()
@@ -725,30 +683,30 @@ def main():
             fig = crear_grafica(df, IMAGES, zoom_meses)
 
         if fig is not None:
-            # MOSTRAR GRÁFICA
-            st.plotly_chart(
-                fig, 
-                use_container_width=True,
-                config={
-                    'displayModeBar': True,
-                    'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
-                    'displaylogo': False,
-                    'scrollZoom': True,
-                    'responsive': True,
-                }
-            )
+            # Mostrar gráfica en la columna principal
+            with col_main:
+                st.plotly_chart(
+                    fig, 
+                    use_container_width=True,
+                    config={
+                        'displayModeBar': True,
+                        'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud', 'zoomIn2d', 'zoomOut2d'],
+                        'displaylogo': False,
+                        'scrollZoom': True,
+                        'responsive': True,
+                    }
+                )
 
-            # ESTADÍSTICAS - SIN ESPACIO
-            col1, col2, col3 = st.columns(3)
-            if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                col1.metric("🦙", f"{df['Enfermos'].sum():.0f}")
-            if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                col2.metric("💀", f"{df['Muertos'].sum():.0f}")
-            if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                col3.metric("⚠️", f"{df['Abortos'].sum():.0f}")
-
+                # Estadísticas
+                cols = st.columns(3)
+                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                    cols[0].metric("🦙", f"{df['Enfermos'].sum():.0f}")
+                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                    cols[1].metric("💀", f"{df['Muertos'].sum():.0f}")
+                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                    cols[2].metric("⚠️", f"{df['Abortos'].sum():.0f}")
         else:
-            st.error("❌ Error")
+            st.error("❌ Error al generar la gráfica")
     else:
         st.error("❌ No se pudieron cargar los datos")
 
