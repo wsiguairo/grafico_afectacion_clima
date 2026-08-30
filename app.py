@@ -12,7 +12,7 @@ import os
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# CONFIGURACIÓN DE PÁGINA 
+# CONFIGURACIÓN DE PÁGINA
 # ============================================================
 st.set_page_config(
     page_title="Gráfica Alpacas Interactiva",
@@ -21,20 +21,18 @@ st.set_page_config(
 )
 
 # ============================================================
-# MAIN - APLICACIÓN STREAMLIT 
+# MAIN - APLICACIÓN STREAMLIT
 # ============================================================
 def main():
-    # ✂️ CÓDIGO PARA ELIMINAR EL ESPACIO EN BLANCO SUPERIOR EN CELULAR Y PC
+    # ✂️ ELIMINA EL ESPACIO EN BLANCO (SIN GENERAR NINGÚN TÍTULO)
     st.markdown(
         """
         <style>
-            /* Elimina el margen superior interno de la app */
             .block-container {
                 padding-top: 0rem !important;
                 padding-bottom: 0rem !important;
             }
-            /* Oculta el espacio reservado para el menú superior de Streamlit */
-            stHeader {
+            header {
                 visibility: hidden !important;
                 height: 0px !important;
             }
@@ -43,8 +41,9 @@ def main():
         unsafe_allow_html=True
     )
 
-    # 👇 AQUÍ ABAJO CONTINÚA TU CÓDIGO (Gráficas, filtros, etc.)
-
+    # 👇 REEMPLAZA ESTA LÍNEA DE ABAJO CON TU CÓDIGO (Tus gráficas, filtros, etc.)
+    st.write("Tus gráficas y filtros van aquí e iniciarán desde el borde superior.")
+            
        
     
 # ============================================================
