@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON FECHA ÚNICA AL INICIO
+# app.py - VERSIÓN CON FECHA ÚNICA AL INICIO (SIN DUPLICADOS)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -356,11 +356,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Precipitación',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
-            hovertemplate='<b>💧 Precipitación:</b> %{y:.0f} mm<extra></extra>'  # ✅ SIN FECHA
+            hovertemplate='<b>💧 Precipitación:</b> %{y:.0f} mm<extra></extra>'
         ))
 
     # ============================================================
-    # TEMPERATURA - SOLO VALOR (SIN FECHA)
+    # TEMPERATURA - SOLO VALOR (SIN FECHA) ⬅️ QUITADA LA FECHA
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -371,7 +371,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             line=dict(color='#2563EB', width=2.5),
             marker=dict(size=4, color='#2563EB'),
             opacity=0.9,
-            hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<extra></extra>'  # ✅ SIN FECHA
+            hovertemplate='<b>🌡️ Temperatura mínima:</b> %{y:.1f} °C<extra></extra>'
         ))
 
     # ============================================================
@@ -385,7 +385,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Viento',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
-            hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'  # ✅ SIN FECHA
+            hovertemplate='<b>💨 Viento:</b> %{y:.0f} Km/h<extra></extra>'
         ))
 
     # ============================================================
@@ -446,7 +446,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
-                hovertemplate='<b>💀 Alpacas muertas:</b> %{customdata:.0f}<extra></extra>'  # ✅ SIN FECHA
+                hovertemplate='<b>💀 Alpacas muertas:</b> %{customdata:.0f}<extra></extra>'
             ))
 
     # ============================================================
@@ -463,7 +463,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
-                hovertemplate='<b>⚠️ Abortos:</b> %{customdata:.0f}<extra></extra>'  # ✅ SIN FECHA
+                hovertemplate='<b>⚠️ Abortos:</b> %{customdata:.0f}<extra></extra>'
             ))
 
     # ============================================================
@@ -697,7 +697,7 @@ def main():
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
             - **🖱️ Pasa el cursor** sobre la línea roja para ver:
-              - 📅 Fecha (una sola vez)
+              - 📅 Fecha (una sola vez al inicio)
               - 🦙 Alpacas enfermas (valor real)
               - 🌡️ Temperatura
               - 💧 Precipitación
