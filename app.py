@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA CON HOVER PRECISO
+# app.py - VERSIÓN CON FECHA ÚNICA ROBUSTA Y HOVER ALINEADO CON CURVA SUAVIZADA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -196,7 +196,7 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIONES DE PROCESAMIENTO
+# FUNCIONES DE PROCESAMIENTO - AUTOMATIZADO PARA DATOS FUTUROS
 # ============================================================
 @st.cache_data(ttl=10)
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
@@ -280,48 +280,66 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
-        # Suavizado - GUARDAMOS AMBOS: datos reales Y suavizados
+        # ============================================================
+        # SUAVIZADO AUTOMATIZADO PARA DATOS FUTUROS
+        # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
-        # Datos reales de enfermos para referencia
+        # Filtrar solo datos con enfermos > 0 para el suavizado
         df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())].copy()
+        
+        # Si hay suficientes datos, generar curva suavizada
         if len(df_filtrado) >= 3:
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
+                # Eliminar duplicados en x
                 _, unique_indices = np.unique(x_tiempo, return_index=True)
                 x_tiempo = x_tiempo[unique_indices]
                 y = y[unique_indices]
                 
                 if len(x_tiempo) >= 3:
-                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 300)
+                    # Generar puntos suaves para toda la extensión de datos
+                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), max(300, len(x_tiempo) * 10))
                     k = min(3, len(x_tiempo) - 1)
                     
+                    # Spline principal
                     spline = make_interp_spline(x_tiempo, y, k=k)
                     y_suave = spline(x_suave)
+                    
+                    # Spline adicional para suavizado
                     spline_extra = UnivariateSpline(x_tiempo, y, s=len(y)*1.5, k=k)
                     y_suave_extra = spline_extra(x_suave)
+                    
+                    # Combinar ambos splines
                     y_suave_final = 0.7 * y_suave_extra + 0.3 * y_suave
                     y_suave_final = np.clip(y_suave_final, 0.1, None)
                     
+                    # Filtro de suavizado adicional
                     window_size = min(5, len(y_suave_final) // 10)
                     if window_size > 1:
                         y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
                     
+                    # Convertir a fechas
                     fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                     enfermos_smooth = y_suave_final
-            except:
+                    
+            except Exception as e:
+                # Si falla el suavizado, usar datos originales
+                st.warning(f"Suavizado parcial: {e}")
                 pass
         
+        # Si no hay suficientes datos para suavizar, usar los datos originales
+        if len(fecha_smooth) == 0 and len(df) > 0:
+            fecha_smooth = df['fecha'].values
+            enfermos_smooth = df['Enfermos'].values
+        
+        # Guardar en atributos del DataFrame
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-        
-        # Guardamos también los datos reales para el hover
-        df.attrs['enfermos_reales'] = df['Enfermos'].values
-        df.attrs['fechas_reales'] = df['fecha'].values
 
         return df
 
@@ -330,43 +348,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA INTERPOLAR VALOR EN FECHA ESPECÍFICA
-# ============================================================
-def obtener_valor_suavizado(fecha, fechas_smooth, valores_smooth):
-    """
-    Obtiene el valor suavizado para una fecha específica usando interpolación lineal.
-    """
-    if len(fechas_smooth) == 0 or len(valores_smooth) == 0:
-        return None
-    
-    # Convertir a timestamp para comparación
-    fecha_ts = pd.Timestamp(fecha)
-    fechas_ts = pd.to_datetime(fechas_smooth)
-    
-    # Si la fecha está fuera del rango, retornar None
-    if fecha_ts < fechas_ts.min() or fecha_ts > fechas_ts.max():
-        return None
-    
-    # Encontrar los índices más cercanos
-    idx = np.searchsorted(fechas_ts, fecha_ts)
-    
-    if idx == 0:
-        return valores_smooth[0]
-    elif idx >= len(fechas_ts):
-        return valores_smooth[-1]
-    else:
-        # Interpolación lineal entre los dos puntos más cercanos
-        f1 = fechas_ts[idx - 1]
-        f2 = fechas_ts[idx]
-        v1 = valores_smooth[idx - 1]
-        v2 = valores_smooth[idx]
-        
-        # Proporción de distancia
-        t = (fecha_ts - f1) / (f2 - f1)
-        return v1 + t * (v2 - v1)
-
-# ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER CON VALORES SUAVIZADOS
+# FUNCIÓN PARA CREAR LA GRÁFICA - CON HOVER ALINEADO A CURVA SUAVIZADA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -380,9 +362,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
-    
-    # Datos reales para referencia
-    enfermos_reales = df.attrs.get('enfermos_reales', np.array([]))
 
     img_enferma = image_to_base64(images_paths.get('enferma', ''))
     img_muerta = image_to_base64(images_paths.get('muerta', ''))
@@ -391,7 +370,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN
+    # PRECIPITACIÓN - SIN HOVER
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -404,7 +383,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA
+    # TEMPERATURA - SIN HOVER
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -419,7 +398,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO
+    # VIENTO - SIN HOVER
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -433,14 +412,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
             x=fecha_smooth,
             y=enfermos_smooth,
             mode='lines',
-            name='Alpacas enfermas (suavizado)',
+            name='Alpacas enfermas',
             line=dict(color='#8B0000', width=2.5),
             opacity=0.8,
             fill='tozeroy',
@@ -454,7 +433,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS
+    # ALPACAS MUERTAS - SIN HOVER
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -471,7 +450,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS
+    # ABORTOS - SIN HOVER
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -488,99 +467,118 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON HOVER - USANDO VALORES SUAVIZADOS
+    # TRACE INVISIBLE CON HOVER - ALINEADO CON CURVA SUAVIZADA
     # ============================================================
-    # Usamos las fechas suavizadas para el hover
+    
+    # Crear DataFrame con los puntos de la curva suavizada para el hover
     if len(fecha_smooth) > 0 and len(enfermos_smooth) > 0:
-        # Crear puntos de hover usando las fechas suavizadas (cada ~1 día)
-        # Tomamos una muestra representativa para no sobrecargar
-        step = max(1, len(fecha_smooth) // 200)  # Máximo 200 puntos de hover
-        fechas_hover = fecha_smooth[::step]
+        # DataFrame con los puntos suavizados
+        df_hover_smooth = pd.DataFrame({
+            'fecha': fecha_smooth,
+            'Enfermos_suavizados': enfermos_smooth
+        })
         
-        # Para cada fecha, obtenemos el valor suavizado exacto
-        hover_texts = []
-        hover_x = []
-        hover_y = []
+        # Unir con datos reales para tener todas las columnas
+        df_hover = df.copy()
+        df_hover = df_hover.merge(df_hover_smooth, on='fecha', how='outer')
         
-        for fecha in fechas_hover:
-            # Obtener el valor suavizado en esta fecha exacta
-            valor_suavizado = obtener_valor_suavizado(fecha, fecha_smooth, enfermos_smooth)
-            
-            if valor_suavizado is not None:
-                # Buscar datos reales cercanos para mostrar también
-                fecha_ts = pd.Timestamp(fecha)
-                idx_cercano = np.argmin(np.abs(pd.to_datetime(df['fecha']) - fecha_ts))
-                row_real = df.iloc[idx_cercano]
-                
-                # Construir texto del hover
-                texto = f"<b>📅 {fecha.strftime('%d/%m/%Y')}</b><br>"
-                
-                # Valor suavizado de enfermos
-                texto += f"<b>🦙 Alpacas enfermas (suavizado):</b> {valor_suavizado:.1f}<br>"
-                
-                # Datos reales (si existen)
-                if pd.notna(row_real.get('Precipitacion ', np.nan)):
-                    texto += f"<b>💧 Precipitación:</b> {row_real['Precipitacion ']:.0f} mm<br>"
-                if pd.notna(row_real.get('Temperaturas minimas  (°C)', np.nan)):
-                    texto += f"<b>🌡️ Temperatura mínima:</b> {row_real['Temperaturas minimas  (°C)']:.1f} °C<br>"
-                if pd.notna(row_real.get('Vel. viento (Km/h)', np.nan)):
-                    texto += f"<b>💨 Viento:</b> {row_real['Vel. viento (Km/h)']:.0f} Km/h<br>"
-                if pd.notna(row_real.get('Enfermos', np.nan)) and row_real['Enfermos'] > 0:
-                    texto += f"<b>📊 Enfermos reales:</b> {row_real['Enfermos']:.0f}<br>"
-                if pd.notna(row_real.get('Muertos', np.nan)) and row_real['Muertos'] > 0:
-                    texto += f"<b>💀 Alpacas muertas:</b> {row_real['Muertos']:.0f}<br>"
-                if pd.notna(row_real.get('Abortos', np.nan)) and row_real['Abortos'] > 0:
-                    texto += f"<b>⚠️ Abortos:</b> {row_real['Abortos']:.0f}<br>"
-                
-                hover_texts.append(texto)
-                hover_x.append(fecha)
-                hover_y.append(valor_suavizado)  # Usamos el valor suavizado como posición Y
+        # Para el hover, usar el valor suavizado como principal para enfermos
+        if 'Enfermos_suavizados' in df_hover.columns:
+            df_hover['Enfermos_hover'] = df_hover['Enfermos_suavizados'].fillna(df_hover['Enfermos'])
+        else:
+            df_hover['Enfermos_hover'] = df_hover['Enfermos']
         
-        # Trace invisible con hover
-        if len(hover_x) > 0:
-            fig.add_trace(go.Scatter(
-                x=hover_x,
-                y=hover_y,  # Ahora los puntos están sobre la línea suavizada
-                mode='markers',
-                name='',
-                marker=dict(
-                    size=0.1,  # Prácticamente invisible
-                    color='rgba(0,0,0,0)',
-                    opacity=0
-                ),
-                yaxis='y2',
-                showlegend=False,
-                hoverinfo='text',
-                text=hover_texts,
-                hoverlabel=dict(
-                    bgcolor='white',
-                    font_size=13,
-                    font_color='#2c3e50',
-                    bordercolor='#bdc3c7'
-                )
-            ))
+        # Ordenar por fecha
+        df_hover = df_hover.sort_values('fecha').reset_index(drop=True)
+        
+        # Usar los puntos de la curva suavizada para posicionar el hover
+        x_hover = fecha_smooth
+        y_hover = enfermos_smooth
+    else:
+        # Fallback: usar datos reales si no hay curva suavizada
+        df_hover = df.copy()
+        df_hover['Enfermos_hover'] = df_hover['Enfermos']
+        x_hover = df_hover['fecha']
+        y_hover = [0] * len(df_hover)
+    
+    # Asegurar que todas las columnas existan
+    for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
+                'Muertos', 'Abortos']:
+        if col not in df_hover.columns:
+            df_hover[col] = np.nan
+    
+    # Crear el texto del hover con todos los valores
+    hover_texts = []
+    for _, row in df_hover.iterrows():
+        texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
+        
+        # Mostrar valor suavizado de enfermos (si existe)
+        if pd.notna(row.get('Enfermos_hover', np.nan)) and row.get('Enfermos_hover', 0) > 0:
+            texto += f"<b>🦙 Alpacas enfermas (suavizado):</b> {row['Enfermos_hover']:.1f}<br>"
+        elif pd.notna(row.get('Enfermos', np.nan)) and row.get('Enfermos', 0) > 0:
+            texto += f"<b>🦙 Alpacas enfermas:</b> {row['Enfermos']:.0f}<br>"
+        
+        # Otros datos
+        if pd.notna(row.get('Precipitacion ', np.nan)):
+            texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
+        if pd.notna(row.get('Temperaturas minimas  (°C)', np.nan)):
+            texto += f"<b>🌡️ Temperatura mínima:</b> {row['Temperaturas minimas  (°C)']:.1f} °C<br>"
+        if pd.notna(row.get('Vel. viento (Km/h)', np.nan)):
+            texto += f"<b>💨 Viento:</b> {row['Vel. viento (Km/h)']:.0f} Km/h<br>"
+        if pd.notna(row.get('Muertos', np.nan)) and row.get('Muertos', 0) > 0:
+            texto += f"<b>💀 Alpacas muertas:</b> {row['Muertos']:.0f}<br>"
+        if pd.notna(row.get('Abortos', np.nan)) and row.get('Abortos', 0) > 0:
+            texto += f"<b>⚠️ Abortos:</b> {row['Abortos']:.0f}<br>"
+        
+        hover_texts.append(texto)
+    
+    # Trace invisible con hover - posicionado en la curva suavizada
+    fig.add_trace(go.Scatter(
+        x=x_hover,
+        y=y_hover,
+        mode='markers',
+        name='',
+        marker=dict(
+            size=0.1,
+            color='rgba(0,0,0,0)',
+            opacity=0
+        ),
+        yaxis='y2',
+        showlegend=False,
+        hoverinfo='text',
+        text=hover_texts,
+        hoverlabel=dict(
+            bgcolor='white',
+            font_size=13,
+            font_color='#2c3e50',
+            bordercolor='#bdc3c7'
+        )
+    ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS
+    # IMÁGENES PEQUEÑAS - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
 
     if not es_movil:
         if img_enferma is not None and len(enfermos_smooth) > 0:
-            for idx in [0, -1]:
-                images_plotly.append({
-                    'source': f"data:image/png;base64,{img_enferma}",
-                    'xref': 'x',
-                    'yref': 'y2',
-                    'x': fecha_smooth[idx],
-                    'y': float(enfermos_smooth[idx]),
-                    'sizex': 8,
-                    'sizey': 8,
-                    'xanchor': 'center',
-                    'yanchor': 'middle',
-                    'layer': 'above'
-                })
+            # Mostrar imagen al inicio y final de la curva
+            indices = [0, -1] if len(fecha_smooth) > 1 else [0]
+            for idx in indices:
+                if idx < len(fecha_smooth):
+                    images_plotly.append({
+                        'source': f"data:image/png;base64,{img_enferma}",
+                        'xref': 'x',
+                        'yref': 'y2',
+                        'x': fecha_smooth[idx],
+                        'y': float(enfermos_smooth[idx]),
+                        'sizex': 8,
+                        'sizey': 8,
+                        'xanchor': 'center',
+                        'yanchor': 'middle',
+                        'layer': 'above'
+                    })
 
         if img_muerta is not None and 'Muertos' in df.columns:
             df_muertos_varios = df[df['Muertos'] >= 3].copy()
@@ -602,7 +600,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         if img_aborto is not None and 'Abortos' in df.columns:
             df_abortos_pos = df[df['Abortos'] > 0].copy()
             if not df_abortos_pos.empty:
-                for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
+                indices = [0, -1] if len(df_abortos_pos) > 1 else [0]
+                for idx in indices:
                     if idx < len(df_abortos_pos):
                         images_plotly.append({
                             'source': f"data:image/png;base64,{img_aborto}",
@@ -618,7 +617,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                         })
 
     # ============================================================
-    # RANGOS
+    # RANGOS DINÁMICOS
     # ============================================================
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
     max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 10
@@ -639,19 +638,15 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL
+    # ZOOM INICIAL - ADAPTATIVO
     # ============================================================
-    fecha_inicio = df['fecha'].min()
-    fecha_fin = df['fecha'].max()
-    
     if zoom_meses is None:
-        año_datos = df['fecha'].max().year
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
-        
-        if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
+        # Si no hay zoom específico, mostrar los últimos 6 meses o todos los datos si son menos
+        if len(df) > 180:  # Más de 6 meses de datos
             fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
-            fecha_fin_zoom = df['fecha'].max()
+        else:
+            fecha_inicio_zoom = df['fecha'].min()
+        fecha_fin_zoom = df['fecha'].max()
     else:
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
@@ -757,117 +752,3 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 # MAIN
 # ============================================================
 def main():
-    
-    mostrar_logo_senamhi()
-    
-    st.markdown("""
-    <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    with st.sidebar:
-        st.markdown("### 🎛️ Controles")
-        
-        st.markdown("**Seleccionar período:**")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📅 1 Mes", use_container_width=True):
-                st.session_state.zoom_periodo = 1
-            if st.button("📅 6 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 6
-            if st.button("📅 Todo", use_container_width=True):
-                st.session_state.zoom_periodo = None
-        
-        with col2:
-            if st.button("📅 3 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 3
-            if st.button("📅 1 Año", use_container_width=True):
-                st.session_state.zoom_periodo = 12
-        
-        st.markdown("---")
-        
-        with st.expander("ℹ️ Cómo interactuar", expanded=False):
-            st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
-              - 📅 Fecha
-              - 🦙 Alpacas enfermas (valor suavizado)
-              - 🌡️ Temperatura
-              - 💧 Precipitación
-              - 💨 Viento
-              - 💀 Muertos
-              - ⚠️ Abortos
-              - 📊 Valor real de enfermos (referencia)
-            - **🖱️ Deslizar**: Arrastra el mouse ← →
-            - **🔍 Zoom**: Rueda del mouse
-            """)
-        
-        if st.button("🔄 Actualizar datos", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-
-    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'sintomas'
-    SHEET_NAME_TEMPERATURAS = 'temperaturas'
-
-    os.makedirs('imagenes', exist_ok=True)
-    
-    IMAGES = {
-        'enferma': 'imagenes/enferma.png',
-        'muerta': 'imagenes/muerta.png',
-        'aborto': 'imagenes/aborto.png'
-    }
-
-    zoom_meses = st.session_state.get('zoom_periodo', None)
-    es_movil = False
-
-    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
-
-    if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
-
-        if fig is not None:
-            st.plotly_chart(fig, use_container_width=True, config={
-                'displayModeBar': True,
-                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
-                'displaylogo': False,
-                'scrollZoom': True,
-                'responsive': True,
-                'modeBarButtonsToAdd': [
-                    'zoom2d',
-                    'pan2d',
-                    'select2d',
-                    'lasso2d',
-                    'zoomIn2d',
-                    'zoomOut2d',
-                    'autoScale2d',
-                    'resetScale2d'
-                ]
-            })
-
-            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                if es_movil:
-                    col1, col2, col3 = st.columns(1)
-                else:
-                    col1, col2, col3 = st.columns(3)
-                
-                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-
-                st.dataframe(df, use_container_width=True)
-
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la línea de alpacas enfermas para ver el valor suavizado exacto.")
-        else:
-            st.error("❌ Error al generar la gráfica")
-    else:
-        st.error("❌ No se pudieron cargar los datos")
-
-if __name__ == "__main__":
-    main()
