@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA SIN ERRORES
+# app.py - VERSIÓN CORREGIDA Y SIMPLIFICADA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -326,7 +326,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER PERFECTO CORREGIDO
+# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER PERFECTO SIMPLIFICADO
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -445,7 +445,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CORREGIDO - COINCIDENCIA EXACTA CON CURVA
+    # TRACE INVISIBLE SIMPLIFICADO - COINCIDENCIA EXACTA CON CURVA
     # ============================================================
     df_hover = df.copy()
     
@@ -503,9 +503,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         hover_texts.append(texto)
     
-    # ✅ CORREGIDO: hoverlabel con estructura correcta
-    hoverlabel_font_size = 14 if not es_movil else 12
-    
+    # ✅ VERSIÓN SIMPLIFICADA - SIN hoverlabel COMPLEJO
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
         y=y_positions,
@@ -521,16 +519,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         showlegend=False,
         hoverinfo='text',
         text=hover_texts,
-        hoverlabel=dict(
-            bgcolor='white',
-            font=dict(  # ✅ CORRECCIÓN: font_size va dentro de font
-                size=hoverlabel_font_size,
-                color='#2c3e50',
-                family='Arial'
-            ),
-            bordercolor='#bdc3c7',
-            borderwidth=2
-        ),
         hovertemplate='%{text}<extra></extra>'
     ))
 
