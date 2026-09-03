@@ -1,9 +1,9 @@
-#app.py - VERSIÓN CORREGIDA CON HOVER PERFECTO
+# app.py - VERSIÓN CORREGIDA SIN ERRORES
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import make_interp_spline, UnivariateSpline
+from scipy.interpolate import make_interp_spline, UnivariateSpline, interp1d
 from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
@@ -460,18 +460,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     df_hover['Muertos'] = df_hover['Muertos'].fillna(0)
     df_hover['Abortos'] = df_hover['Abortos'].fillna(0)
     
-    # ✅ CORRECCIÓN CLAVE: Crear una columna de posición Y que SIGA LA CURVA
-    # Usamos interpolación para estimar la posición de la curva en cada fecha
+    # Crear posición Y que SIGA LA CURVA
     if len(enfermos_smooth) > 0 and len(fecha_smooth) > 0:
-        # Interpolar los valores suavizados a las fechas originales
-        from scipy.interpolate import interp1d
-        
-        # Convertir fechas a valores numéricos para interpolación
-        fecha_num_smooth = np.array([f.timestamp() for f in fecha_smooth])
-        fecha_num_original = np.array([f.timestamp() for f in df_hover['fecha']])
-        
-        # Crear función de interpolación
         try:
+            # Convertir fechas a valores numéricos para interpolación
+            fecha_num_smooth = np.array([f.timestamp() for f in fecha_smooth])
+            fecha_num_original = np.array([f.timestamp() for f in df_hover['fecha']])
+            
+            # Crear función de interpolación
             interp_func = interp1d(fecha_num_smooth, enfermos_smooth, kind='cubic', fill_value='extrapolate')
             y_positions = interp_func(fecha_num_original)
             # Asegurar que no sean negativos
@@ -507,14 +503,16 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         hover_texts.append(texto)
     
-    # Trace invisible CON hover - posición EXACTA de la curva
+    # ✅ CORREGIDO: hoverlabel con estructura correcta
+    hoverlabel_font_size = 14 if not es_movil else 12
+    
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=y_positions,  # ✅ POSICIÓN EXACTA DE LA CURVA
+        y=y_positions,
         mode='markers',
         name='',
         marker=dict(
-            size=25,  # Tamaño grande para fácil hover
+            size=25,
             color='rgba(255, 0, 0, 0)',
             opacity=0,
             line=dict(width=0)
@@ -525,11 +523,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         text=hover_texts,
         hoverlabel=dict(
             bgcolor='white',
-            font_size=14 if not es_movil else 12,
-            font_color='#2c3e50',
+            font=dict(  # ✅ CORRECCIÓN: font_size va dentro de font
+                size=hoverlabel_font_size,
+                color='#2c3e50',
+                family='Arial'
+            ),
             bordercolor='#bdc3c7',
-            borderwidth=2,
-            font_family='Arial'
+            borderwidth=2
         ),
         hovertemplate='%{text}<extra></extra>'
     ))
