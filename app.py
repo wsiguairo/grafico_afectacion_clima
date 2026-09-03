@@ -749,6 +749,119 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     return fig
 
 # ============================================================
-# MAIN
+# MAIN - COMPLETO
 # ============================================================
 def main():
+    
+    mostrar_logo_senamhi()
+    
+    st.markdown("""
+    <div style="text-align: center; padding: 0.5rem 0;">
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.sidebar:
+        st.markdown("### 🎛️ Controles")
+        
+        st.markdown("**Seleccionar período:**")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📅 1 Mes", use_container_width=True):
+                st.session_state.zoom_periodo = 1
+            if st.button("📅 6 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 6
+            if st.button("📅 Todo", use_container_width=True):
+                st.session_state.zoom_periodo = None
+        
+        with col2:
+            if st.button("📅 3 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 3
+            if st.button("📅 1 Año", use_container_width=True):
+                st.session_state.zoom_periodo = 12
+        
+        st.markdown("---")
+        
+        with st.expander("ℹ️ Cómo interactuar", expanded=False):
+            st.markdown("""
+            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
+              - 📅 Fecha (una sola vez al inicio)
+              - 🦙 Alpacas enfermas (valor suavizado)
+              - 🌡️ Temperatura
+              - 💧 Precipitación
+              - 💨 Viento
+              - 💀 Muertos
+              - ⚠️ Abortos
+            - **🖱️ Deslizar**: Arrastra el mouse ← →
+            - **🔍 Zoom**: Rueda del mouse
+            """)
+        
+        if st.button("🔄 Actualizar datos", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
+    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
+    SHEET_NAME_SINTOMAS = 'sintomas'
+    SHEET_NAME_TEMPERATURAS = 'temperaturas'
+
+    os.makedirs('imagenes', exist_ok=True)
+    
+    IMAGES = {
+        'enferma': 'imagenes/enferma.png',
+        'muerta': 'imagenes/muerta.png',
+        'aborto': 'imagenes/aborto.png'
+    }
+
+    zoom_meses = st.session_state.get('zoom_periodo', None)
+    es_movil = False
+
+    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
+        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+
+    if df is not None and not df.empty:
+        with st.spinner('📊 Generando gráfica interactiva...'):
+            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
+
+        if fig is not None:
+            st.plotly_chart(fig, use_container_width=True, config={
+                'displayModeBar': True,
+                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
+                'displaylogo': False,
+                'scrollZoom': True,
+                'responsive': True,
+                'modeBarButtonsToAdd': [
+                    'zoom2d',
+                    'pan2d',
+                    'select2d',
+                    'lasso2d',
+                    'zoomIn2d',
+                    'zoomOut2d',
+                    'autoScale2d',
+                    'resetScale2d'
+                ]
+            })
+
+            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)
+                else:
+                    col1, col2, col3 = st.columns(3)
+                
+                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+
+                st.dataframe(df, use_container_width=True)
+
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la curva suavizada para ver los valores alineados.")
+        else:
+            st.error("❌ Error al generar la gráfica")
+    else:
+        st.error("❌ No se pudieron cargar los datos")
+
+if __name__ == "__main__":
+    main()
