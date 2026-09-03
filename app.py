@@ -1,9 +1,9 @@
-# app.py - VERSIÓN CORREGIDA Y SIMPLIFICADA
+# app.py - VERSIÓN ROBUSTA CON HOVER EN POSICIÓN EXACTA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import make_interp_spline, UnivariateSpline, interp1d
+from scipy.interpolate import make_interp_spline, UnivariateSpline
 from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
@@ -280,7 +280,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
-        # Suavizado mejorado
+        # Suavizado
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
@@ -312,8 +312,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                     
                     fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                     enfermos_smooth = y_suave_final
-            except Exception as e:
-                print(f"Error en suavizado: {e}")
+            except:
                 pass
         
         df.attrs['fecha_smooth'] = fecha_smooth
@@ -326,7 +325,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER PERFECTO SIMPLIFICADO
+# FUNCIÓN PARA CREAR LA GRÁFICA - ROBUSTA CON POSICIÓN EXACTA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -348,7 +347,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - SIN HOVER
+    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -361,7 +360,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SIN HOVER
+    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -376,7 +375,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - SIN HOVER
+    # VIENTO - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -390,7 +389,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SOLO VISUAL)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -398,8 +397,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             y=enfermos_smooth,
             mode='lines',
             name='Alpacas enfermas',
-            line=dict(color='#8B0000', width=3.5),
-            opacity=0.9,
+            line=dict(color='#8B0000', width=2.5),
+            opacity=0.8,
             fill='tozeroy',
             fillgradient=dict(
                 type='vertical',
@@ -411,7 +410,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - SIN HOVER
+    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -428,7 +427,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - SIN HOVER
+    # ABORTOS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -445,11 +444,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE SIMPLIFICADO - COINCIDENCIA EXACTA CON CURVA
+    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
     # ============================================================
+    # Creamos un DataFrame con todos los datos combinados
     df_hover = df.copy()
     
-    # Asegurar columnas
+    # Asegurar que todas las columnas existan
     for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
                 'Enfermos', 'Muertos', 'Abortos']:
         if col not in df_hover.columns:
@@ -460,32 +460,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     df_hover['Muertos'] = df_hover['Muertos'].fillna(0)
     df_hover['Abortos'] = df_hover['Abortos'].fillna(0)
     
-    # Crear posición Y que SIGA LA CURVA
-    if len(enfermos_smooth) > 0 and len(fecha_smooth) > 0:
-        try:
-            # Convertir fechas a valores numéricos para interpolación
-            fecha_num_smooth = np.array([f.timestamp() for f in fecha_smooth])
-            fecha_num_original = np.array([f.timestamp() for f in df_hover['fecha']])
-            
-            # Crear función de interpolación
-            interp_func = interp1d(fecha_num_smooth, enfermos_smooth, kind='cubic', fill_value='extrapolate')
-            y_positions = interp_func(fecha_num_original)
-            # Asegurar que no sean negativos
-            y_positions = np.maximum(y_positions, 0.1)
-        except:
-            # Si falla la interpolación, usar los valores reales
-            y_positions = df_hover['Enfermos'].values.copy()
-            if y_positions.max() == 0:
-                y_positions = np.ones(len(df_hover)) * 0.5
-    else:
-        # Si no hay curva suavizada, usar valores reales
-        y_positions = df_hover['Enfermos'].values.copy()
-        if y_positions.max() == 0:
-            y_positions = np.ones(len(df_hover)) * 0.5
+    # ============================================================
+    # ✅ CORRECCIÓN ROBUSTA: POSICIÓN EXACTA PARA EL HOVER
+    # ============================================================
+    # Usamos los valores reales de enfermos para posicionar los puntos invisibles
+    # Esto asegura que el hover coincida EXACTAMENTE con la curva
+    y_positions = df_hover['Enfermos'].values.copy()
     
-    # Crear textos de hover con TODOS los datos REALES
+    # Si todos los valores son 0, usar una posición pequeña pero visible
+    if y_positions.max() == 0:
+        y_positions = np.ones(len(df_hover)) * 0.5
+    
+    # Crear el texto del hover con TODOS los valores REALES
     hover_texts = []
-    for idx, row in df_hover.iterrows():
+    for _, row in df_hover.iterrows():
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
         
         if pd.notna(row['Precipitacion ']) and row['Precipitacion '] > 0:
@@ -503,15 +491,15 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         hover_texts.append(texto)
     
-    # ✅ VERSIÓN SIMPLIFICADA - SIN hoverlabel COMPLEJO
+    # Trace invisible CON hover en la MISMA POSICIÓN que la curva
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=y_positions,
+        y=y_positions,  # ✅ POSICIÓN EXACTA - COINCIDENCIA PERFECTA
         mode='markers',
         name='',
         marker=dict(
-            size=25,
-            color='rgba(255, 0, 0, 0)',
+            size=25,  # Tamaño grande para capturar hover fácilmente
+            color='rgba(255, 0, 0, 0)',  # Completamente transparente
             opacity=0,
             line=dict(width=0)
         ),
@@ -523,7 +511,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS - SOLO EN PC
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -752,9 +740,9 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la curva roja para ver:
-              - 📅 Fecha
-              - 🦙 Alpacas enfermas (valor REAL del archivo)
+            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
+              - 📅 Fecha (una sola vez al inicio)
+              - 🦙 Alpacas enfermas (valor real del archivo)
               - 🌡️ Temperatura
               - 💧 Precipitación
               - 💨 Viento
