@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON FECHA ÚNICA ROBUSTA Y HOVER PERFECTO
+# app.py - VERSIÓN CORREGIDA CON HOVER PERFECTO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -280,7 +280,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
-        # Suavizado
+        # Suavizado mejorado
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
@@ -312,7 +312,8 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                     
                     fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                     enfermos_smooth = y_suave_final
-            except:
+            except Exception as e:
+                print(f"Error en suavizado: {e}")
                 pass
         
         df.attrs['fecha_smooth'] = fecha_smooth
@@ -325,7 +326,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER PERFECTO
+# FUNCIÓN PARA CREAR LA GRÁFICA - HOVER PERFECTO CORREGIDO
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -444,21 +445,51 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON HOVER - COINCIDENCIA EXACTA
+    # TRACE INVISIBLE CORREGIDO - COINCIDENCIA EXACTA CON CURVA
     # ============================================================
     df_hover = df.copy()
     
+    # Asegurar columnas
     for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
                 'Enfermos', 'Muertos', 'Abortos']:
         if col not in df_hover.columns:
             df_hover[col] = np.nan
     
+    # Rellenar NaN para valores numéricos
     df_hover['Enfermos'] = df_hover['Enfermos'].fillna(0)
     df_hover['Muertos'] = df_hover['Muertos'].fillna(0)
     df_hover['Abortos'] = df_hover['Abortos'].fillna(0)
     
+    # ✅ CORRECCIÓN CLAVE: Crear una columna de posición Y que SIGA LA CURVA
+    # Usamos interpolación para estimar la posición de la curva en cada fecha
+    if len(enfermos_smooth) > 0 and len(fecha_smooth) > 0:
+        # Interpolar los valores suavizados a las fechas originales
+        from scipy.interpolate import interp1d
+        
+        # Convertir fechas a valores numéricos para interpolación
+        fecha_num_smooth = np.array([f.timestamp() for f in fecha_smooth])
+        fecha_num_original = np.array([f.timestamp() for f in df_hover['fecha']])
+        
+        # Crear función de interpolación
+        try:
+            interp_func = interp1d(fecha_num_smooth, enfermos_smooth, kind='cubic', fill_value='extrapolate')
+            y_positions = interp_func(fecha_num_original)
+            # Asegurar que no sean negativos
+            y_positions = np.maximum(y_positions, 0.1)
+        except:
+            # Si falla la interpolación, usar los valores reales
+            y_positions = df_hover['Enfermos'].values.copy()
+            if y_positions.max() == 0:
+                y_positions = np.ones(len(df_hover)) * 0.5
+    else:
+        # Si no hay curva suavizada, usar valores reales
+        y_positions = df_hover['Enfermos'].values.copy()
+        if y_positions.max() == 0:
+            y_positions = np.ones(len(df_hover)) * 0.5
+    
+    # Crear textos de hover con TODOS los datos REALES
     hover_texts = []
-    for _, row in df_hover.iterrows():
+    for idx, row in df_hover.iterrows():
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
         
         if pd.notna(row['Precipitacion ']) and row['Precipitacion '] > 0:
@@ -476,20 +507,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         hover_texts.append(texto)
     
-    # Posición Y exacta para coincidir con la curva
-    y_positions = df_hover['Enfermos'].values.copy()
-    
-    # Si todos son 0, usar una posición visible para el hover
-    if y_positions.max() == 0:
-        y_positions = np.ones(len(df_hover)) * 0.5
-    
+    # Trace invisible CON hover - posición EXACTA de la curva
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=y_positions,
+        y=y_positions,  # ✅ POSICIÓN EXACTA DE LA CURVA
         mode='markers',
         name='',
         marker=dict(
-            size=20,
+            size=25,  # Tamaño grande para fácil hover
             color='rgba(255, 0, 0, 0)',
             opacity=0,
             line=dict(width=0)
@@ -739,9 +764,9 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
-              - 📅 Fecha (una sola vez al inicio)
-              - 🦙 Alpacas enfermas (valor real del archivo)
+            - **🖱️ Pasa el cursor** sobre la curva roja para ver:
+              - 📅 Fecha
+              - 🦙 Alpacas enfermas (valor REAL del archivo)
               - 🌡️ Temperatura
               - 💧 Precipitación
               - 💨 Viento
