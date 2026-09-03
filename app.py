@@ -1,9 +1,9 @@
-# app.py - VERSIÓN ROBUSTA CON HOVER EN POSICIÓN EXACTA
+# app.py - VERSIÓN CORREGIDA CON POSICIÓN EXACTA DE LA CURVA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import make_interp_spline, UnivariateSpline
+from scipy.interpolate import make_interp_spline, UnivariateSpline, interp1d
 from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
@@ -325,7 +325,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - ROBUSTA CON POSICIÓN EXACTA
+# FUNCIÓN PARA CREAR LA GRÁFICA - POSICIÓN EXACTA DE LA CURVA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -347,7 +347,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
+    # PRECIPITACIÓN - SIN HOVER
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -360,7 +360,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
+    # TEMPERATURA - SIN HOVER
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -375,7 +375,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - SIN HOVER (hoverinfo='skip')
+    # VIENTO - SIN HOVER
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -389,7 +389,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SOLO VISUAL)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -410,7 +410,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
+    # ALPACAS MUERTAS - SIN HOVER
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -427,7 +427,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - SIN HOVER (hoverinfo='skip')
+    # ABORTOS - SIN HOVER
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -444,9 +444,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
+    # TRACE INVISIBLE - POSICIÓN EXACTA DE LA CURVA
     # ============================================================
-    # Creamos un DataFrame con todos los datos combinados
     df_hover = df.copy()
     
     # Asegurar que todas las columnas existan
@@ -461,17 +460,32 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     df_hover['Abortos'] = df_hover['Abortos'].fillna(0)
     
     # ============================================================
-    # ✅ CORRECCIÓN ROBUSTA: POSICIÓN EXACTA PARA EL HOVER
+    # ✅ CORRECCIÓN CLAVE: POSICIÓN EXACTA DE LA CURVA
     # ============================================================
-    # Usamos los valores reales de enfermos para posicionar los puntos invisibles
-    # Esto asegura que el hover coincida EXACTAMENTE con la curva
-    y_positions = df_hover['Enfermos'].values.copy()
+    # Interpolar la curva suavizada para obtener la posición exacta en cada fecha
+    if len(enfermos_smooth) > 0 and len(fecha_smooth) > 0:
+        try:
+            # Convertir fechas a valores numéricos
+            fecha_num_smooth = np.array([f.timestamp() for f in fecha_smooth])
+            fecha_num_original = np.array([f.timestamp() for f in df_hover['fecha']])
+            
+            # Interpolar para obtener la posición exacta de la curva en cada fecha
+            interp_func = interp1d(fecha_num_smooth, enfermos_smooth, kind='cubic', fill_value='extrapolate')
+            y_positions = interp_func(fecha_num_original)
+            # Asegurar valores positivos
+            y_positions = np.maximum(y_positions, 0.1)
+        except:
+            # Si falla, usar valores reales
+            y_positions = df_hover['Enfermos'].values.copy()
+            if y_positions.max() == 0:
+                y_positions = np.ones(len(df_hover)) * 0.5
+    else:
+        # Si no hay curva, usar valores reales
+        y_positions = df_hover['Enfermos'].values.copy()
+        if y_positions.max() == 0:
+            y_positions = np.ones(len(df_hover)) * 0.5
     
-    # Si todos los valores son 0, usar una posición pequeña pero visible
-    if y_positions.max() == 0:
-        y_positions = np.ones(len(df_hover)) * 0.5
-    
-    # Crear el texto del hover con TODOS los valores REALES
+    # Crear el texto del hover con TODOS los valores REALES del archivo
     hover_texts = []
     for _, row in df_hover.iterrows():
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
@@ -491,15 +505,15 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         hover_texts.append(texto)
     
-    # Trace invisible CON hover en la MISMA POSICIÓN que la curva
+    # Trace invisible CON hover en la POSICIÓN EXACTA DE LA CURVA
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=y_positions,  # ✅ POSICIÓN EXACTA - COINCIDENCIA PERFECTA
+        y=y_positions,  # ✅ POSICIÓN EXACTA DE LA CURVA SUAVIZADA
         mode='markers',
         name='',
         marker=dict(
-            size=25,  # Tamaño grande para capturar hover fácilmente
-            color='rgba(255, 0, 0, 0)',  # Completamente transparente
+            size=25,
+            color='rgba(255, 0, 0, 0)',
             opacity=0,
             line=dict(width=0)
         ),
@@ -740,9 +754,9 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
-              - 📅 Fecha (una sola vez al inicio)
-              - 🦙 Alpacas enfermas (valor real del archivo)
+            - **🖱️ Pasa el cursor** sobre la curva roja para ver:
+              - 📅 Fecha
+              - 🦙 Alpacas enfermas (valor REAL del archivo)
               - 🌡️ Temperatura
               - 💧 Precipitación
               - 💨 Viento
