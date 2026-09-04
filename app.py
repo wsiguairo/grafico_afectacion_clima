@@ -280,9 +280,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
-        # ============================================================
-        # SUAVIZADO TIPO EXCEL - PASA EXACTAMENTE POR LOS PUNTOS
-        # ============================================================
+        # Suavizado
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
@@ -298,23 +296,19 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                 y = y[unique_indices]
                 
                 if len(x_tiempo) >= 3:
-                    # Generar puntos para la curva suave (más densidad)
-                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
-                    
-                    # Spline Cúbica que PASA EXACTAMENTE por todos los puntos
+                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 300)
                     k = min(3, len(x_tiempo) - 1)
-                    spline = make_interp_spline(x_tiempo, y, k=k, bc_type='natural')
                     
-                    # Evaluar la spline en los puntos suaves
-                    y_suave_final = spline(x_suave)
+                    spline = make_interp_spline(x_tiempo, y, k=k)
+                    y_suave = spline(x_suave)
+                    spline_extra = UnivariateSpline(x_tiempo, y, s=len(y)*1.5, k=k)
+                    y_suave_extra = spline_extra(x_suave)
+                    y_suave_final = 0.7 * y_suave_extra + 0.3 * y_suave
+                    y_suave_final = np.clip(y_suave_final, 0.1, None)
                     
-                    # Asegurar que no haya valores negativos
-                    y_suave_final = np.clip(y_suave_final, 0, None)
-                    
-                    # Forzar que pase exactamente por los puntos originales
-                    for i, (x_orig, y_orig) in enumerate(zip(x_tiempo, y)):
-                        idx_cercano = np.argmin(np.abs(x_suave - x_orig))
-                        y_suave_final[idx_cercano] = y_orig
+                    window_size = min(5, len(y_suave_final) // 10)
+                    if window_size > 1:
+                        y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
                     
                     fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                     enfermos_smooth = y_suave_final
@@ -362,7 +356,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Precipitación',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
-            hoverinfo='skip'
+            hoverinfo='skip'  # ✅ DESACTIVADO
         ))
 
     # ============================================================
@@ -377,7 +371,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             line=dict(color='#2563EB', width=2.5),
             marker=dict(size=4, color='#2563EB'),
             opacity=0.9,
-            hoverinfo='skip'
+            hoverinfo='skip'  # ✅ DESACTIVADO
         ))
 
     # ============================================================
@@ -391,11 +385,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             name='Viento',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
-            hoverinfo='skip'
+            hoverinfo='skip'  # ✅ DESACTIVADO
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA ESTILO EXCEL (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -411,7 +405,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
             ),
             yaxis='y2',
-            hoverinfo='skip',
+            hoverinfo='skip',  # ✅ DESACTIVADO
             showlegend=True
         ))
 
@@ -429,7 +423,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
-                hoverinfo='skip'
+                hoverinfo='skip'  # ✅ DESACTIVADO
             ))
 
     # ============================================================
@@ -446,19 +440,22 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
-                hoverinfo='skip'
+                hoverinfo='skip'  # ✅ DESACTIVADO
             ))
 
     # ============================================================
     # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
     # ============================================================
+    # Creamos un DataFrame con todos los datos combinados
     df_hover = df.copy()
     
+    # Asegurar que todas las columnas existan
     for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
                 'Enfermos', 'Muertos', 'Abortos']:
         if col not in df_hover.columns:
             df_hover[col] = np.nan
     
+    # Crear el texto del hover con TODOS los valores
     hover_texts = []
     for _, row in df_hover.iterrows():
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
@@ -478,13 +475,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         hover_texts.append(texto)
     
+    # Trace invisible con hover
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=[0] * len(df_hover),
+        y=[0] * len(df_hover),  # Todos en y=0 (invisible)
         mode='markers',
         name='',
         marker=dict(
-            size=0.1,
+            size=0.1,  # Prácticamente invisible
             color='rgba(0,0,0,0)',
             opacity=0
         ),
