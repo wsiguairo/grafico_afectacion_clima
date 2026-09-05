@@ -281,46 +281,99 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO TIPO EXCEL - PASA EXACTAMENTE POR LOS PUNTOS
+        # SUAVIZADO TIPO EXCEL ROBUSTO - PASA EXACTAMENTE POR LOS PUNTOS
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
+        # Filtrar solo datos positivos y no nulos
         df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())].copy()
+        
+        # Verificar que hay suficientes puntos para suavizar
         if len(df_filtrado) >= 3:
             try:
+                # Ordenar por fecha
                 df_filtrado = df_filtrado.sort_values('fecha')
+                
+                # Convertir fechas a números julianos para el spline
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
+                # Eliminar duplicados en x (misma fecha)
                 _, unique_indices = np.unique(x_tiempo, return_index=True)
                 x_tiempo = x_tiempo[unique_indices]
                 y = y[unique_indices]
                 
+                # Verificar que tenemos suficientes puntos únicos
                 if len(x_tiempo) >= 3:
-                    # Generar puntos para la curva suave (más densidad)
-                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
+                    # Crear puntos más densos para una curva suave (1000 puntos)
+                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 1000)
                     
-                    # Spline Cúbica que PASA EXACTAMENTE por todos los puntos
-                    k = min(3, len(x_tiempo) - 1)
+                    # Crear spline cúbica natural que pasa por todos los puntos
+                    k = min(3, len(x_tiempo) - 1)  # Grado del spline (máximo 3 para cúbica)
                     spline = make_interp_spline(x_tiempo, y, k=k, bc_type='natural')
                     
-                    # Evaluar la spline en los puntos suaves
+                    # Evaluar el spline en los puntos suaves
                     y_suave_final = spline(x_suave)
+                    
+                    # FORZAR que pase EXACTAMENTE por los puntos originales
+                    # Esto asegura que la curva respete TODOS los datos reales
+                    for i, (x_orig, y_orig) in enumerate(zip(x_tiempo, y)):
+                        # Encontrar el índice más cercano en x_suave
+                        idx_cercano = np.argmin(np.abs(x_suave - x_orig))
+                        # Forzar el valor exacto del punto original
+                        y_suave_final[idx_cercano] = y_orig
+                        
+                        # También forzar los puntos vecinos para mayor precisión
+                        if idx_cercano > 0:
+                            # Suavizar la transición sin perder el punto exacto
+                            for j in range(1, min(3, idx_cercano + 1)):
+                                distancia = abs(x_suave[idx_cercano - j] - x_orig)
+                                if distancia < 0.5:  # Solo si está muy cerca
+                                    # Interpolación lineal suave hacia el punto
+                                    factor = 1 - (distancia / 0.5) * 0.3
+                                    y_suave_final[idx_cercano - j] = y_orig * factor + y_suave_final[idx_cercano - j] * (1 - factor)
+                        
+                        if idx_cercano < len(y_suave_final) - 1:
+                            for j in range(1, min(3, len(y_suave_final) - idx_cercano)):
+                                distancia = abs(x_suave[idx_cercano + j] - x_orig)
+                                if distancia < 0.5:
+                                    factor = 1 - (distancia / 0.5) * 0.3
+                                    y_suave_final[idx_cercano + j] = y_orig * factor + y_suave_final[idx_cercano + j] * (1 - factor)
                     
                     # Asegurar que no haya valores negativos
                     y_suave_final = np.clip(y_suave_final, 0, None)
                     
-                    # Forzar que pase exactamente por los puntos originales
-                    for i, (x_orig, y_orig) in enumerate(zip(x_tiempo, y)):
-                        idx_cercano = np.argmin(np.abs(x_suave - x_orig))
-                        y_suave_final[idx_cercano] = y_orig
+                    # Suavizado adicional con filtro de media móvil muy ligero
+                    # para eliminar oscilaciones sin perder los puntos exactos
+                    if len(y_suave_final) > 10:
+                        # Filtro muy suave (ventana pequeña) para eliminar ruido
+                        from scipy.ndimage import gaussian_filter1d
+                        y_suave_final = gaussian_filter1d(y_suave_final, sigma=0.5)
+                        
+                        # Volver a forzar los puntos originales después del filtro
+                        for i, (x_orig, y_orig) in enumerate(zip(x_tiempo, y)):
+                            idx_cercano = np.argmin(np.abs(x_suave - x_orig))
+                            y_suave_final[idx_cercano] = y_orig
                     
+                    # Crear las series de tiempo suavizadas
                     fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                     enfermos_smooth = y_suave_final
-            except:
+                    
+            except Exception as e:
+                # Si falla el suavizado, usar los datos sin suavizar
+                print(f"Error en suavizado: {e}")
                 pass
         
+        # Si no se pudo suavizar, usar los datos originales
+        if len(enfermos_smooth) == 0:
+            # Usar los datos reales sin suavizar
+            df_temp = df[df['Enfermos'] > 0].copy()
+            if not df_temp.empty:
+                fecha_smooth = df_temp['fecha'].values
+                enfermos_smooth = df_temp['Enfermos'].values
+        
+        # Guardar en atributos del DataFrame
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
 
