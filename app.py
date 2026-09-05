@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CON FECHA ÚNICA ROBUSTA
+# app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# ESTILOS RESPONSIVE CON LOGO SENAMHI
+# ESTILOS RESPONSIVE - LOGO SENAMHI
 # ============================================================
 st.markdown("""
 <style>
@@ -281,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO CON CÓDIGO PROPORCIONADO
+        # SUAVIZADO - CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -324,7 +324,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA ROBUSTA
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
