@@ -281,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO TIPO EXCEL - PASA EXACTAMENTE POR LOS PUNTOS
+        # SUAVIZADO CON CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -290,34 +290,27 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         if len(df_filtrado) >= 3:
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
+                
+                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
-                _, unique_indices = np.unique(x_tiempo, return_index=True)
-                x_tiempo = x_tiempo[unique_indices]
-                y = y[unique_indices]
+                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
+                spline = make_interp_spline(x_tiempo, y, k=4)
+                y_suave = spline(x_suave)
                 
-                if len(x_tiempo) >= 3:
-                    # Generar puntos para la curva suave (estilo Excel)
-                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
-                    
-                    # Spline Cúbica que PASA EXACTAMENTE por todos los puntos
-                    k = min(3, len(x_tiempo) - 1)
-                    spline = make_interp_spline(x_tiempo, y, k=k, bc_type='natural')
-                    
-                    # Evaluar la spline en los puntos suaves
-                    y_suave_final = spline(x_suave)
-                    
-                    # Asegurar que no haya valores negativos
-                    y_suave_final = np.clip(y_suave_final, 0, None)
-                    
-                    # Forzar que pase exactamente por los puntos originales
-                    for i, (x_orig, y_orig) in enumerate(zip(x_tiempo, y)):
-                        idx_cercano = np.argmin(np.abs(x_suave - x_orig))
-                        y_suave_final[idx_cercano] = y_orig
-                    
-                    fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
-                    enfermos_smooth = y_suave_final
+                spline_extra = UnivariateSpline(x_tiempo, y, s=len(y)*1.5, k=4)
+                y_suave_extra = spline_extra(x_suave)
+                
+                y_suave_final = 0.7 * y_suave_extra + 0.3 * y_suave
+                y_suave_final = np.clip(y_suave_final, 0.1, None)
+                
+                window_size = min(5, len(y_suave_final) // 10)
+                if window_size > 1:
+                    y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
+                
+                fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
+                enfermos_smooth = y_suave_final
             except:
                 pass
         
@@ -395,7 +388,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA ESTILO EXCEL (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
