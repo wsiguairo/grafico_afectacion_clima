@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - ZOOM AUTOMÁTICO 4 MESES (ROBUSTO)
+# app.py - VERSIÓN SIGUAIRO - ZOOM AUTOMÁTICO 4 MESES (CORREGIDO)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,7 +8,6 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
-from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
 
@@ -324,7 +323,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# CÁLCULO AUTOMÁTICO DE ZOOM (ÚLTIMOS 4 MESES) - VERSIÓN ROBUSTA
+# CÁLCULO AUTOMÁTICO DE ZOOM (ÚLTIMOS 4 MESES) - CORREGIDO
 # ============================================================
 def calcular_rango_zoom_automatico(df):
     """
@@ -340,22 +339,15 @@ def calcular_rango_zoom_automatico(df):
     if pd.isna(fecha_max):
         return None, None
     
-    # Convertir a datetime si es necesario
-    if not isinstance(fecha_max, pd.Timestamp):
-        fecha_max = pd.Timestamp(fecha_max)
-    
     # Obtener el primer día del mes de la fecha máxima
-    primer_dia_mes_max = fecha_max.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    primer_dia_mes_max = fecha_max.replace(day=1, hour=0, minute=0, second=0)
     
-    # Calcular el inicio: 4 meses atrás desde el primer día del mes actual
-    # Restamos 3 meses para obtener 4 meses completos (incluyendo el mes actual)
+    # Calcular el inicio: 3 meses atrás desde el primer día del mes actual
+    # para obtener exactamente 4 meses (incluyendo el mes actual)
     fecha_inicio = primer_dia_mes_max - pd.DateOffset(months=3)
     
     # Asegurar que no sea anterior al mínimo de los datos
     fecha_min_datos = df['fecha'].min()
-    if not isinstance(fecha_min_datos, pd.Timestamp):
-        fecha_min_datos = pd.Timestamp(fecha_min_datos)
-    
     if fecha_inicio < fecha_min_datos:
         fecha_inicio = fecha_min_datos
     
@@ -366,32 +358,11 @@ def calcular_rango_zoom_automatico(df):
     else:
         fecha_fin = fecha_max.replace(month=fecha_max.month + 1, day=1) - pd.Timedelta(days=1)
     
-    # Asegurar que fecha_fin no sea anterior a fecha_inicio
-    if fecha_fin < fecha_inicio:
-        fecha_fin = fecha_inicio + pd.DateOffset(months=3)
+    # Si el rango es muy pequeño (menos de 4 meses de datos), ajustar
+    if (fecha_fin - fecha_inicio).days < 60:  # menos de 2 meses
+        fecha_inicio = fecha_min_datos
     
     return fecha_inicio, fecha_fin
-
-# ============================================================
-# FUNCIÓN PARA GENERAR TICKS DE MESES
-# ============================================================
-def generar_ticks_meses(df, fecha_inicio, fecha_fin):
-    """
-    Genera los ticks mensuales para el eje X entre fecha_inicio y fecha_fin
-    """
-    if df is None or df.empty:
-        return [], []
-    
-    # Generar rango de meses entre fecha_inicio y fecha_fin
-    meses = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
-    
-    # Si no hay meses, usar el mínimo y máximo de los datos
-    if len(meses) == 0:
-        meses = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-    
-    tick_labels = [fecha_espanol(f) for f in meses]
-    
-    return meses, tick_labels
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
@@ -644,7 +615,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (ÚLTIMOS 4 MESES)
+    # ZOOM INICIAL - AUTOMÁTICO (ÚLTIMOS 4 MESES) - CORREGIDO
     # ============================================================
     if zoom_meses is None:
         # Calcular automáticamente los últimos 4 meses
@@ -668,7 +639,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     # TICKS - Generar ticks mensuales en el rango de zoom
     # ============================================================
-    fecha_ticks, tick_labels = generar_ticks_meses(df, fecha_inicio_zoom, fecha_fin_zoom)
+    # Generar ticks mensuales para todo el rango de datos
+    fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
     
     # Configurar tamaños según dispositivo
     if es_movil:
@@ -789,6 +762,12 @@ def main():
                 st.rerun()
         
         st.markdown("---")
+        
+        # Mostrar información del rango actual
+        if 'df' in locals() and df is not None and not df.empty:
+            fecha_min = df['fecha'].min().strftime('%d/%m/%Y')
+            fecha_max = df['fecha'].max().strftime('%d/%m/%Y')
+            st.info(f"📅 Datos: {fecha_min} - {fecha_max}")
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
