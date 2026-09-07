@@ -323,38 +323,43 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# CÁLCULO AUTOMÁTICO DE ZOOM (ÚLTIMOS 4 MESES)
+# ZOOM INICIAL - VERSIÓN DINÁMICA PARA DATOS FUTUROS
 # ============================================================
-def calcular_rango_zoom_automatico(df):
-    """
-    Calcula el rango de fechas para mostrar exactamente los últimos 4 meses completos.
-    """
-    if df is None or df.empty:
-        return None, None
+fecha_inicio = df['fecha'].min()
+fecha_fin = df['fecha'].max()
+
+if zoom_meses is None:
+    año_datos = df['fecha'].max().year
+    mes_inicio = 6  # Junio
+    mes_fin = 9     # Septiembre
     
-    fecha_max = df['fecha'].max()
+    fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=mes_inicio, day=1)
+    fecha_fin_zoom = pd.Timestamp(year=año_datos, month=mes_fin, day=30)
     
-    if pd.isna(fecha_max):
-        return None, None
+    # Verificar si hay datos en el rango
+    datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
     
-    # Obtener el primer día del mes de la fecha máxima
-    primer_dia_mes_max = fecha_max.replace(day=1, hour=0, minute=0, second=0)
-    
-    # Calcular el inicio: 3 meses atrás desde el primer día del mes actual
-    fecha_inicio = primer_dia_mes_max - pd.DateOffset(months=3)
-    
-    # Calcular el último día del mes de la fecha máxima
-    if fecha_max.month == 12:
-        fecha_fin = fecha_max.replace(year=fecha_max.year + 1, month=1, day=1) - pd.Timedelta(days=1)
+    if datos_en_rango.empty:
+        # Si no hay datos en el rango, mostrar últimos 6 meses
+        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+        fecha_fin_zoom = df['fecha'].max()
     else:
-        fecha_fin = fecha_max.replace(month=fecha_max.month + 1, day=1) - pd.Timedelta(days=1)
-    
-    # Debug: imprimir fechas calculadas
-    print(f"DEBUG - fecha_max: {fecha_max}")
-    print(f"DEBUG - fecha_inicio: {fecha_inicio}")
-    print(f"DEBUG - fecha_fin: {fecha_fin}")
-    
-    return fecha_inicio, fecha_fin
+        # Verificar si hay datos después del rango
+        datos_despues = df[df['fecha'] > fecha_fin_zoom]
+        if not datos_despues.empty:
+            # Extender hasta el último dato disponible
+            fecha_fin_zoom = df['fecha'].max()
+            
+            # Si hay muchos datos después, mostrar un rango más amplio
+            meses_despues = (df['fecha'].max() - fecha_fin_zoom).days / 30
+            if meses_despues > 3:
+                # Si hay más de 3 meses después, ajustar el inicio
+                fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+else:
+    fecha_fin_zoom = df['fecha'].max()
+    fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
+    if fecha_inicio_zoom < df['fecha'].min():
+        fecha_inicio_zoom = df['fecha'].min()
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
