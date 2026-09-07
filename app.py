@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (MODIFICADA - ÚLTIMOS 4 MESES SIEMPRE)
+# app.py - VERSIÓN SIGUAIRO (CORREGIDA - ÚLTIMOS 4 MESES)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -281,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO - CÓDIGO PROPORCIONADO
+        # SUAVIZADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -291,7 +291,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
-                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -324,7 +323,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
+# FUNCIÓN PARA CREAR LA GRÁFICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -346,7 +345,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
+    # PRECIPITACIÓN
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -359,7 +358,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
+    # TEMPERATURA
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -374,7 +373,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - SIN HOVER (hoverinfo='skip')
+    # VIENTO
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -388,7 +387,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -409,7 +408,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
+    # ALPACAS MUERTAS
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -426,7 +425,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - SIN HOVER (hoverinfo='skip')
+    # ABORTOS
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -443,7 +442,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
+    # TRACE INVISIBLE CON TODOS LOS DATOS
     # ============================================================
     df_hover = df.copy()
     
@@ -494,7 +493,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
+    # IMÁGENES PEQUEÑAS - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -572,7 +571,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE ÚLTIMOS 4 MESES)
+    # ZOOM INICIAL - ÚLTIMOS 4 MESES
     # ============================================================
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
@@ -743,4 +742,74 @@ def main():
               - 💀 Muertos
               - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
-            - **🔍 Zoom**: Rued
+            - **🔍 Zoom**: Rueda del mouse
+            """)
+        
+        if st.button("🔄 Actualizar datos", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
+    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
+    SHEET_NAME_SINTOMAS = 'sintomas'
+    SHEET_NAME_TEMPERATURAS = 'temperaturas'
+
+    os.makedirs('imagenes', exist_ok=True)
+    
+    IMAGES = {
+        'enferma': 'imagenes/enferma.png',
+        'muerta': 'imagenes/muerta.png',
+        'aborto': 'imagenes/aborto.png'
+    }
+
+    zoom_meses = st.session_state.get('zoom_periodo', None)
+    es_movil = False
+
+    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
+        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+
+    if df is not None and not df.empty:
+        with st.spinner('📊 Generando gráfica interactiva...'):
+            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
+
+        if fig is not None:
+            st.plotly_chart(fig, use_container_width=True, config={
+                'displayModeBar': True,
+                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
+                'displaylogo': False,
+                'scrollZoom': True,
+                'responsive': True,
+                'modeBarButtonsToAdd': [
+                    'zoom2d',
+                    'pan2d',
+                    'select2d',
+                    'lasso2d',
+                    'zoomIn2d',
+                    'zoomOut2d',
+                    'autoScale2d',
+                    'resetScale2d'
+                ]
+            })
+
+            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)
+                else:
+                    col1, col2, col3 = st.columns(3)
+                
+                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+
+                st.dataframe(df, use_container_width=True)
+
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
+        else:
+            st.error("❌ Error al generar la gráfica")
+    else:
+        st.error("❌ No se pudieron cargar los datos")
+
+if __name__ == "__main__":
+    main()
