@@ -572,19 +572,36 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES)
+    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES COMPLETOS)
     # ============================================================
     fecha_fin = df['fecha'].max()
     fecha_inicio = df['fecha'].min()
     
-    # Calcular inicio del zoom: siempre 4 meses antes de la fecha más reciente
-    fecha_inicio_zoom = fecha_fin - pd.DateOffset(months=4)
+    # Obtener el mes y año de la fecha más reciente
+    mes_fin = fecha_fin.month
+    año_fin = fecha_fin.year
+    
+    # Calcular el mes de inicio (4 meses atrás)
+    mes_inicio = mes_fin - 3  # Restamos 3 porque incluimos el mes actual
+    año_inicio = año_fin
+    
+    if mes_inicio <= 0:
+        mes_inicio += 12
+        año_inicio -= 1
+    
+    # Crear fecha de inicio como el primer día del mes calculado
+    fecha_inicio_zoom = pd.Timestamp(year=año_inicio, month=mes_inicio, day=1)
+    
+    # Crear fecha de fin como el último día del mes más reciente
+    # Para asegurar que se vea todo el mes
+    if mes_fin == 12:
+        fecha_fin_zoom = pd.Timestamp(year=año_fin, month=12, day=31)
+    else:
+        fecha_fin_zoom = pd.Timestamp(year=año_fin, month=mes_fin+1, day=1) - pd.Timedelta(days=1)
     
     # Si el inicio calculado es anterior al inicio de datos, ajustar
     if fecha_inicio_zoom < fecha_inicio:
         fecha_inicio_zoom = fecha_inicio
-    
-    fecha_fin_zoom = fecha_fin
 
     # ============================================================
     # TICKS
