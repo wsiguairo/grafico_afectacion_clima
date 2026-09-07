@@ -605,18 +605,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
-    # TICKS
+    # TICKS - SOLO PARA EL RANGO DE ZOOM
     # ============================================================
+    # Crear ticks solo para los meses dentro del rango de zoom
+    fecha_ticks = pd.date_range(start=fecha_inicio_zoom, end=fecha_fin_zoom, freq='MS')
+    # Filtrar ticks que estén dentro del rango de datos reales
+    fecha_ticks = [f for f in fecha_ticks if f >= df['fecha'].min() and f <= df['fecha'].max()]
+    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+    
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
@@ -739,8 +741,7 @@ def main():
             - **🖱️ Pasa el cursor** sobre la gráfica para ver:
               - 📅 Fecha (una sola vez al inicio)
               - 🦙 Alpacas enfermas (valor real)
-              - 🌡️ Temperatura
-              - 💧 Precipitación
+              - 🌡️ Temperatura              - 💧 Precipitación
               - 💨 Viento
               - 💀 Muertos
               - ⚠️ Abortos
