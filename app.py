@@ -1,4 +1,5 @@
-# app.py - VERSIÓN AUTOMATIZADA PARA DATOS FUTUROS
+# app.py - VERSIÓN SIGUAIRO.txt
+# app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,7 +9,6 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
-from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
 
@@ -197,7 +197,7 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIONES DE PROCESAMIENTO - AUTOMATIZADAS
+# FUNCIONES DE PROCESAMIENTO
 # ============================================================
 @st.cache_data(ttl=10)
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
@@ -208,26 +208,14 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df_sintomas = pd.read_csv(url_sintomas)
         df_temperaturas = pd.read_csv(url_temperaturas)
 
-        # ============================================================
-        # DETECCIÓN AUTOMÁTICA DE COLUMNAS - DATOS FUTUROS
-        # ============================================================
         def encontrar_columna_fecha(df):
-            """Encuentra automáticamente la columna de fecha"""
             for col in df.columns:
                 col_lower = col.lower().strip()
-                if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo', 'fech', 'día', 'dia']):
+                if any(palabra in col_lower for palabra in ['fecha', 'date', 'tiempo']):
                     return col
-            # Si no encuentra, busca la primera columna con formato fecha
-            for col in df.columns:
-                try:
-                    pd.to_datetime(df[col], errors='raise')
-                    return col
-                except:
-                    continue
             return df.columns[0]
 
         def encontrar_columna_por_patron(df, patrones):
-            """Encuentra columnas por patrones de texto"""
             for col in df.columns:
                 col_lower = col.lower().strip()
                 for patron in patrones:
@@ -235,66 +223,46 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                         return col
             return None
 
-        def estandarizar_columnas_automatico(df, mapeo_general):
-            """Estandariza columnas con mapeo automático"""
-            for nuevo_nombre, patrones in mapeo_general.items():
+        def estandarizar_columnas(df, mapeo):
+            for nuevo_nombre, patrones in mapeo.items():
                 col_existente = encontrar_columna_por_patron(df, patrones)
                 if col_existente and col_existente != nuevo_nombre:
                     df.rename(columns={col_existente: nuevo_nombre}, inplace=True)
             return df
 
-        # ============================================================
-        # DETECCIÓN DE FECHAS
-        # ============================================================
         col_fecha_sintomas = encontrar_columna_fecha(df_sintomas)
         col_fecha_temp = encontrar_columna_fecha(df_temperaturas)
 
-        # ============================================================
-        # MAPEO AUTOMÁTICO - FLEXIBLE PARA DATOS FUTUROS
-        # ============================================================
         mapeo_sintomas = {
-            'Enfermos': ['enfermos', 'enfermo', 'enfermas', 'enfermedad', 'enferm', 'enfer'],
-            'Muertos': ['muertos', 'muerto', 'muertas', 'fallecidos', 'fallecido', 'falleci', 'muerte', 'mor'],
-            'Abortos': ['abortos', 'aborto', 'abortadas', 'abortad', 'perdida', 'perdidas']
+            'Enfermos': ['enfermos', 'enfermo', 'enfermas'],
+            'Muertos': ['muertos', 'muerto', 'muertas', 'fallecidos'],
+            'Abortos': ['abortos', 'aborto', 'abortadas']
         }
-        df_sintomas = estandarizar_columnas_automatico(df_sintomas, mapeo_sintomas)
+        df_sintomas = estandarizar_columnas(df_sintomas, mapeo_sintomas)
 
         mapeo_temp = {
-            'Temperaturas minimas  (°C)': ['temperatura minima', 'temp min', 'tmin', 'temp_min', 'temperatura mínima', 'min temp'],
-            'Vel. viento (Km/h)': ['viento', 'velocidad viento', 'wind', 'vel_viento', 'velocidad del viento'],
-            'Precipitacion ': ['precipitacion', 'precipitación', 'lluvia', 'precip', 'pp', 'precipitation']
+            'Temperaturas minimas  (°C)': ['temperatura minima', 'temp min', 'tmin'],
+            'Vel. viento (Km/h)': ['viento', 'velocidad viento', 'wind'],
+            'Precipitacion ': ['precipitacion', 'precipitación', 'lluvia']
         }
-        df_temperaturas = estandarizar_columnas_automatico(df_temperaturas, mapeo_temp)
+        df_temperaturas = estandarizar_columnas(df_temperaturas, mapeo_temp)
 
-        # ============================================================
-        # CONVERSIÓN DE FECHAS
-        # ============================================================
         df_sintomas['fecha'] = pd.to_datetime(df_sintomas[col_fecha_sintomas], errors='coerce')
         df_temperaturas['fecha'] = pd.to_datetime(df_temperaturas[col_fecha_temp], errors='coerce')
 
-        # Eliminar filas sin fecha
         df_sintomas = df_sintomas.dropna(subset=['fecha'])
         df_temperaturas = df_temperaturas.dropna(subset=['fecha'])
 
-        # ============================================================
-        # FILTRAR COLUMNAS DISPONIBLES
-        # ============================================================
         columnas_sintomas = ['fecha'] + [col for col in ['Enfermos', 'Muertos', 'Abortos'] if col in df_sintomas.columns]
         columnas_temp = ['fecha'] + [col for col in ['Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 'Precipitacion '] if col in df_temperaturas.columns]
         
         df_sintomas = df_sintomas[columnas_sintomas]
         df_temperaturas = df_temperaturas[columnas_temp]
 
-        # ============================================================
-        # MERGE DE DATOS
-        # ============================================================
         df = pd.merge(df_sintomas, df_temperaturas, on='fecha', how='outer')
         df = df.sort_values(by='fecha').reset_index(drop=True)
         df = df.dropna(subset=['fecha'])
 
-        # ============================================================
-        # CONVERSIÓN DE TIPOS DE DATOS
-        # ============================================================
         columnas_numericas = ['Enfermos', 'Muertos', 'Abortos', 'Temperaturas minimas  (°C)', 
                             'Vel. viento (Km/h)', 'Precipitacion ']
         for col in columnas_numericas:
@@ -303,9 +271,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                 if col in ['Enfermos', 'Muertos', 'Abortos']:
                     df[col] = df[col].fillna(0)
 
-        # ============================================================
-        # AGRUPACIÓN POR FECHA - AUTOMÁTICA
-        # ============================================================
         agg_dict = {}
         for col in ['Enfermos', 'Muertos', 'Abortos']:
             if col in df.columns:
@@ -314,65 +279,41 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             if col in df.columns:
                 agg_dict[col] = 'mean'
         
-        if agg_dict:
-            df = df.groupby('fecha').agg(agg_dict).reset_index()
+        df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO AUTOMÁTICO - ADAPTATIVO
+        # SUAVIZADO - CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
-        # Verificar si hay datos de enfermos
-        if 'Enfermos' in df.columns:
-            df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())].copy()
-            
-            # Si hay pocos datos, ajustar automáticamente
-            min_datos = max(2, len(df) // 10)
-            
-            if len(df_filtrado) >= min_datos:
-                try:
-                    df_filtrado = df_filtrado.sort_values('fecha')
-                    
-                    # --- Lógica de la línea suavizada ---
-                    x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
-                    y = df_filtrado['Enfermos'].values
-                    
-                    # Ajustar puntos de suavizado según cantidad de datos
-                    n_puntos = min(500, max(50, len(x_tiempo) * 10))
-                    x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), n_puntos)
-                    
-                    # Ajustar grado del spline según datos
-                    k_grado = min(4, max(2, len(x_tiempo) // 5))
-                    
-                    try:
-                        spline = make_interp_spline(x_tiempo, y, k=k_grado)
-                        y_suave = spline(x_suave)
-                    except:
-                        # Fallback a spline más simple
-                        from scipy.interpolate import CubicSpline
-                        spline = CubicSpline(x_tiempo, y, bc_type='natural')
-                        y_suave = spline(x_suave)
-                    
-                    # Ajustar factor de suavizado según datos
-                    s_factor = max(1.0, min(3.0, len(y) / 10))
-                    spline_extra = UnivariateSpline(x_tiempo, y, s=len(y) * s_factor, k=k_grado)
-                    y_suave_extra = spline_extra(x_suave)
-                    
-                    # Combinar suavizados con pesos adaptativos
-                    peso_suave = 0.7 if len(y) > 20 else 0.5
-                    y_suave_final = (1 - peso_suave) * y_suave_extra + peso_suave * y_suave
-                    y_suave_final = np.clip(y_suave_final, 0.1, None)
-                    
-                    # Suavizado adaptativo según datos
-                    window_size = min(7, max(3, len(y_suave_final) // 20))
-                    if window_size > 1 and len(y_suave_final) > window_size:
-                        y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
-                    
-                    fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
-                    enfermos_smooth = y_suave_final
-                except Exception as e:
-                    st.warning(f"Suavizado no aplicado: {str(e)}")
+        df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())].copy()
+        if len(df_filtrado) >= 3:
+            try:
+                df_filtrado = df_filtrado.sort_values('fecha')
+                
+                # --- Lógica de la línea suavizada ---
+                x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
+                y = df_filtrado['Enfermos'].values
+                
+                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
+                spline = make_interp_spline(x_tiempo, y, k=4)
+                y_suave = spline(x_suave)
+                
+                spline_extra = UnivariateSpline(x_tiempo, y, s=len(y)*1.5, k=4)
+                y_suave_extra = spline_extra(x_suave)
+                
+                y_suave_final = 0.7 * y_suave_extra + 0.3 * y_suave
+                y_suave_final = np.clip(y_suave_final, 0.1, None)
+                
+                window_size = min(5, len(y_suave_final) // 10)
+                if window_size > 1:
+                    y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
+                
+                fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
+                enfermos_smooth = y_suave_final
+            except:
+                pass
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
@@ -384,7 +325,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - ZOOM AUTOMÁTICO
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -406,7 +347,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN
+    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -419,7 +360,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA
+    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -434,7 +375,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO
+    # VIENTO - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -448,7 +389,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -469,7 +410,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS
+    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -486,7 +427,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS
+    # ABORTOS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -503,7 +444,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON HOVER
+    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
     # ============================================================
     df_hover = df.copy()
     
@@ -554,7 +495,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -611,13 +552,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                         })
 
     # ============================================================
-    # RANGOS AUTOMÁTICOS
+    # RANGOS
     # ============================================================
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
     max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 10
     max_wind = df['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty else 0
 
-    y1_min = min_temp * 1.2 if min_temp < 0 else min(0, min_temp * 0.8)
+    y1_min = min_temp * 1.2 if min_temp < 0 else -5
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
     max_y2 = 1
@@ -632,38 +573,35 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - DETECCIÓN AUTOMÁTICA DE ÚLTIMOS DATOS
+    # ZOOM INICIAL - SOLO JUNIO, JULIO, AGOSTO, SEPTIEMBRE
     # ============================================================
     if zoom_meses is None:
-        # Detectar automáticamente el rango de datos
-        fecha_min = df['fecha'].min()
-        fecha_max = df['fecha'].max()
-        años_diferencia = (fecha_max - fecha_min).days / 365.25
+        año_datos = df['fecha'].max().year
         
-        if años_diferencia <= 1:
-            # Si hay menos de 1 año de datos, mostrar desde el inicio
-            fecha_inicio_zoom = fecha_min
-            fecha_fin_zoom = fecha_max
+        # Rango fijo: 1 de Junio al 30 de Septiembre
+        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
+        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
+        
+        # Verificar si realmente hay datos en ese rango
+        datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
+        
+        if datos_en_rango.empty:
+            # Si no hay datos, mostrar los últimos 4 meses disponibles
+            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
+            fecha_fin_zoom = df['fecha'].max()
         else:
-            # Si hay más de 1 año, mostrar los últimos 4 meses por defecto
-            fecha_inicio_zoom = fecha_max - pd.DateOffset(months=4)
-            fecha_fin_zoom = fecha_max
+            # Ajustar el rango exacto a los datos disponibles dentro de junio-septiembre
+            # Si los datos empiezan después del 1 de junio, ajustar el inicio
+            min_fecha = datos_en_rango['fecha'].min()
+            if min_fecha > fecha_inicio_zoom:
+                fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
             
-            # Ajustar si no hay datos en ese período
-            datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-            if datos_en_rango.empty:
-                # Si no hay datos, buscar el rango con más datos
-                meses_a_mostrar = 4
-                while meses_a_mostrar <= 12:
-                    fecha_inicio_zoom = fecha_max - pd.DateOffset(months=meses_a_mostrar)
-                    datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-                    if not datos_en_rango.empty:
-                        break
-                    meses_a_mostrar += 2
-                if datos_en_rango.empty:
-                    fecha_inicio_zoom = fecha_min
+            # Si los datos terminan antes del 30 de septiembre, ajustar el fin
+            max_fecha = datos_en_rango['fecha'].max()
+            if max_fecha < fecha_fin_zoom:
+                fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
     else:
-        # Zoom por período seleccionado por el usuario
+        # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
@@ -680,16 +618,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         title_font_size = 11
         height = 500
     else:
-        # Ajustar frecuencia de ticks según cantidad de datos
-        total_meses = (df['fecha'].max() - df['fecha'].min()).days / 30
-        if total_meses > 24:
-            freq = '3MS'  # Trimestral
-        elif total_meses > 12:
-            freq = '2MS'  # Bimestral
-        else:
-            freq = 'MS'   # Mensual
-        
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq=freq)
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
@@ -782,8 +711,7 @@ def main():
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
-        <p style="font-size: clamp(0.8rem, 2vw, 1rem); color: #666;">Actualización automática con datos futuros</p>
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
     
@@ -821,33 +749,16 @@ def main():
               - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
-            - **🔄 Adaptable**: La gráfica se ajusta automáticamente a nuevos datos
-            """)
-        
-        with st.expander("📋 Configuración de datos", expanded=False):
-            st.markdown("""
-            **Columnas automáticas:**
-            - Fecha: detecta 'fecha', 'date', 'tiempo'
-            - Enfermos: 'enfermos', 'enfermo', 'enfermas'
-            - Muertos: 'muertos', 'muerto', 'fallecidos'
-            - Abortos: 'abortos', 'aborto', 'perdidas'
-            - Temperatura: 'temperatura minima', 'tmin'
-            - Precipitación: 'precipitacion', 'lluvia'
-            - Viento: 'viento', 'wind'
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
-    # ============================================================
-    # CONFIGURACIÓN - GOOGLE SHEETS
-    # ============================================================
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
     SHEET_NAME_SINTOMAS = 'sintomas'
     SHEET_NAME_TEMPERATURAS = 'temperaturas'
 
-    # Crear directorio de imágenes
     os.makedirs('imagenes', exist_ok=True)
     
     IMAGES = {
@@ -856,21 +767,6 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
-    # ============================================================
-    # INFORMACIÓN DE ACTUALIZACIÓN
-    # ============================================================
-    ahora = datetime.now()
-    st.sidebar.markdown(f"""
-    ---
-    <div style="text-align: center; font-size: 0.8rem; color: #888;">
-        🔄 Actualización automática<br>
-        <span style="font-size: 0.7rem;">Última verificación: {ahora.strftime('%d/%m/%Y %H:%M')}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ============================================================
-    # CARGA DE DATOS Y VISUALIZACIÓN
-    # ============================================================
     zoom_meses = st.session_state.get('zoom_periodo', None)
     es_movil = False
 
@@ -900,41 +796,26 @@ def main():
                 ]
             })
 
-            # ============================================================
-            # ESTADÍSTICAS AUTOMÁTICAS
-            # ============================================================
             with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                # Crear columnas dinámicamente según datos disponibles
-                columnas_estadisticas = []
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)
+                else:
+                    col1, col2, col3 = st.columns(3)
+                
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    columnas_estadisticas.append(("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}"))
+                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
                 if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    columnas_estadisticas.append(("💀 Total Muertos", f"{df['Muertos'].sum():.0f}"))
+                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
                 if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    columnas_estadisticas.append(("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}"))
-                
-                # Mostrar estadísticas en columnas
-                if columnas_estadisticas:
-                    cols = st.columns(len(columnas_estadisticas))
-                    for idx, (label, value) in enumerate(columnas_estadisticas):
-                        cols[idx].metric(label, value)
-                
-                # Mostrar información adicional de datos
-                st.markdown(f"""
-                <div style="font-size: 0.9rem; color: #666; padding: 10px 0;">
-                    <strong>📅 Rango de datos:</strong> {df['fecha'].min().strftime('%d/%m/%Y')} - {df['fecha'].max().strftime('%d/%m/%Y')}
-                    <br>
-                    <strong>📊 Total de registros:</strong> {len(df)}
-                </div>
-                """, unsafe_allow_html=True)
-                
+                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! La visualización se adapta automáticamente a nuevos datos futuros.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos. Verifica que el Google Sheet sea accesible.")
+        st.error("❌ No se pudieron cargar los datos")
 
 if __name__ == "__main__":
     main()
