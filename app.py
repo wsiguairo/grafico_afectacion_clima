@@ -572,7 +572,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (ÚLTIMOS 4 MESES)
+    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES)
     # ============================================================
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
@@ -584,10 +584,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # Asegurar que no nos pasemos del inicio de los datos
     if fecha_inicio_zoom < fecha_inicio:
         fecha_inicio_zoom = fecha_inicio
-
-    # Ajustar para que el rango sea exactamente 4 meses si hay suficientes datos
-    if (fecha_fin_zoom - fecha_inicio_zoom).days < 120:  # Menos de 4 meses
-        fecha_inicio_zoom = fecha_fin - pd.DateOffset(months=4)
 
     # ============================================================
     # TICKS
