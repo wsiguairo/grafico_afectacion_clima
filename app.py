@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA (ÚLTIMOS 4 MESES EXACTOS)
+# app.py - VERSIÓN SIGUAIRO - ZOOM AUTOMÁTICO 4 MESES
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -281,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO
+        # SUAVIZADO - CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -291,6 +291,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
+                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -323,7 +324,46 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
+# CÁLCULO AUTOMÁTICO DE ZOOM (ÚLTIMOS 4 MESES)
+# ============================================================
+def calcular_rango_zoom_automatico(df):
+    """
+    Calcula el rango de fechas para mostrar los últimos 4 meses completos.
+    Si el mes actual tiene al menos 1 día de dato, se incluye completo.
+    """
+    if df is None or df.empty:
+        return None, None
+    
+    # Obtener la fecha máxima de los datos
+    fecha_max = df['fecha'].max()
+    
+    # Si no hay datos, retornar None
+    if pd.isna(fecha_max):
+        return None, None
+    
+    # Calcular el inicio: 4 meses atrás desde la fecha máxima
+    # Usamos el primer día del mes de la fecha máxima
+    primer_dia_mes_max = fecha_max.replace(day=1)
+    
+    # Restamos 3 meses para obtener 4 meses completos (incluyendo el mes actual)
+    fecha_inicio = primer_dia_mes_max - pd.DateOffset(months=3)
+    
+    # Asegurar que no sea anterior al mínimo de los datos
+    fecha_min_datos = df['fecha'].min()
+    if fecha_inicio < fecha_min_datos:
+        fecha_inicio = fecha_min_datos
+    
+    # La fecha fin es el último día del mes de la fecha máxima
+    # Para incluir todo el mes aunque solo tenga 1 día
+    if fecha_max.month == 12:
+        fecha_fin = fecha_max.replace(year=fecha_max.year + 1, month=1, day=1) - pd.DateOffset(days=1)
+    else:
+        fecha_fin = fecha_max.replace(month=fecha_max.month + 1, day=1) - pd.DateOffset(days=1)
+    
+    return fecha_inicio, fecha_fin
+
+# ============================================================
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -345,7 +385,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN
+    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -358,7 +398,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA
+    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -373,7 +413,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO
+    # VIENTO - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -387,7 +427,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -408,7 +448,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS
+    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -425,7 +465,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS
+    # ABORTOS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -442,7 +482,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS
+    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
     # ============================================================
     df_hover = df.copy()
     
@@ -493,7 +533,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS - SOLO EN PC
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -571,37 +611,23 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - ÚLTIMOS 4 MESES EXACTOS
+    # ZOOM INICIAL - AUTOMÁTICO (ÚLTIMOS 4 MESES)
     # ============================================================
-    # Si no hay zoom definido por el usuario, usar automático de 4 meses
+    # Si no hay zoom personalizado (None = automático), usar zoom automático
     if zoom_meses is None:
-        # Obtener la fecha más reciente con datos
-        fecha_mas_reciente = df['fecha'].max()
+        # Calcular automáticamente los últimos 4 meses
+        fecha_inicio_zoom, fecha_fin_zoom = calcular_rango_zoom_automatico(df)
         
-        # Obtener el primer día del mes más reciente
-        primer_dia_mes_reciente = fecha_mas_reciente.replace(day=1)
-        
-        # Calcular fecha de inicio (4 meses antes del primer día del mes más reciente)
-        # Esto asegura que siempre tengamos exactamente 4 meses completos
-        fecha_inicio_zoom = primer_dia_mes_reciente - pd.DateOffset(months=4)
-        
-        # Asegurar que no se pase del inicio de los datos
-        if fecha_inicio_zoom < df['fecha'].min():
-            fecha_inicio_zoom = df['fecha'].min()
-        
-        # El fin del zoom es el último día del mes más reciente con datos
-        # Esto asegura que el mes más reciente se vea completo
-        if fecha_mas_reciente.month == 12:
-            fecha_fin_zoom = fecha_mas_reciente.replace(year=fecha_mas_reciente.year + 1, month=1, day=1) - pd.DateOffset(days=1)
-        else:
-            fecha_fin_zoom = fecha_mas_reciente.replace(month=fecha_mas_reciente.month + 1, day=1) - pd.DateOffset(days=1)
-        
-        # Si hay muy pocos datos (menos de 30 días), mostrar todos
-        if (fecha_fin_zoom - fecha_inicio_zoom).days < 30:
+        # Si el cálculo falló, usar todo el rango
+        if fecha_inicio_zoom is None:
             fecha_inicio_zoom = df['fecha'].min()
             fecha_fin_zoom = df['fecha'].max()
+    elif zoom_meses == 'todo':
+        # Si el usuario presionó "Ver todo", mostrar todo el rango
+        fecha_inicio_zoom = df['fecha'].min()
+        fecha_fin_zoom = df['fecha'].max()
     else:
-        # Si el usuario seleccionó un período específico
+        # Zoom personalizado por cantidad de meses
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
@@ -718,22 +744,18 @@ def main():
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
-        st.markdown("**Seleccionar período:**")
+        st.markdown("**Zoom automático:**")
+        st.info("📊 Mostrando últimos 4 meses completos (se actualiza automáticamente)")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📅 1 Mes", use_container_width=True):
-                st.session_state.zoom_periodo = 1
-            if st.button("📅 6 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 6
-            if st.button("📅 Todo", use_container_width=True):
-                st.session_state.zoom_periodo = None
+        st.markdown("**Ver todos los datos:**")
+        if st.button("📅 Ver todo el período", use_container_width=True):
+            st.session_state.zoom_periodo = 'todo'
+            st.rerun()
         
-        with col2:
-            if st.button("📅 3 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 3
-            if st.button("📅 1 Año", use_container_width=True):
-                st.session_state.zoom_periodo = 12
+        # Botón para resetear al zoom automático
+        if st.button("🔄 Volver a zoom automático (4 meses)", use_container_width=True):
+            st.session_state.zoom_periodo = None
+            st.rerun()
         
         st.markdown("---")
         
@@ -767,6 +789,7 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
+    # Obtener el zoom de la sesión (None = automático, 'todo' = todo el rango)
     zoom_meses = st.session_state.get('zoom_periodo', None)
     es_movil = False
 
