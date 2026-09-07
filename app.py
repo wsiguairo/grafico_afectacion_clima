@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA - ZOOM DINÁMICO 4 MESES (FINAL)
+# app.py - VERSIÓN FINAL CORREGIDA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -323,68 +323,63 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CALCULAR EL RANGO DE ZOOM DINÁMICO - CORREGIDA
+# FUNCIÓN PARA CALCULAR EL RANGO DE ZOOM DINÁMICO - SIMPLIFICADA
 # ============================================================
 def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     """
     Calcula el rango de fechas para el zoom inicial basado en los últimos 4 meses con datos.
-    Retorna: (fecha_inicio, fecha_fin, lista_de_meses_para_ticks)
     """
     if df is None or df.empty:
         return None, None, []
     
-    # Obtener los meses únicos con datos (como periodos)
-    meses_con_datos = sorted(df['fecha'].dt.to_period('M').unique())
+    # Obtener la fecha máxima de los datos
+    fecha_max = df['fecha'].max()
     
-    # Si el usuario seleccionó un período específico, usar ese
+    # Si el usuario seleccionó un período específico
     if zoom_meses is not None:
-        fecha_fin = df['fecha'].max()
-        fecha_inicio = fecha_fin - pd.DateOffset(months=zoom_meses)
+        fecha_fin = fecha_max
+        fecha_inicio = fecha_max - pd.DateOffset(months=zoom_meses)
         if fecha_inicio < df['fecha'].min():
             fecha_inicio = df['fecha'].min()
-        # Generar ticks para el rango seleccionado
+        # Generar ticks mensuales
         ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
         return fecha_inicio, fecha_fin, ticks
     
-    # ===== ZOOM DINÁMICO: ÚLTIMOS 4 MESES CON DATOS =====
+    # ===== ZOOM DINÁMICO: ÚLTIMOS 4 MESES =====
     
-    # Si hay menos de 4 meses con datos, mostrar todos
+    # Obtener los meses únicos con datos
+    meses_con_datos = sorted(df['fecha'].dt.to_period('M').unique())
+    
+    # Si hay menos de 4 meses, mostrar todos
     if len(meses_con_datos) <= 4:
         fecha_inicio = df['fecha'].min()
         fecha_fin = df['fecha'].max()
-        # Crear ticks para todos los meses disponibles
         ticks = [pd.Timestamp(year=m.year, month=m.month, day=1) for m in meses_con_datos]
         return fecha_inicio, fecha_fin, ticks
     
-    # Obtener los últimos 4 meses con datos
+    # Tomar los últimos 4 meses
     ultimos_4_meses = meses_con_datos[-4:]
     
-    # ===== CORRECCIÓN IMPORTANTE: Calcular el rango de fechas =====
-    # Inicio: primer día del primer mes de los últimos 4
-    fecha_inicio = pd.Timestamp(year=ultimos_4_meses[0].year, 
-                               month=ultimos_4_meses[0].month, 
-                               day=1)
-    
-    # Fin: usar la fecha máxima de los datos (NO el último día del mes)
-    # Esto asegura que se vean TODOS los datos del último mes
-    fecha_fin = df['fecha'].max()
-    
-    # Asegurar que el fin sea al menos el último día del último mes
+    # Calcular fechas de inicio y fin
+    primer_mes = ultimos_4_meses[0]
     ultimo_mes = ultimos_4_meses[-1]
-    fecha_fin_mes = pd.Timestamp(year=ultimo_mes.year, 
-                                month=ultimo_mes.month, 
-                                day=1) + pd.DateOffset(months=1) - pd.DateOffset(days=1)
     
-    # Si la fecha máxima es menor que el último día del mes, usar el último día del mes
-    if fecha_fin < fecha_fin_mes:
-        fecha_fin = fecha_fin_mes
+    # Inicio: 1er día del primer mes
+    fecha_inicio = pd.Timestamp(year=primer_mes.year, month=primer_mes.month, day=1)
     
-    # ===== CREAR TICKS SOLO PARA LOS 4 MESES =====
-    ticks_zoom = []
+    # Fin: fecha máxima de datos (para mostrar todos los datos disponibles)
+    fecha_fin = fecha_max
+    
+    # Agregar un margen de 5 días al inicio y al final para mejor visualización
+    fecha_inicio = fecha_inicio - pd.DateOffset(days=5)
+    fecha_fin = fecha_fin + pd.DateOffset(days=5)
+    
+    # Crear ticks para los 4 meses (usando el día 15 para centrar)
+    ticks = []
     for mes in ultimos_4_meses:
-        ticks_zoom.append(pd.Timestamp(year=mes.year, month=mes.month, day=15))  # Usar día 15 para centrar
+        ticks.append(pd.Timestamp(year=mes.year, month=mes.month, day=15))
     
-    return fecha_inicio, fecha_fin, ticks_zoom
+    return fecha_inicio, fecha_fin, ticks
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
@@ -635,14 +630,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # CALCULAR ZOOM DINÁMICO - OBTENER TICKS CORRECTOS
+    # CALCULAR ZOOM DINÁMICO
     # ============================================================
     fecha_inicio_zoom, fecha_fin_zoom, ticks_zoom = calcular_rango_zoom_dinamico(df, zoom_meses)
     
-    # Generar etiquetas en español para los ticks del zoom
-    tick_labels = []
-    for tick in ticks_zoom:
-        tick_labels.append(fecha_espanol(tick))
+    # Generar etiquetas en español
+    tick_labels = [fecha_espanol(tick) for tick in ticks_zoom]
 
     # ============================================================
     # CONFIGURACIÓN DE TAMAÑOS
@@ -672,14 +665,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'tickvals': ticks_zoom,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
-            'dtick': 'M1',
-            'ticklabelmode': 'period',
             'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
+            'autorange': False
         },
         yaxis={
             'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
@@ -844,7 +836,7 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
+            st.success("✅ ¡Gráfica cargada exitosamente!")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
