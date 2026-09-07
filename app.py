@@ -572,31 +572,22 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - MOSTRAR SOLO LOS ÚLTIMOS 4 MESES CON DATOS
+    # ZOOM INICIAL - FORZAR SIEMPRE 4 MESES CONSECUTIVOS
     # ============================================================
     if zoom_meses is None:
-        # Obtener todas las fechas únicas por mes con datos
-        df_fechas_unicas = df.copy()
-        df_fechas_unicas['mes_ano'] = df_fechas_unicas['fecha'].dt.to_period('M')
+        # Tomar la fecha más reciente con datos
+        fecha_fin_zoom = df['fecha'].max()
         
-        # Obtener los últimos 4 meses únicos que tienen datos
-        meses_con_datos = sorted(df_fechas_unicas['mes_ano'].unique())
-        ultimos_4_meses = meses_con_datos[-4:] if len(meses_con_datos) >= 4 else meses_con_datos
+        # Calcular 4 meses exactos hacia atrás desde la fecha más reciente
+        # Esto asegura que siempre se vean 4 meses consecutivos
+        fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=3)  # 3 meses atrás + el mes actual = 4 meses
         
-        # Calcular el rango de fechas: desde el primer día del primer mes al último día del último mes
-        if ultimos_4_meses:
-            fecha_inicio_zoom = pd.Timestamp(ultimos_4_meses[0].start_time)
-            fecha_fin_zoom = pd.Timestamp(ultimos_4_meses[-1].end_time)
-            
-            # Asegurar que no nos pasemos del rango de datos
-            if fecha_inicio_zoom < df['fecha'].min():
-                fecha_inicio_zoom = df['fecha'].min()
-            if fecha_fin_zoom > df['fecha'].max():
-                fecha_fin_zoom = df['fecha'].max()
-        else:
-            # Fallback: usar todo el rango de datos
+        # Ajustar al inicio del mes para que se vea el mes completo
+        fecha_inicio_zoom = fecha_inicio_zoom.replace(day=1)
+        
+        # Asegurar que no nos pasemos del inicio de los datos
+        if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
-            fecha_fin_zoom = df['fecha'].max()
     else:
         # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
@@ -605,20 +596,18 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
-    # TICKS - SOLO PARA EL RANGO DE ZOOM
+    # TICKS
     # ============================================================
-    # Crear ticks solo para los meses dentro del rango de zoom
-    fecha_ticks = pd.date_range(start=fecha_inicio_zoom, end=fecha_fin_zoom, freq='MS')
-    # Filtrar ticks que estén dentro del rango de datos reales
-    fecha_ticks = [f for f in fecha_ticks if f >= df['fecha'].min() and f <= df['fecha'].max()]
-    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-    
     if es_movil:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
@@ -741,7 +730,8 @@ def main():
             - **🖱️ Pasa el cursor** sobre la gráfica para ver:
               - 📅 Fecha (una sola vez al inicio)
               - 🦙 Alpacas enfermas (valor real)
-              - 🌡️ Temperatura              - 💧 Precipitación
+              - 🌡️ Temperatura
+              - 💧 Precipitación
               - 💨 Viento
               - 💀 Muertos
               - ⚠️ Abortos
