@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (AUTOMATIZADA)
+# app.py - VERSIÓN SIGUAIRO (AUTOMATIZADA CON ZOOM 4 MESES)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -181,9 +181,20 @@ MESES_ES = {
     9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
 }
 
+MESES_ES_CORTO = {
+    1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr',
+    5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago',
+    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+}
+
 def fecha_espanol(fecha):
     if isinstance(fecha, pd.Timestamp):
         return f"{MESES_ES[fecha.month]} {fecha.year}"
+    return str(fecha)
+
+def fecha_espanol_corto(fecha):
+    if isinstance(fecha, pd.Timestamp):
+        return f"{MESES_ES_CORTO[fecha.month]} {fecha.year}"
     return str(fecha)
 
 def image_to_base64(filepath):
@@ -281,7 +292,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO - CÓDIGO PROPORCIONADO
+        # SUAVIZADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -291,7 +302,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
-                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -324,7 +334,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
+# FUNCIÓN PARA CREAR LA GRÁFICA - ZOOM AUTOMÁTICO 4 MESES
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -346,7 +356,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
+    # PRECIPITACIÓN
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -359,7 +369,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
+    # TEMPERATURA
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -374,7 +384,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - SIN HOVER (hoverinfo='skip')
+    # VIENTO
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -388,7 +398,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -409,7 +419,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
+    # ALPACAS MUERTAS
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -426,7 +436,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - SIN HOVER (hoverinfo='skip')
+    # ABORTOS
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -494,7 +504,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
+    # IMÁGENES PEQUEÑAS - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -576,33 +586,64 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     fecha_fin_zoom = df['fecha'].max()
     
-    # Calculamos 4 meses hacia atrás desde la fecha más reciente
-    fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
-    
-    # Si el zoom calculado es anterior a la fecha mínima, ajustamos
-    if fecha_inicio_zoom < df['fecha'].min():
-        fecha_inicio_zoom = df['fecha'].min()
-    
     # Si el usuario seleccionó un período manual, respetamos su elección
     if zoom_meses is not None and zoom_meses > 0:
         fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
+    else:
+        # Zoom automático: 4 meses hacia atrás desde la fecha más reciente
+        fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
+        if fecha_inicio_zoom < df['fecha'].min():
+            fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
-    # TICKS
+    # TICKS DEL EJE X - SOLO PARA EL RANGO VISIBLE
+    # ============================================================
+    # Generamos ticks mensuales solo dentro del rango de zoom
+    fecha_ticks = pd.date_range(
+        start=fecha_inicio_zoom,
+        end=fecha_fin_zoom,
+        freq='MS'  # Primer día de cada mes
+    )
+    
+    # Si no hay suficientes ticks, agregamos el inicio y fin
+    if len(fecha_ticks) == 0:
+        fecha_ticks = pd.date_range(
+            start=fecha_inicio_zoom,
+            end=fecha_fin_zoom,
+            freq='MS'
+        )
+    
+    # Aseguramos que el primer tick sea el inicio del rango
+    if len(fecha_ticks) > 0 and fecha_ticks[0] > fecha_inicio_zoom:
+        fecha_ticks = pd.date_range(
+            start=fecha_inicio_zoom.replace(day=1),
+            end=fecha_fin_zoom,
+            freq='MS'
+        )
+    
+    # Si el rango es menor a un mes, mostramos días
+    if (fecha_fin_zoom - fecha_inicio_zoom).days < 30:
+        fecha_ticks = pd.date_range(
+            start=fecha_inicio_zoom,
+            end=fecha_fin_zoom,
+            freq='D'  # Diario
+        )
+        tick_labels = [f"{f.day}/{f.month}" for f in fecha_ticks]
+        tick_font_size = 9 if es_movil else 11
+    else:
+        tick_labels = [fecha_espanol_corto(f) for f in fecha_ticks]
+        tick_font_size = 10 if es_movil else 12
+
+    # ============================================================
+    # TAMAÑOS RESPONSIVE
     # ============================================================
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
         height = 750
@@ -621,8 +662,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
-            'dtick': 'M1',
-            'ticklabelmode': 'period',
             'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
@@ -693,7 +732,7 @@ def main():
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
     
