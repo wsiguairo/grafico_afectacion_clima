@@ -1,5 +1,3 @@
-# app.py - VERSIÓN SIGUAIRO.txt.txt
-# app.py - VERSIÓN SIGUAIRO.txt
 # app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
