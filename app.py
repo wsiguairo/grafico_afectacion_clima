@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - ULTRA ROBUSTA (Últimos 4 meses automáticos)
+# app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,7 +8,6 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
-from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
 
@@ -282,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO
+        # SUAVIZADO - CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -292,6 +291,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
+                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -324,30 +324,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN ROBUSTA PARA CALCULAR EL ZOOM - SIEMPRE ÚLTIMOS 4 MESES
-# ============================================================
-# ============================================================
-# ZOOM INICIAL - SIEMPRE LOS ÚLTIMOS 4 MESES CON DATOS
-# ============================================================
-if zoom_meses is None:
-    # Tomar la fecha más reciente con datos
-    fecha_fin_zoom = df['fecha'].max()
-    
-    # Calcular 4 meses hacia atrás
-    fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
-    
-    # Asegurar que no nos pasemos del inicio de los datos
-    if fecha_inicio_zoom < df['fecha'].min():
-        fecha_inicio_zoom = df['fecha'].min()
-else:
-    # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
-    fecha_fin_zoom = df['fecha'].max()
-    fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
-    if fecha_inicio_zoom < df['fecha'].min():
-        fecha_inicio_zoom = df['fecha'].min()
-
-# ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - ULTRA ROBUSTA
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -369,7 +346,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN
+    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -382,7 +359,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA
+    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -397,7 +374,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO
+    # VIENTO - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -411,7 +388,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -432,7 +409,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS
+    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -449,7 +426,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS
+    # ABORTOS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -466,7 +443,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS
+    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
     # ============================================================
     df_hover = df.copy()
     
@@ -517,7 +494,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -595,23 +572,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - ULTRA ROBUSTO (SIEMPRE ÚLTIMOS 4 MESES)
+    # ZOOM INICIAL - SIEMPRE LOS ÚLTIMOS 4 MESES CON DATOS
     # ============================================================
     if zoom_meses is None:
-        # Usar la función robusta para calcular el zoom
-        fecha_inicio_zoom, fecha_fin_zoom = calcular_zoom_4_meses(df)
+        # Tomar la fecha más reciente con datos
+        fecha_fin_zoom = df['fecha'].max()
         
-        # DEBUG: Mostrar información en la consola (opcional)
-        # st.write(f"Zoom calculado: {fecha_inicio_zoom} - {fecha_fin_zoom}")
+        # Calcular 4 meses hacia atrás
+        fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
         
-        # Verificación final: asegurar que el rango tenga al menos algunos datos
-        datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-        if datos_en_rango.empty:
-            # Si no hay datos en el rango, mostrar todos los datos
-            fecha_inicio_zoom = df['fecha'].min() - pd.DateOffset(days=1)
-            fecha_fin_zoom = df['fecha'].max() + pd.DateOffset(days=1)
+        # Asegurar que no nos pasemos del inicio de los datos
+        if fecha_inicio_zoom < df['fecha'].min():
+            fecha_inicio_zoom = df['fecha'].min()
     else:
-        # Si el usuario seleccionó un período específico
+        # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
@@ -722,7 +696,6 @@ def main():
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
         <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
-        <p style="font-size: clamp(0.8rem, 2vw, 1rem); color: #666;">📊 Mostrando automáticamente los últimos 4 meses con datos</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -760,8 +733,6 @@ def main():
               - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
-            - **📊 La gráfica muestra automáticamente los últimos 4 meses con datos**
-            - **🔄 Los datos se actualizan automáticamente al cargar la página**
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
@@ -787,13 +758,6 @@ def main():
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        # Mostrar información de los datos
-        with st.expander("📊 Información de los datos cargados", expanded=False):
-            col1, col2, col3 = st.columns(3)
-            col1.metric("📅 Fecha más reciente", df['fecha'].max().strftime('%d/%m/%Y'))
-            col2.metric("📅 Fecha más antigua", df['fecha'].min().strftime('%d/%m/%Y'))
-            col3.metric("📊 Total de registros", len(df))
-        
         with st.spinner('📊 Generando gráfica interactiva...'):
             fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
 
@@ -816,7 +780,7 @@ def main():
                 ]
             })
 
-            with st.expander("📊 Ver estadísticas completas de los datos", expanded=False):
+            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
                 if es_movil:
                     col1, col2, col3 = st.columns(1)
                 else:
@@ -831,11 +795,11 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Mostrando los últimos 4 meses con datos.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos. Verifica la conexión a Google Sheets.")
+        st.error("❌ No se pudieron cargar los datos")
 
 if __name__ == "__main__":
     main()
