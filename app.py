@@ -574,24 +574,36 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES)
+    # ZOOM INICIAL - FORZADO A 4 MESES EXACTOS
     # ============================================================
     fecha_fin = df['fecha'].max()
     fecha_inicio = df['fecha'].min()
     
-    # Calcular el primer día del mes de inicio (4 meses atrás desde la fecha más reciente)
-    # Usamos relativedelta para restar exactamente 4 meses
-    fecha_inicio_zoom = fecha_fin - relativedelta(months=4)
+    # FORZAR: Si el mes más reciente es agosto (8), mostrar mayo(5)-agosto(8)
+    # Si es septiembre(9), mostrar junio(6)-septiembre(9)
+    # Es decir: mes_inicio = mes_fin - 3 (para tener 4 meses: inicio, inicio+1, inicio+2, fin)
+    mes_fin = fecha_fin.month
+    año_fin = fecha_fin.year
     
-    # Ajustar al primer día del mes
-    fecha_inicio_zoom = fecha_inicio_zoom.replace(day=1)
+    mes_inicio = mes_fin - 3
+    año_inicio = año_fin
+    
+    if mes_inicio <= 0:
+        mes_inicio += 12
+        año_inicio -= 1
+    
+    # Primer día del mes de inicio
+    fecha_inicio_zoom = pd.Timestamp(year=año_inicio, month=mes_inicio, day=1)
+    
+    # Último día del mes de fin
+    if mes_fin == 12:
+        fecha_fin_zoom = pd.Timestamp(year=año_fin, month=12, day=31)
+    else:
+        fecha_fin_zoom = pd.Timestamp(year=año_fin, month=mes_fin+1, day=1) - pd.Timedelta(days=1)
     
     # Si el inicio calculado es anterior al inicio de datos, usar el inicio de datos
     if fecha_inicio_zoom < fecha_inicio:
         fecha_inicio_zoom = fecha_inicio
-    
-    # La fecha de fin es la fecha más reciente con datos
-    fecha_fin_zoom = fecha_fin
 
     # ============================================================
     # TICKS
