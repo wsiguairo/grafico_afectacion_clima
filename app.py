@@ -580,23 +580,14 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         fecha_max = df['fecha'].max()
         fecha_min = df['fecha'].min()
         
-        # Obtener el mes y año del último dato
-        año_max = fecha_max.year
-        mes_max = fecha_max.month
+        # Obtener el primer día del último mes con datos
+        ultimo_mes_inicio = fecha_max.replace(day=1)
         
-        # Crear fecha de inicio: 3 meses antes del último mes
-        # Ej: si último mes es Octubre (mes 10), inicio = Julio (mes 7)
-        mes_inicio = mes_max - 3
-        año_inicio = año_max
-        
-        if mes_inicio <= 0:
-            mes_inicio += 12
-            año_inicio -= 1
-        
-        fecha_inicio_zoom = pd.Timestamp(year=año_inicio, month=mes_inicio, day=1)
+        # Calcular la fecha de inicio: 3 meses antes del último mes
+        fecha_inicio_zoom = ultimo_mes_inicio - pd.DateOffset(months=3)
         fecha_fin_zoom = fecha_max
         
-        # Asegurar que no nos pasemos del inicio de los datos
+        # Si solo hay datos en el último mes o menos, mostrar desde el inicio
         if fecha_inicio_zoom < fecha_min:
             fecha_inicio_zoom = fecha_min
     else:
