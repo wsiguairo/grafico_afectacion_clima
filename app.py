@@ -572,43 +572,21 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES CON DATOS)
+    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES HACIA ATRÁS)
     # ============================================================
     fecha_fin = df['fecha'].max()
     fecha_inicio = df['fecha'].min()
 
-    # Obtener el año y mes de la fecha más reciente
-    año_fin = fecha_fin.year
-    mes_fin = fecha_fin.month
-
-    # Calcular el mes de inicio (4 meses atrás incluyendo el actual)
-    # Si es septiembre (9), queremos junio (6): 9 - 3 = 6
-    mes_inicio = mes_fin - 3
-
-    # Ajustar el año si es necesario
-    año_inicio = año_fin
-    if mes_inicio <= 0:
-        mes_inicio += 12
-        año_inicio -= 1
-
-    # Crear fecha de inicio como el primer día del mes
-    fecha_inicio_zoom = pd.Timestamp(year=año_inicio, month=mes_inicio, day=1)
-
-    # Crear fecha de fin como el último día del mes más reciente
-    if mes_fin == 12:
-        fecha_fin_zoom = pd.Timestamp(year=año_fin, month=12, day=31)
-    else:
-        fecha_fin_zoom = pd.Timestamp(year=año_fin, month=mes_fin+1, day=1) - pd.Timedelta(days=1)
-
+    # Calcular fecha de inicio: 4 meses antes de la fecha más reciente
+    # Usamos DateOffset para restar exactamente 4 meses
+    fecha_inicio_zoom = fecha_fin - pd.DateOffset(months=4)
+    
     # Si el inicio calculado es anterior al inicio de datos, ajustar
     if fecha_inicio_zoom < fecha_inicio:
         fecha_inicio_zoom = fecha_inicio
-
-    # Si no hay datos en el rango calculado, mostrar todos los datos
-    datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-    if datos_en_rango.empty:
-        fecha_inicio_zoom = fecha_inicio
-        fecha_fin_zoom = fecha_fin
+    
+    # La fecha de fin es la fecha más reciente con datos
+    fecha_fin_zoom = fecha_fin
 
     # ============================================================
     # TICKS
