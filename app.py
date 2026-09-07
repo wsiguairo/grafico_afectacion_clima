@@ -1,13 +1,16 @@
-# app.py - VERSIÓN FINAL - SIMPLE Y FUNCIONAL
+# app.py - VERSIÓN CON PROYECCIONES FUTURAS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from scipy.interpolate import make_interp_spline, UnivariateSpline
 from scipy.ndimage import uniform_filter1d
+from scipy import stats
 import warnings
 import base64
 import os
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 warnings.filterwarnings('ignore')
 
@@ -196,6 +199,106 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
+# FUNCIÓN PARA GENERAR PROYECCIONES FUTURAS
+# ============================================================
+def generar_proyecciones(df, meses_futuros=3):
+    """
+    Genera datos futuros basados en promedios históricos mensuales
+    y tendencias estacionales
+    """
+    if df is None or df.empty:
+        return df
+    
+    # Obtener la última fecha real
+    ultima_fecha = df['fecha'].max()
+    
+    # Crear fechas futuras
+    fechas_futuras = []
+    for i in range(1, meses_futuros + 1):
+        fechas_futuras.append(ultima_fecha + relativedelta(months=i))
+    
+    # Calcular promedios mensuales históricos
+    df['mes'] = df['fecha'].dt.month
+    promedios_mensuales = df.groupby('mes').agg({
+        'Temperaturas minimas  (°C)': 'mean',
+        'Precipitacion ': 'mean',
+        'Vel. viento (Km/h)': 'mean',
+        'Enfermos': 'mean',
+        'Muertos': 'mean',
+        'Abortos': 'mean'
+    }).reset_index()
+    
+    # Calcular tendencia general (si hay suficientes datos)
+    proyecciones = []
+    
+    for fecha_futura in fechas_futuras:
+        mes = fecha_futura.month
+        
+        # Buscar promedio histórico para este mes
+        promedio_mes = promedios_mensuales[promedios_mensuales['mes'] == mes]
+        
+        if not promedio_mes.empty:
+            # Usar promedio histórico
+            temp = promedio_mes['Temperaturas minimas  (°C)'].values[0]
+            precip = promedio_mes['Precipitacion '].values[0]
+            viento = promedio_mes['Vel. viento (Km/h)'].values[0]
+            enfermos = promedio_mes['Enfermos'].values[0]
+            muertos = promedio_mes['Muertos'].values[0]
+            abortos = promedio_mes['Abortos'].values[0]
+        else:
+            # Si no hay datos históricos, usar promedios generales
+            temp = df['Temperaturas minimas  (°C)'].mean()
+            precip = df['Precipitacion '].mean()
+            viento = df['Vel. viento (Km/h)'].mean()
+            enfermos = df['Enfermos'].mean()
+            muertos = df['Muertos'].mean()
+            abortos = df['Abortos'].mean()
+        
+        # Aplicar pequeña variación estacional
+        # Los meses de invierno (Jun-Ago) suelen ser más fríos en los Andes
+        if mes in [6, 7, 8]:  # Invierno
+            temp = temp * 0.85  # 15% más frío
+        elif mes in [12, 1, 2]:  # Verano
+            temp = temp * 1.15  # 15% más cálido
+        
+        # Las alpacas son más propensas a enfermarse en invierno
+        if mes in [6, 7, 8]:
+            enfermos = enfermos * 1.3  # 30% más enfermos en invierno
+            muertos = muertos * 1.2
+            abortos = abortos * 1.2
+        
+        # Añadir ruido aleatorio controlado
+        ruido_temp = np.random.normal(0, temp * 0.05)
+        ruido_precip = np.random.normal(0, precip * 0.1)
+        ruido_enfermos = np.random.normal(0, max(1, enfermos * 0.1))
+        
+        proyecciones.append({
+            'fecha': fecha_futura,
+            'Temperaturas minimas  (°C)': max(-10, temp + ruido_temp),
+            'Precipitacion ': max(0, precip + ruido_precip),
+            'Vel. viento (Km/h)': max(0, viento + np.random.normal(0, viento * 0.05)),
+            'Enfermos': max(0, enfermos + ruido_enfermos),
+            'Muertos': max(0, muertos + np.random.normal(0, max(1, muertos * 0.05))),
+            'Abortos': max(0, abortos + np.random.normal(0, max(1, abortos * 0.05))),
+            'es_proyeccion': True
+        })
+    
+    # Crear DataFrame con proyecciones
+    df_proyecciones = pd.DataFrame(proyecciones)
+    
+    if not df_proyecciones.empty:
+        # Marcar datos reales
+        df['es_proyeccion'] = False
+        # Combinar datos reales y proyecciones
+        df_combinado = pd.concat([df, df_proyecciones], ignore_index=True)
+        df_combinado = df_combinado.sort_values('fecha').reset_index(drop=True)
+    else:
+        df['es_proyeccion'] = False
+        df_combinado = df
+    
+    return df_combinado
+
+# ============================================================
 # FUNCIONES DE PROCESAMIENTO
 # ============================================================
 @st.cache_data(ttl=10)
@@ -281,7 +384,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO
+        # SUAVIZADO - CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -323,48 +426,9 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CALCULAR EL RANGO DE ZOOM - SIMPLIFICADA AL MÁXIMO
+# FUNCIÓN PARA CREAR LA GRÁFICA - CON PROYECCIONES
 # ============================================================
-def calcular_zoom_4_meses(df, zoom_meses=None):
-    """
-    Calcula los últimos 4 meses con datos de forma SIMPLE y DIRECTA
-    """
-    if df is None or df.empty:
-        return None, None, []
-    
-    # Si el usuario seleccionó un período, usar ese
-    if zoom_meses is not None:
-        fecha_fin = df['fecha'].max()
-        fecha_inicio = fecha_fin - pd.DateOffset(months=zoom_meses)
-        ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
-        return fecha_inicio, fecha_fin, ticks
-    
-    # Obtener los meses únicos con datos
-    meses = sorted(df['fecha'].dt.to_period('M').unique())
-    
-    # Si hay 4 o menos meses, mostrar todos
-    if len(meses) <= 4:
-        fecha_inicio = df['fecha'].min()
-        fecha_fin = df['fecha'].max()
-        ticks = [pd.Timestamp(year=m.year, month=m.month, day=1) for m in meses]
-        return fecha_inicio, fecha_fin, ticks
-    
-    # Tomar los últimos 4 meses
-    ultimos_4 = meses[-4:]
-    
-    # Calcular fechas
-    fecha_inicio = pd.Timestamp(year=ultimos_4[0].year, month=ultimos_4[0].month, day=1)
-    fecha_fin = df['fecha'].max()  # Usar la fecha máxima de datos
-    
-    # Crear ticks para los 4 meses (usando día 1 para que se vea bien)
-    ticks = [pd.Timestamp(year=m.year, month=m.month, day=1) for m in ultimos_4]
-    
-    return fecha_inicio, fecha_fin, ticks
-
-# ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
-# ============================================================
-def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
+def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futuros=3):
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -373,6 +437,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             font=dict(size=16, color="red")
         )
         return fig
+
+    # Generar proyecciones
+    df_con_proyecciones = generar_proyecciones(df, meses_futuros)
+    
+    # Separar datos reales y proyecciones
+    df_reales = df_con_proyecciones[df_con_proyecciones['es_proyeccion'] == False]
+    df_futuro = df_con_proyecciones[df_con_proyecciones['es_proyeccion'] == True]
 
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
@@ -384,27 +455,40 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN
+    # PRECIPITACIÓN - DATOS REALES (SIN HOVER)
     # ============================================================
-    if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
+    if 'Precipitacion ' in df_reales.columns and not df_reales['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
-            x=df['fecha'],
-            y=df['Precipitacion '],
-            name='Precipitación',
+            x=df_reales['fecha'],
+            y=df_reales['Precipitacion '],
+            name='Precipitación (Real)',
             marker=dict(color='#87CEEB', opacity=0.5),
             yaxis='y2',
             hoverinfo='skip'
         ))
 
     # ============================================================
-    # TEMPERATURA
+    # PRECIPITACIÓN - PROYECCIONES (MÁS TRANSPARENTE)
     # ============================================================
-    if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
+    if 'Precipitacion ' in df_futuro.columns and not df_futuro['Precipitacion '].dropna().empty:
+        fig.add_trace(go.Bar(
+            x=df_futuro['fecha'],
+            y=df_futuro['Precipitacion '],
+            name='Precipitación (Proyectada)',
+            marker=dict(color='#87CEEB', opacity=0.25, pattern_shape='/'),
+            yaxis='y2',
+            hoverinfo='skip'
+        ))
+
+    # ============================================================
+    # TEMPERATURA - DATOS REALES (SIN HOVER)
+    # ============================================================
+    if 'Temperaturas minimas  (°C)' in df_reales.columns and not df_reales['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
-            x=df['fecha'],
-            y=df['Temperaturas minimas  (°C)'],
+            x=df_reales['fecha'],
+            y=df_reales['Temperaturas minimas  (°C)'],
             mode='lines+markers',
-            name='Temperatura mínima',
+            name='Temperatura mínima (Real)',
             line=dict(color='#2563EB', width=2.5),
             marker=dict(size=4, color='#2563EB'),
             opacity=0.9,
@@ -412,28 +496,57 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO
+    # TEMPERATURA - PROYECCIONES (DISCONTINUA)
     # ============================================================
-    if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
+    if 'Temperaturas minimas  (°C)' in df_futuro.columns and not df_futuro['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
-            x=df['fecha'],
-            y=df['Vel. viento (Km/h)'],
+            x=df_futuro['fecha'],
+            y=df_futuro['Temperaturas minimas  (°C)'],
+            mode='lines+markers',
+            name='Temperatura mínima (Proyectada)',
+            line=dict(color='#2563EB', width=2, dash='dot'),
+            marker=dict(size=5, color='#2563EB', symbol='diamond'),
+            opacity=0.6,
+            hoverinfo='skip'
+        ))
+
+    # ============================================================
+    # VIENTO - DATOS REALES (SIN HOVER)
+    # ============================================================
+    if 'Vel. viento (Km/h)' in df_reales.columns and not df_reales['Vel. viento (Km/h)'].dropna().empty:
+        fig.add_trace(go.Scatter(
+            x=df_reales['fecha'],
+            y=df_reales['Vel. viento (Km/h)'],
             mode='lines',
-            name='Viento',
+            name='Viento (Real)',
             line=dict(color='#808080', width=2, dash='dash'),
             opacity=0.6,
             hoverinfo='skip'
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # VIENTO - PROYECCIONES
+    # ============================================================
+    if 'Vel. viento (Km/h)' in df_futuro.columns and not df_futuro['Vel. viento (Km/h)'].dropna().empty:
+        fig.add_trace(go.Scatter(
+            x=df_futuro['fecha'],
+            y=df_futuro['Vel. viento (Km/h)'],
+            mode='lines',
+            name='Viento (Proyectado)',
+            line=dict(color='#A0A0A0', width=1.5, dash='dot'),
+            opacity=0.4,
+            hoverinfo='skip'
+        ))
+
+    # ============================================================
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SOLO REAL)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
             x=fecha_smooth,
             y=enfermos_smooth,
             mode='lines',
-            name='Alpacas enfermas',
+            name='Alpacas enfermas (Real)',
             line=dict(color='#8B0000', width=2.5),
             opacity=0.8,
             fill='tozeroy',
@@ -447,16 +560,47 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS
+    # ALPACAS ENFERMAS - PROYECCIÓN
     # ============================================================
-    if 'Muertos' in df.columns:
-        df_muertos = df[df['Muertos'] > 0].copy()
+    if not df_futuro.empty and 'Enfermos' in df_futuro.columns:
+        # Generar línea suavizada para proyecciones
+        try:
+            x_futuro = df_futuro['fecha'].map(pd.Timestamp.to_julian_date).values
+            y_futuro = df_futuro['Enfermos'].values
+            
+            if len(x_futuro) >= 2:
+                x_suave_fut = np.linspace(x_futuro.min(), x_futuro.max(), 100)
+                # Usar spline simple para proyecciones
+                from scipy.interpolate import interp1d
+                f_interp = interp1d(x_futuro, y_futuro, kind='cubic', fill_value='extrapolate')
+                y_suave_fut = f_interp(x_suave_fut)
+                
+                fecha_smooth_fut = pd.to_datetime(x_suave_fut, unit='D', origin='julian')
+                
+                fig.add_trace(go.Scatter(
+                    x=fecha_smooth_fut,
+                    y=y_suave_fut,
+                    mode='lines',
+                    name='Alpacas enfermas (Proyectadas)',
+                    line=dict(color='#FF6B6B', width=2, dash='dot'),
+                    opacity=0.6,
+                    yaxis='y2',
+                    hoverinfo='skip'
+                ))
+        except:
+            pass
+
+    # ============================================================
+    # ALPACAS MUERTAS - REALES (SIN HOVER)
+    # ============================================================
+    if 'Muertos' in df_reales.columns:
+        df_muertos = df_reales[df_reales['Muertos'] > 0].copy()
         if not df_muertos.empty:
             fig.add_trace(go.Scatter(
                 x=df_muertos['fecha'],
                 y=[0.2] * len(df_muertos),
                 mode='markers',
-                name='Alpacas muertas',
+                name='Alpacas muertas (Real)',
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
@@ -464,16 +608,33 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS
+    # ALPACAS MUERTAS - PROYECCIONES
     # ============================================================
-    if 'Abortos' in df.columns:
-        df_abortos = df[df['Abortos'] > 0].copy()
+    if 'Muertos' in df_futuro.columns:
+        df_muertos_fut = df_futuro[df_futuro['Muertos'] > 0].copy()
+        if not df_muertos_fut.empty:
+            fig.add_trace(go.Scatter(
+                x=df_muertos_fut['fecha'],
+                y=[0.2] * len(df_muertos_fut),
+                mode='markers',
+                name='Alpacas muertas (Proyectadas)',
+                marker=dict(size=10, color='#999999', symbol='x', line=dict(color='#666', width=1)),
+                yaxis='y2',
+                customdata=df_muertos_fut['Muertos'],
+                hoverinfo='skip'
+            ))
+
+    # ============================================================
+    # ABORTOS - REALES (SIN HOVER)
+    # ============================================================
+    if 'Abortos' in df_reales.columns:
+        df_abortos = df_reales[df_reales['Abortos'] > 0].copy()
         if not df_abortos.empty:
             fig.add_trace(go.Scatter(
                 x=df_abortos['fecha'],
                 y=[0.25] * len(df_abortos),
                 mode='markers',
-                name='Abortos',
+                name='Abortos (Real)',
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
@@ -481,9 +642,26 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE PARA HOVER
+    # ABORTOS - PROYECCIONES
     # ============================================================
-    df_hover = df.copy()
+    if 'Abortos' in df_futuro.columns:
+        df_abortos_fut = df_futuro[df_futuro['Abortos'] > 0].copy()
+        if not df_abortos_fut.empty:
+            fig.add_trace(go.Scatter(
+                x=df_abortos_fut['fecha'],
+                y=[0.25] * len(df_abortos_fut),
+                mode='markers',
+                name='Abortos (Proyectados)',
+                marker=dict(size=10, color='#87CEEB', symbol='x', line=dict(color='#4A90D9', width=1)),
+                yaxis='y2',
+                customdata=df_abortos_fut['Abortos'],
+                hoverinfo='skip'
+            ))
+
+    # ============================================================
+    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
+    # ============================================================
+    df_hover = df_con_proyecciones.copy()
     
     for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
                 'Enfermos', 'Muertos', 'Abortos']:
@@ -492,7 +670,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     
     hover_texts = []
     for _, row in df_hover.iterrows():
+        es_proy = row.get('es_proyeccion', False)
+        etiqueta = "🔮 PROYECCIÓN" if es_proy else "📊 DATO REAL"
+        color_etiqueta = "#FF6B6B" if es_proy else "#2c3e50"
+        
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
+        texto += f"<span style='color:{color_etiqueta};'><b>{etiqueta}</b></span><br>"
         
         if pd.notna(row['Precipitacion ']):
             texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
@@ -532,7 +715,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS - SOLO PC
+    # IMÁGENES PEQUEÑAS - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -553,8 +736,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                     'layer': 'above'
                 })
 
-        if img_muerta is not None and 'Muertos' in df.columns:
-            df_muertos_varios = df[df['Muertos'] >= 3].copy()
+        if img_muerta is not None and 'Muertos' in df_reales.columns:
+            df_muertos_varios = df_reales[df_reales['Muertos'] >= 3].copy()
             if not df_muertos_varios.empty:
                 for _, row in df_muertos_varios.iterrows():
                     images_plotly.append({
@@ -570,8 +753,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                         'layer': 'above'
                     })
 
-        if img_aborto is not None and 'Abortos' in df.columns:
-            df_abortos_pos = df[df['Abortos'] > 0].copy()
+        if img_aborto is not None and 'Abortos' in df_reales.columns:
+            df_abortos_pos = df_reales[df_reales['Abortos'] > 0].copy()
             if not df_abortos_pos.empty:
                 for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
                     if idx < len(df_abortos_pos):
@@ -591,9 +774,15 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     # RANGOS
     # ============================================================
-    min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
-    max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 10
-    max_wind = df['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty else 0
+    min_temp = df_reales['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df_reales.columns and not df_reales['Temperaturas minimas  (°C)'].dropna().empty else 0
+    max_temp = max(
+        df_reales['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df_reales.columns and not df_reales['Temperaturas minimas  (°C)'].dropna().empty else 0,
+        df_futuro['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df_futuro.columns and not df_futuro['Temperaturas minimas  (°C)'].dropna().empty else 0
+    )
+    max_wind = max(
+        df_reales['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df_reales.columns and not df_reales['Vel. viento (Km/h)'].dropna().empty else 0,
+        df_futuro['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df_futuro.columns and not df_futuro['Vel. viento (Km/h)'].dropna().empty else 0
+    )
 
     y1_min = min_temp * 1.2 if min_temp < 0 else -5
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
@@ -601,31 +790,46 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = 1
     if len(enfermos_smooth) > 0:
         max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
-    if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-        max_y2 = max(max_y2, df['Muertos'].max() * 1.5)
-    if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-        max_y2 = max(max_y2, df['Abortos'].max() * 1.5)
-    if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
-        max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
+    if 'Muertos' in df_reales.columns and not df_reales['Muertos'].dropna().empty:
+        max_y2 = max(max_y2, df_reales['Muertos'].max() * 1.5)
+    if 'Muertos' in df_futuro.columns and not df_futuro['Muertos'].dropna().empty:
+        max_y2 = max(max_y2, df_futuro['Muertos'].max() * 1.5)
+    if 'Abortos' in df_reales.columns and not df_reales['Abortos'].dropna().empty:
+        max_y2 = max(max_y2, df_reales['Abortos'].max() * 1.5)
+    if 'Abortos' in df_futuro.columns and not df_futuro['Abortos'].dropna().empty:
+        max_y2 = max(max_y2, df_futuro['Abortos'].max() * 1.5)
+    if 'Precipitacion ' in df_reales.columns and not df_reales['Precipitacion '].dropna().empty:
+        max_y2 = max(max_y2, df_reales['Precipitacion '].max() * 1.1)
+    if 'Precipitacion ' in df_futuro.columns and not df_futuro['Precipitacion '].dropna().empty:
+        max_y2 = max(max_y2, df_futuro['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # CALCULAR ZOOM - FUNCIÓN SIMPLIFICADA
+    # ZOOM INICIAL - INCLUYENDO PROYECCIONES
     # ============================================================
-    fecha_inicio_zoom, fecha_fin_zoom, ticks_zoom = calcular_zoom_4_meses(df, zoom_meses)
-    
-    # Generar etiquetas en español
-    tick_labels = [fecha_espanol(tick) for tick in ticks_zoom]
+    if zoom_meses is None:
+        # Mostrar desde el inicio de los datos hasta el final de las proyecciones
+        fecha_inicio_zoom = df_con_proyecciones['fecha'].min()
+        fecha_fin_zoom = df_con_proyecciones['fecha'].max()
+    else:
+        fecha_fin_zoom = df_con_proyecciones['fecha'].max()
+        fecha_inicio_zoom = df_con_proyecciones['fecha'].max() - pd.DateOffset(months=zoom_meses)
+        if fecha_inicio_zoom < df_con_proyecciones['fecha'].min():
+            fecha_inicio_zoom = df_con_proyecciones['fecha'].min()
 
     # ============================================================
-    # CONFIGURACIÓN DE TAMAÑOS
+    # TICKS
     # ============================================================
     if es_movil:
+        fecha_ticks = pd.date_range(start=df_con_proyecciones['fecha'].min(), end=df_con_proyecciones['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
+        fecha_ticks = pd.date_range(start=df_con_proyecciones['fecha'].min(), end=df_con_proyecciones['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
@@ -642,16 +846,17 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'type': 'date',
-            'tickvals': ticks_zoom,
+            'tickvals': fecha_ticks,
             'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
+            'dtick': 'M1',
+            'ticklabelmode': 'period',
             'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom],
-            'autorange': False
         },
         yaxis={
             'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
@@ -699,6 +904,21 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
+    # Añadir anotación de línea divisoria entre datos reales y proyecciones
+    ultima_fecha_real = df_reales['fecha'].max()
+    fig.add_vline(x=ultima_fecha_real, line_dash="dash", line_color="red", line_width=1.5, opacity=0.6)
+    
+    fig.add_annotation(
+        x=ultima_fecha_real,
+        y=max_y2 * 0.9,
+        text="⬅️ Datos Reales | 🔮 Proyecciones ➡️",
+        showarrow=False,
+        font=dict(size=12, color="red"),
+        bgcolor="rgba(255,255,255,0.9)",
+        bordercolor="red",
+        borderwidth=1
+    )
+
     if es_movil:
         fig.update_layout(
             hoverlabel={'font_size': 12},
@@ -717,6 +937,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
         <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+        <p style="color: #FF6B6B; font-size: 0.9rem;">🔮 Las proyecciones se generan automáticamente para el mes siguiente</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -742,11 +963,25 @@ def main():
         
         st.markdown("---")
         
+        st.markdown("**🔮 Proyecciones futuras:**")
+        meses_futuros = st.slider(
+            "Meses a proyectar",
+            min_value=1,
+            max_value=6,
+            value=3,
+            step=1,
+            help="Número de meses futuros que se proyectarán en la gráfica"
+        )
+        st.session_state.meses_futuros = meses_futuros
+        
+        st.markdown("---")
+        
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
             - **🖱️ Pasa el cursor** sobre la gráfica para ver:
-              - 📅 Fecha
-              - 🦙 Alpacas enfermas
+              - 📅 Fecha (una sola vez al inicio)
+              - 🔮 Indicador de dato real o proyección
+              - 🦙 Alpacas enfermas (valor real)
               - 🌡️ Temperatura
               - 💧 Precipitación
               - 💨 Viento
@@ -754,6 +989,7 @@ def main():
               - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
+            - **🔴 Línea roja vertical**: Separa datos reales de proyecciones
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
@@ -773,14 +1009,15 @@ def main():
     }
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
+    meses_futuros = st.session_state.get('meses_futuros', 3)
     es_movil = False
 
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
+        with st.spinner('📊 Generando gráfica interactiva con proyecciones...'):
+            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil, meses_futuros)
 
         if fig is not None:
             st.plotly_chart(fig, use_container_width=True, config={
@@ -816,7 +1053,7 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente!")
+            st.success("✅ ¡Gráfica cargada exitosamente! Las proyecciones futuras se muestran en color más claro y con línea punteada.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
