@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO
+# app.py - VERSIÓN SIGUAIRO - ZOOM DINÁMICO MODIFICADO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -324,6 +324,74 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
+# FUNCIÓN PARA CALCULAR EL RANGO DE ZOOM DINÁMICO
+# ============================================================
+def calcular_rango_zoom_dinamico(df, zoom_meses=None):
+    """
+    Calcula el rango de fechas para el zoom inicial basado en los últimos 4 meses con datos.
+    Si hay datos en el mes actual, muestra los últimos 4 meses con datos.
+    Si no hay datos en el mes actual, muestra los últimos 4 meses con datos disponibles.
+    """
+    if df is None or df.empty:
+        return None, None
+    
+    # Obtener la fecha máxima con datos
+    fecha_max = df['fecha'].max()
+    
+    # Si el usuario seleccionó un período específico, usar ese
+    if zoom_meses is not None:
+        fecha_fin = fecha_max
+        fecha_inicio = fecha_max - pd.DateOffset(months=zoom_meses)
+        # Asegurar que no vaya antes del inicio de los datos
+        if fecha_inicio < df['fecha'].min():
+            fecha_inicio = df['fecha'].min()
+        return fecha_inicio, fecha_fin
+    
+    # ===== ZOOM DINÁMICO: ÚLTIMOS 4 MESES CON DATOS =====
+    
+    # Obtener el mes de la fecha máxima
+    mes_max = fecha_max.month
+    año_max = fecha_max.year
+    
+    # Contar cuántos meses diferentes tienen datos
+    meses_con_datos = sorted(df['fecha'].dt.to_period('M').unique())
+    
+    # Si hay menos de 4 meses con datos, mostrar todos los datos
+    if len(meses_con_datos) <= 4:
+        return df['fecha'].min(), df['fecha'].max()
+    
+    # Obtener los últimos 4 meses con datos
+    ultimos_4_meses = meses_con_datos[-4:]
+    
+    # Calcular el inicio y fin basado en estos meses
+    # Inicio: primer día del primer mes de los últimos 4
+    fecha_inicio = pd.Timestamp(year=ultimos_4_meses[0].year, 
+                               month=ultimos_4_meses[0].month, 
+                               day=1)
+    
+    # Fin: último día del último mes de los últimos 4 (o fecha máxima si está en ese mes)
+    ultimo_mes = ultimos_4_meses[-1]
+    fecha_fin = pd.Timestamp(year=ultimo_mes.year, 
+                            month=ultimo_mes.month, 
+                            day=1) + pd.DateOffset(months=1) - pd.DateOffset(days=1)
+    
+    # Si la fecha máxima es mayor que el último día del último mes con datos,
+    # usar la fecha máxima como fin (puede ser que haya datos en el mes actual)
+    if fecha_max > fecha_fin:
+        fecha_fin = fecha_max + pd.DateOffset(days=1)
+    
+    # Verificar que hay datos en el rango
+    datos_en_rango = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
+    
+    # Si no hay datos en el rango calculado, ajustar
+    if datos_en_rango.empty:
+        # Usar los últimos 4 meses disponibles en los datos
+        fecha_inicio = df['fecha'].max() - pd.DateOffset(months=4)
+        fecha_fin = df['fecha'].max()
+    
+    return fecha_inicio, fecha_fin
+
+# ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
@@ -572,28 +640,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - FORZAR SIEMPRE 4 MESES CONSECUTIVOS
+    # ZOOM INICIAL - DINÁMICO: ÚLTIMOS 4 MESES CON DATOS
     # ============================================================
-    if zoom_meses is None:
-        # Tomar la fecha más reciente con datos
-        fecha_fin_zoom = df['fecha'].max()
-        
-        # Calcular 4 meses exactos hacia atrás desde la fecha más reciente
-        # Esto asegura que siempre se vean 4 meses consecutivos
-        fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=3)  # 3 meses atrás + el mes actual = 4 meses
-        
-        # Ajustar al inicio del mes para que se vea el mes completo
-        fecha_inicio_zoom = fecha_inicio_zoom.replace(day=1)
-        
-        # Asegurar que no nos pasemos del inicio de los datos
-        if fecha_inicio_zoom < df['fecha'].min():
-            fecha_inicio_zoom = df['fecha'].min()
-    else:
-        # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
-        fecha_fin_zoom = df['fecha'].max()
-        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
-        if fecha_inicio_zoom < df['fecha'].min():
-            fecha_inicio_zoom = df['fecha'].min()
+    fecha_inicio_zoom, fecha_fin_zoom = calcular_rango_zoom_dinamico(df, zoom_meses)
 
     # ============================================================
     # TICKS
