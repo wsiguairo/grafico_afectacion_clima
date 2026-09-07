@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (CORREGIDA - ÚLTIMOS 4 MESES)
+# app.py - VERSIÓN CORREGIDA (ÚLTIMOS 4 MESES EXACTOS)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -571,24 +571,30 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - ÚLTIMOS 4 MESES
+    # ZOOM INICIAL - ÚLTIMOS 4 MESES EXACTOS
     # ============================================================
-    fecha_inicio = df['fecha'].min()
-    fecha_fin = df['fecha'].max()
-    
     # Si no hay zoom definido por el usuario, usar automático de 4 meses
     if zoom_meses is None:
         # Obtener la fecha más reciente con datos
         fecha_mas_reciente = df['fecha'].max()
         
-        # Calcular fecha de inicio (4 meses hacia atrás desde la fecha más reciente)
-        fecha_inicio_zoom = fecha_mas_reciente - pd.DateOffset(months=4)
+        # Obtener el primer día del mes más reciente
+        primer_dia_mes_reciente = fecha_mas_reciente.replace(day=1)
+        
+        # Calcular fecha de inicio (4 meses antes del primer día del mes más reciente)
+        # Esto asegura que siempre tengamos exactamente 4 meses completos
+        fecha_inicio_zoom = primer_dia_mes_reciente - pd.DateOffset(months=4)
         
         # Asegurar que no se pase del inicio de los datos
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
         
-        fecha_fin_zoom = fecha_mas_reciente
+        # El fin del zoom es el último día del mes más reciente con datos
+        # Esto asegura que el mes más reciente se vea completo
+        if fecha_mas_reciente.month == 12:
+            fecha_fin_zoom = fecha_mas_reciente.replace(year=fecha_mas_reciente.year + 1, month=1, day=1) - pd.DateOffset(days=1)
+        else:
+            fecha_fin_zoom = fecha_mas_reciente.replace(month=fecha_mas_reciente.month + 1, day=1) - pd.DateOffset(days=1)
         
         # Si hay muy pocos datos (menos de 30 días), mostrar todos
         if (fecha_fin_zoom - fecha_inicio_zoom).days < 30:
