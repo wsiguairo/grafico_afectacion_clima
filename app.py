@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - ZOOM DINÁMICO MODIFICADO
+# app.py - VERSIÓN SIGUAIRO - ZOOM DINÁMICO CORREGIDO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -333,63 +333,53 @@ def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     Si no hay datos en el mes actual, muestra los últimos 4 meses con datos disponibles.
     """
     if df is None or df.empty:
-        return None, None
+        return None, None, []
     
-    # Obtener la fecha máxima con datos
-    fecha_max = df['fecha'].max()
+    # Obtener los meses únicos con datos
+    meses_con_datos = sorted(df['fecha'].dt.to_period('M').unique())
     
     # Si el usuario seleccionó un período específico, usar ese
     if zoom_meses is not None:
-        fecha_fin = fecha_max
-        fecha_inicio = fecha_max - pd.DateOffset(months=zoom_meses)
-        # Asegurar que no vaya antes del inicio de los datos
+        fecha_fin = df['fecha'].max()
+        fecha_inicio = fecha_fin - pd.DateOffset(months=zoom_meses)
         if fecha_inicio < df['fecha'].min():
             fecha_inicio = df['fecha'].min()
-        return fecha_inicio, fecha_fin
+        # Generar ticks para el rango seleccionado
+        ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
+        return fecha_inicio, fecha_fin, ticks
     
     # ===== ZOOM DINÁMICO: ÚLTIMOS 4 MESES CON DATOS =====
     
-    # Obtener el mes de la fecha máxima
-    mes_max = fecha_max.month
-    año_max = fecha_max.year
-    
-    # Contar cuántos meses diferentes tienen datos
-    meses_con_datos = sorted(df['fecha'].dt.to_period('M').unique())
-    
-    # Si hay menos de 4 meses con datos, mostrar todos los datos
+    # Si hay menos de 4 meses con datos, mostrar todos
     if len(meses_con_datos) <= 4:
-        return df['fecha'].min(), df['fecha'].max()
+        fecha_inicio = df['fecha'].min()
+        fecha_fin = df['fecha'].max()
+        ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
+        return fecha_inicio, fecha_fin, ticks
     
     # Obtener los últimos 4 meses con datos
     ultimos_4_meses = meses_con_datos[-4:]
     
     # Calcular el inicio y fin basado en estos meses
-    # Inicio: primer día del primer mes de los últimos 4
     fecha_inicio = pd.Timestamp(year=ultimos_4_meses[0].year, 
                                month=ultimos_4_meses[0].month, 
                                day=1)
     
-    # Fin: último día del último mes de los últimos 4 (o fecha máxima si está en ese mes)
+    # Fin: último día del último mes
     ultimo_mes = ultimos_4_meses[-1]
     fecha_fin = pd.Timestamp(year=ultimo_mes.year, 
                             month=ultimo_mes.month, 
                             day=1) + pd.DateOffset(months=1) - pd.DateOffset(days=1)
     
     # Si la fecha máxima es mayor que el último día del último mes con datos,
-    # usar la fecha máxima como fin (puede ser que haya datos en el mes actual)
-    if fecha_max > fecha_fin:
-        fecha_fin = fecha_max + pd.DateOffset(days=1)
-    
-    # Verificar que hay datos en el rango
-    datos_en_rango = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
-    
-    # Si no hay datos en el rango calculado, ajustar
-    if datos_en_rango.empty:
-        # Usar los últimos 4 meses disponibles en los datos
-        fecha_inicio = df['fecha'].max() - pd.DateOffset(months=4)
+    # usar la fecha máxima como fin
+    if df['fecha'].max() > fecha_fin:
         fecha_fin = df['fecha'].max()
     
-    return fecha_inicio, fecha_fin
+    # Generar ticks solo para los 4 meses del zoom
+    ticks = [pd.Timestamp(year=m.year, month=m.month, day=1) for m in ultimos_4_meses]
+    
+    return fecha_inicio, fecha_fin, ticks
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
@@ -642,21 +632,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     # ZOOM INICIAL - DINÁMICO: ÚLTIMOS 4 MESES CON DATOS
     # ============================================================
-    fecha_inicio_zoom, fecha_fin_zoom = calcular_rango_zoom_dinamico(df, zoom_meses)
+    fecha_inicio_zoom, fecha_fin_zoom, ticks_zoom = calcular_rango_zoom_dinamico(df, zoom_meses)
+    
+    # Generar etiquetas en español para los ticks del zoom
+    tick_labels = [fecha_espanol(f) for f in ticks_zoom]
 
     # ============================================================
-    # TICKS
+    # CONFIGURACIÓN DE TAMAÑOS
     # ============================================================
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
@@ -673,8 +662,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'type': 'date',
-            'tickvals': fecha_ticks,
-            'ticktext': tick_labels,
+            'tickvals': ticks_zoom,  # SOLO los meses del zoom
+            'ticktext': tick_labels,  # Etiquetas en español
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
