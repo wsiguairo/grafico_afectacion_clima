@@ -1,4 +1,4 @@
-# app.py - VERSIÓN FINAL CORREGIDA
+# app.py - VERSIÓN CON DEBUG - VERIFICAR TICKS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -323,7 +323,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CALCULAR EL RANGO DE ZOOM DINÁMICO - SIMPLIFICADA
+# FUNCIÓN PARA CALCULAR EL RANGO DE ZOOM DINÁMICO - CON DEBUG
 # ============================================================
 def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     """
@@ -335,6 +335,11 @@ def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     # Obtener la fecha máxima de los datos
     fecha_max = df['fecha'].max()
     
+    print("=" * 50)
+    print("DEBUG - calcular_rango_zoom_dinamico")
+    print(f"Fecha máxima: {fecha_max}")
+    print(f"zoom_meses: {zoom_meses}")
+    
     # Si el usuario seleccionó un período específico
     if zoom_meses is not None:
         fecha_fin = fecha_max
@@ -343,6 +348,9 @@ def calcular_rango_zoom_dinamico(df, zoom_meses=None):
             fecha_inicio = df['fecha'].min()
         # Generar ticks mensuales
         ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
+        print(f"USUARIO SELECCIONÓ: {zoom_meses} meses")
+        print(f"Ticks: {ticks}")
+        print("=" * 50)
         return fecha_inicio, fecha_fin, ticks
     
     # ===== ZOOM DINÁMICO: ÚLTIMOS 4 MESES =====
@@ -350,19 +358,29 @@ def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     # Obtener los meses únicos con datos
     meses_con_datos = sorted(df['fecha'].dt.to_period('M').unique())
     
+    print(f"Meses con datos: {meses_con_datos}")
+    print(f"Cantidad de meses: {len(meses_con_datos)}")
+    
     # Si hay menos de 4 meses, mostrar todos
     if len(meses_con_datos) <= 4:
         fecha_inicio = df['fecha'].min()
         fecha_fin = df['fecha'].max()
         ticks = [pd.Timestamp(year=m.year, month=m.month, day=1) for m in meses_con_datos]
+        print(f"MENOS DE 4 MESES - Ticks: {ticks}")
+        print("=" * 50)
         return fecha_inicio, fecha_fin, ticks
     
     # Tomar los últimos 4 meses
     ultimos_4_meses = meses_con_datos[-4:]
     
+    print(f"Últimos 4 meses: {ultimos_4_meses}")
+    
     # Calcular fechas de inicio y fin
     primer_mes = ultimos_4_meses[0]
     ultimo_mes = ultimos_4_meses[-1]
+    
+    print(f"Primer mes: {primer_mes}")
+    print(f"Último mes: {ultimo_mes}")
     
     # Inicio: 1er día del primer mes
     fecha_inicio = pd.Timestamp(year=primer_mes.year, month=primer_mes.month, day=1)
@@ -374,10 +392,18 @@ def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     fecha_inicio = fecha_inicio - pd.DateOffset(days=5)
     fecha_fin = fecha_fin + pd.DateOffset(days=5)
     
+    print(f"Fecha inicio (con margen): {fecha_inicio}")
+    print(f"Fecha fin (con margen): {fecha_fin}")
+    
     # Crear ticks para los 4 meses (usando el día 15 para centrar)
     ticks = []
     for mes in ultimos_4_meses:
-        ticks.append(pd.Timestamp(year=mes.year, month=mes.month, day=15))
+        tick = pd.Timestamp(year=mes.year, month=mes.month, day=15)
+        ticks.append(tick)
+        print(f"Tick generado: {tick}")
+    
+    print(f"Ticks finales: {ticks}")
+    print("=" * 50)
     
     return fecha_inicio, fecha_fin, ticks
 
@@ -636,6 +662,16 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     
     # Generar etiquetas en español
     tick_labels = [fecha_espanol(tick) for tick in ticks_zoom]
+    
+    # DEBUG: Mostrar en Streamlit también
+    with st.expander("🔍 DEBUG - Información del zoom", expanded=True):
+        st.write("**Meses con datos:**", sorted(df['fecha'].dt.to_period('M').unique()))
+        st.write("**Últimos 4 meses:**", sorted(df['fecha'].dt.to_period('M').unique())[-4:] if len(sorted(df['fecha'].dt.to_period('M').unique())) >= 4 else "Menos de 4 meses")
+        st.write("**Ticks generados:**", ticks_zoom)
+        st.write("**Etiquetas:**", tick_labels)
+        st.write("**Fecha inicio zoom:**", fecha_inicio_zoom)
+        st.write("**Fecha fin zoom:**", fecha_fin_zoom)
+        st.write("**Rango de fechas en datos:**", df['fecha'].min(), "a", df['fecha'].max())
 
     # ============================================================
     # CONFIGURACIÓN DE TAMAÑOS
