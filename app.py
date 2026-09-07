@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - ZOOM AUTOMÁTICO 4 MESES (CORREGIDO TICKS)
+# app.py - VERSIÓN SIGUAIRO - ZOOM AUTOMÁTICO 4 MESES (CORREGIDO FINAL)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -328,12 +328,10 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
 def calcular_rango_zoom_automatico(df):
     """
     Calcula el rango de fechas para mostrar exactamente los últimos 4 meses completos.
-    Si hay al menos 1 día en el mes actual, se incluye ese mes completo.
     """
     if df is None or df.empty:
         return None, None
     
-    # Obtener la fecha máxima de los datos
     fecha_max = df['fecha'].max()
     
     if pd.isna(fecha_max):
@@ -343,49 +341,20 @@ def calcular_rango_zoom_automatico(df):
     primer_dia_mes_max = fecha_max.replace(day=1, hour=0, minute=0, second=0)
     
     # Calcular el inicio: 3 meses atrás desde el primer día del mes actual
-    # para obtener exactamente 4 meses (incluyendo el mes actual)
     fecha_inicio = primer_dia_mes_max - pd.DateOffset(months=3)
     
-    # Asegurar que no sea anterior al mínimo de los datos
-    fecha_min_datos = df['fecha'].min()
-    if fecha_inicio < fecha_min_datos:
-        fecha_inicio = fecha_min_datos
-    
     # Calcular el último día del mes de la fecha máxima
-    # Para incluir todo el mes aunque solo tenga 1 día de datos
     if fecha_max.month == 12:
         fecha_fin = fecha_max.replace(year=fecha_max.year + 1, month=1, day=1) - pd.Timedelta(days=1)
     else:
         fecha_fin = fecha_max.replace(month=fecha_max.month + 1, day=1) - pd.Timedelta(days=1)
     
+    # Debug: imprimir fechas calculadas
+    print(f"DEBUG - fecha_max: {fecha_max}")
+    print(f"DEBUG - fecha_inicio: {fecha_inicio}")
+    print(f"DEBUG - fecha_fin: {fecha_fin}")
+    
     return fecha_inicio, fecha_fin
-
-# ============================================================
-# FUNCIÓN PARA GENERAR TICKS DEL RANGO DE ZOOM
-# ============================================================
-def generar_ticks_zoom(fecha_inicio, fecha_fin):
-    """
-    Genera ticks mensuales específicamente para el rango de zoom
-    """
-    # Generar ticks desde el inicio del mes de fecha_inicio hasta el final del mes de fecha_fin
-    inicio_mes = fecha_inicio.replace(day=1)
-    
-    # Calcular el último día del mes de fecha_fin
-    if fecha_fin.month == 12:
-        fin_mes = fecha_fin.replace(year=fecha_fin.year + 1, month=1, day=1) - pd.Timedelta(days=1)
-    else:
-        fin_mes = fecha_fin.replace(month=fecha_fin.month + 1, day=1) - pd.Timedelta(days=1)
-    
-    # Generar los ticks mensuales
-    ticks = pd.date_range(start=inicio_mes, end=fin_mes, freq='MS')
-    
-    # Si no hay ticks, usar el rango completo
-    if len(ticks) == 0:
-        ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
-    
-    labels = [fecha_espanol(f) for f in ticks]
-    
-    return ticks, labels
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
@@ -660,9 +629,30 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
-    # TICKS - Generados específicamente para el rango de zoom
+    # TICKS - Generar ticks para los 4 meses del zoom
     # ============================================================
-    fecha_ticks, tick_labels = generar_ticks_zoom(fecha_inicio_zoom, fecha_fin_zoom)
+    # Asegurar que los ticks cubran exactamente el rango de zoom
+    # Comenzar desde el primer día del mes de fecha_inicio_zoom
+    inicio_ticks = fecha_inicio_zoom.replace(day=1)
+    
+    # Terminar en el primer día del mes siguiente a fecha_fin_zoom
+    if fecha_fin_zoom.month == 12:
+        fin_ticks = fecha_fin_zoom.replace(year=fecha_fin_zoom.year + 1, month=1, day=1)
+    else:
+        fin_ticks = fecha_fin_zoom.replace(month=fecha_fin_zoom.month + 1, day=1)
+    
+    # Generar ticks mensuales
+    fecha_ticks = pd.date_range(start=inicio_ticks, end=fin_ticks, freq='MS')
+    
+    # Si no hay ticks, usar el rango completo
+    if len(fecha_ticks) == 0:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+    
+    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+    
+    # Debug: imprimir ticks
+    print(f"DEBUG - fecha_ticks: {fecha_ticks}")
+    print(f"DEBUG - tick_labels: {tick_labels}")
     
     # Configurar tamaños según dispositivo
     if es_movil:
