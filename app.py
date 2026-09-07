@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO
+# app.py - VERSIÓN SIGUAIRO - AUTOMATIZADO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -572,20 +572,37 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL
+    # ZOOM INICIAL AUTOMATIZADO - MOSTRAR TODOS LOS DATOS DISPONIBLES
     # ============================================================
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
     
+    # OBTENER EL AÑO ACTUAL Y EL AÑO DE LOS DATOS
+    año_actual = pd.Timestamp.now().year
+    año_datos = df['fecha'].max().year
+    
+    # SI EL USUARIO NO HA SELECCIONADO UN ZOOM ESPECÍFICO
     if zoom_meses is None:
-        año_datos = df['fecha'].max().year
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
-        
-        if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
-            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+        # SI HAY DATOS DEL AÑO ACTUAL, MOSTRAR DESDE MARZO HASTA EL ÚLTIMO DATO DISPONIBLE
+        if año_datos == año_actual or df['fecha'].max() > pd.Timestamp(year=año_actual, month=1, day=1):
+            # Mostrar desde marzo del año actual hasta la fecha máxima disponible
+            fecha_inicio_zoom = pd.Timestamp(year=año_actual, month=3, day=1)
             fecha_fin_zoom = df['fecha'].max()
+            
+            # SI NO HAY DATOS DESDE MARZO, MOSTRAR TODOS LOS DATOS
+            if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
+                fecha_inicio_zoom = fecha_inicio
+                fecha_fin_zoom = fecha_fin
+        else:
+            # SI SON DATOS DE AÑOS ANTERIORES, MOSTRAR TODO EL RANGO
+            fecha_inicio_zoom = fecha_inicio
+            fecha_fin_zoom = fecha_fin
+            
+            # PERO SI HAY MUCHOS DATOS (>12 MESES), MOSTRAR LOS ÚLTIMOS 12 MESES
+            if (fecha_fin - fecha_inicio) > pd.Timedelta(days=365):
+                fecha_inicio_zoom = fecha_fin - pd.DateOffset(months=12)
     else:
+        # ZOOM SELECCIONADO POR EL USUARIO
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
@@ -729,10 +746,10 @@ def main():
               - 🌡️ Temperatura
               - 💧 Precipitación
               - 💨 Viento
-              - 💀 Muertos
-              - ⚠️ Abortos
+              - 💀 Muertos              - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
+            - **📊 Automático**: La gráfica muestra todos los datos disponibles
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
