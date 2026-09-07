@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (CON DETECCIÓN AUTOMÁTICA DE DATOS FUTUROS)
+# app.py - VERSIÓN SIGUAIRO (SOLO MUESTRA MESES CON DATOS)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -571,48 +571,55 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - DINÁMICO (SE ADAPTA A DATOS FUTUROS)
+    # ZOOM INICIAL - SOLO MUESTRA MESES CON DATOS REALES
     # ============================================================
     if zoom_meses is None:
+        # Obtener el año de los datos
         año_datos = df['fecha'].max().year
         
-        # Definir el rango base: junio a septiembre
-        fecha_inicio_base = pd.Timestamp(year=año_datos, month=6, day=1)
-        fecha_fin_base = pd.Timestamp(year=año_datos, month=9, day=30)
+        # Obtener los meses que tienen datos reales
+        meses_con_datos = df['fecha'].dt.month.unique()
         
-        # Verificar si hay datos más allá de septiembre (octubre, noviembre, etc.)
-        datos_despues_septiembre = df[df['fecha'] > fecha_fin_base]
+        # Verificar si hay datos en el rango junio-septiembre
+        datos_jun_sep = df[(df['fecha'].dt.month >= 6) & (df['fecha'].dt.month <= 9)]
         
-        if not datos_despues_septiembre.empty:
-            # ¡Hay datos futuros! Mostrar desde junio hasta el último dato disponible
-            fecha_inicio_zoom = fecha_inicio_base
-            fecha_fin_zoom = df['fecha'].max()
+        if not datos_jun_sep.empty:
+            # Hay datos en junio-septiembre, mostrar ese rango
+            fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
+            fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
             
-            # Asegurar que el inicio sea junio o el primer dato disponible
-            datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-            if not datos_en_rango.empty and datos_en_rango['fecha'].min() > fecha_inicio_zoom:
-                fecha_inicio_zoom = datos_en_rango['fecha'].min() - pd.DateOffset(days=1)
-        else:
-            # No hay datos después de septiembre, mostrar solo junio-septiembre
-            fecha_inicio_zoom = fecha_inicio_base
-            fecha_fin_zoom = fecha_fin_base
+            # Ajustar al primer y último día con datos reales en el rango
+            min_fecha = datos_jun_sep['fecha'].min()
+            max_fecha = datos_jun_sep['fecha'].max()
             
-            # Verificar si hay datos en el rango junio-septiembre
-            datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
+            # Si los datos empiezan después del 1 de junio, ajustar
+            if min_fecha > fecha_inicio_zoom:
+                fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
             
-            if datos_en_rango.empty:
-                # Si no hay datos en junio-septiembre, mostrar los últimos 4 meses
-                fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
+            # Si los datos terminan antes del 30 de septiembre, ajustar
+            if max_fecha < fecha_fin_zoom:
+                fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
+            
+            # Verificar si hay datos después de septiembre (futuros)
+            datos_futuros = df[df['fecha'] > fecha_fin_zoom]
+            if not datos_futuros.empty:
+                # Hay datos futuros, extender hasta el último dato
                 fecha_fin_zoom = df['fecha'].max()
-            else:
-                # Ajustar a los datos reales dentro del rango
-                min_fecha = datos_en_rango['fecha'].min()
-                if min_fecha > fecha_inicio_zoom:
-                    fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
                 
-                max_fecha = datos_en_rango['fecha'].max()
-                if max_fecha < fecha_fin_zoom:
-                    fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
+                # Verificar que todos los meses entre junio y el último dato tengan datos
+                # Si hay meses sin datos, ajustar para que no se muestren vacíos
+                meses_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]['fecha'].dt.month.unique()
+                meses_esperados = list(range(6, fecha_fin_zoom.month + 1))
+                
+                # Si falta algún mes, ajustar para mostrar solo meses con datos
+                if len(meses_en_rango) < len(meses_esperados):
+                    # Mostrar desde el primer mes con datos hasta el último
+                    fecha_inicio_zoom = df['fecha'].min()
+                    fecha_fin_zoom = df['fecha'].max()
+        else:
+            # No hay datos en junio-septiembre, mostrar los últimos 4 meses con datos
+            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
+            fecha_fin_zoom = df['fecha'].max()
     else:
         # Si el usuario seleccionó un período específico
         fecha_fin_zoom = df['fecha'].max()
@@ -624,14 +631,18 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # TICKS
     # ============================================================
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        # Solo mostrar ticks para meses con datos
+        meses_unicos = df['fecha'].dt.to_period('M').unique()
+        fecha_ticks = [pd.Timestamp(str(m)) for m in meses_unicos]
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        # Solo mostrar ticks para meses con datos
+        meses_unicos = df['fecha'].dt.to_period('M').unique()
+        fecha_ticks = [pd.Timestamp(str(m)) for m in meses_unicos]
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
