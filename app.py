@@ -1,16 +1,13 @@
-# app.py - VERSIÓN CON PROYECCIONES FUTURAS
+# app.py - VERSIÓN MEJORADA CON SOPORTE PARA DATOS FUTUROS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from scipy.interpolate import make_interp_spline, UnivariateSpline
 from scipy.ndimage import uniform_filter1d
-from scipy import stats
 import warnings
 import base64
 import os
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
 
 warnings.filterwarnings('ignore')
 
@@ -71,6 +68,15 @@ st.markdown("""
         opacity: 1;
         transform: scale(1.05);
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    .status-indicator {
+        text-align: center;
+        padding: 0.3rem 0;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.5);
     }
     
     @media only screen and (max-width: 768px) {
@@ -199,106 +205,6 @@ def image_to_base64(filepath):
     return None
 
 # ============================================================
-# FUNCIÓN PARA GENERAR PROYECCIONES FUTURAS
-# ============================================================
-def generar_proyecciones(df, meses_futuros=3):
-    """
-    Genera datos futuros basados en promedios históricos mensuales
-    y tendencias estacionales
-    """
-    if df is None or df.empty:
-        return df
-    
-    # Obtener la última fecha real
-    ultima_fecha = df['fecha'].max()
-    
-    # Crear fechas futuras
-    fechas_futuras = []
-    for i in range(1, meses_futuros + 1):
-        fechas_futuras.append(ultima_fecha + relativedelta(months=i))
-    
-    # Calcular promedios mensuales históricos
-    df['mes'] = df['fecha'].dt.month
-    promedios_mensuales = df.groupby('mes').agg({
-        'Temperaturas minimas  (°C)': 'mean',
-        'Precipitacion ': 'mean',
-        'Vel. viento (Km/h)': 'mean',
-        'Enfermos': 'mean',
-        'Muertos': 'mean',
-        'Abortos': 'mean'
-    }).reset_index()
-    
-    # Calcular tendencia general (si hay suficientes datos)
-    proyecciones = []
-    
-    for fecha_futura in fechas_futuras:
-        mes = fecha_futura.month
-        
-        # Buscar promedio histórico para este mes
-        promedio_mes = promedios_mensuales[promedios_mensuales['mes'] == mes]
-        
-        if not promedio_mes.empty:
-            # Usar promedio histórico
-            temp = promedio_mes['Temperaturas minimas  (°C)'].values[0]
-            precip = promedio_mes['Precipitacion '].values[0]
-            viento = promedio_mes['Vel. viento (Km/h)'].values[0]
-            enfermos = promedio_mes['Enfermos'].values[0]
-            muertos = promedio_mes['Muertos'].values[0]
-            abortos = promedio_mes['Abortos'].values[0]
-        else:
-            # Si no hay datos históricos, usar promedios generales
-            temp = df['Temperaturas minimas  (°C)'].mean()
-            precip = df['Precipitacion '].mean()
-            viento = df['Vel. viento (Km/h)'].mean()
-            enfermos = df['Enfermos'].mean()
-            muertos = df['Muertos'].mean()
-            abortos = df['Abortos'].mean()
-        
-        # Aplicar pequeña variación estacional
-        # Los meses de invierno (Jun-Ago) suelen ser más fríos en los Andes
-        if mes in [6, 7, 8]:  # Invierno
-            temp = temp * 0.85  # 15% más frío
-        elif mes in [12, 1, 2]:  # Verano
-            temp = temp * 1.15  # 15% más cálido
-        
-        # Las alpacas son más propensas a enfermarse en invierno
-        if mes in [6, 7, 8]:
-            enfermos = enfermos * 1.3  # 30% más enfermos en invierno
-            muertos = muertos * 1.2
-            abortos = abortos * 1.2
-        
-        # Añadir ruido aleatorio controlado
-        ruido_temp = np.random.normal(0, temp * 0.05)
-        ruido_precip = np.random.normal(0, precip * 0.1)
-        ruido_enfermos = np.random.normal(0, max(1, enfermos * 0.1))
-        
-        proyecciones.append({
-            'fecha': fecha_futura,
-            'Temperaturas minimas  (°C)': max(-10, temp + ruido_temp),
-            'Precipitacion ': max(0, precip + ruido_precip),
-            'Vel. viento (Km/h)': max(0, viento + np.random.normal(0, viento * 0.05)),
-            'Enfermos': max(0, enfermos + ruido_enfermos),
-            'Muertos': max(0, muertos + np.random.normal(0, max(1, muertos * 0.05))),
-            'Abortos': max(0, abortos + np.random.normal(0, max(1, abortos * 0.05))),
-            'es_proyeccion': True
-        })
-    
-    # Crear DataFrame con proyecciones
-    df_proyecciones = pd.DataFrame(proyecciones)
-    
-    if not df_proyecciones.empty:
-        # Marcar datos reales
-        df['es_proyeccion'] = False
-        # Combinar datos reales y proyecciones
-        df_combinado = pd.concat([df, df_proyecciones], ignore_index=True)
-        df_combinado = df_combinado.sort_values('fecha').reset_index(drop=True)
-    else:
-        df['es_proyeccion'] = False
-        df_combinado = df
-    
-    return df_combinado
-
-# ============================================================
 # FUNCIONES DE PROCESAMIENTO
 # ============================================================
 @st.cache_data(ttl=10)
@@ -394,6 +300,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
+                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -426,9 +333,108 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - CON PROYECCIONES
+# NUEVAS FUNCIONES PARA SOPORTE DE DATOS FUTUROS
 # ============================================================
-def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futuros=3):
+def calcular_rango_fechas_inteligente(df, zoom_meses=None):
+    """
+    Calcula el rango de fechas para mostrar, incluyendo el mes actual y futuro
+    si los datos son recientes.
+    """
+    hoy = pd.Timestamp.now().normalize()
+    mes_actual = hoy.month
+    año_actual = hoy.year
+    
+    # Si el usuario seleccionó un período específico
+    if zoom_meses is not None:
+        fecha_fin = hoy + pd.DateOffset(months=1)  # Siempre incluir el mes siguiente
+        fecha_inicio = hoy - pd.DateOffset(months=zoom_meses)
+        
+        # Ajustar a datos reales si existen
+        if df is not None and not df.empty and fecha_inicio < df['fecha'].min():
+            fecha_inicio = df['fecha'].min()
+        
+        return fecha_inicio, fecha_fin
+    
+    # Si no hay datos
+    if df is None or df.empty:
+        return hoy - pd.DateOffset(months=2), hoy + pd.DateOffset(months=1)
+    
+    # Obtener fecha máxima de datos
+    fecha_max_datos = df['fecha'].max()
+    
+    # DETERMINAR SI NECESITAMOS DATOS FUTUROS
+    # Si la fecha máxima de datos es del mes actual o anterior
+    es_mes_actual = (fecha_max_datos.year == año_actual and 
+                     fecha_max_datos.month == mes_actual)
+    
+    es_mes_anterior = (fecha_max_datos.year == año_actual and 
+                       fecha_max_datos.month == mes_actual - 1)
+    
+    # Si es el mes actual o anterior, necesitamos mostrar el mes actual
+    if es_mes_actual or es_mes_anterior:
+        # Mostrar desde el mes anterior al actual + 1 mes
+        fecha_inicio = hoy - pd.DateOffset(months=2)
+        fecha_fin = hoy + pd.DateOffset(months=1)
+    else:
+        # Si los datos son antiguos, mostrar solo el rango de datos
+        fecha_inicio = fecha_max_datos - pd.DateOffset(months=3)
+        fecha_fin = fecha_max_datos + pd.DateOffset(months=1)
+    
+    # Asegurar que no se muestren fechas muy futuras (más de 2 meses)
+    if fecha_fin > hoy + pd.DateOffset(months=2):
+        fecha_fin = hoy + pd.DateOffset(months=1)
+    
+    return fecha_inicio, fecha_fin
+
+def crear_eje_fechas_completo(df, fecha_inicio, fecha_fin):
+    """
+    Crea un eje de fechas completo incluyendo días sin datos
+    para mostrar el contexto futuro.
+    """
+    # Generar todas las fechas del rango
+    todas_fechas = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='D')
+    
+    # Si no hay datos, retornar solo las fechas
+    if df is None or df.empty:
+        df_completo = pd.DataFrame({'fecha': todas_fechas})
+        for col in ['Enfermos', 'Muertos', 'Abortos', 'Temperaturas minimas  (°C)', 
+                    'Vel. viento (Km/h)', 'Precipitacion ']:
+            df_completo[col] = 0
+        return df_completo
+    
+    # Crear DataFrame con todas las fechas
+    df_completo = pd.DataFrame({'fecha': todas_fechas})
+    
+    # Unir con los datos existentes
+    df_completo = df_completo.merge(df, on='fecha', how='left')
+    
+    # Llenar valores nulos
+    columnas_numericas = ['Enfermos', 'Muertos', 'Abortos', 
+                         'Temperaturas minimas  (°C)', 
+                         'Vel. viento (Km/h)', 'Precipitacion ']
+    
+    hoy = pd.Timestamp.now().normalize()
+    
+    for col in columnas_numericas:
+        if col in df_completo.columns:
+            # Para días futuros (después de hoy), llenar con 0
+            mask_futuro = df_completo['fecha'] > hoy
+            df_completo.loc[mask_futuro & df_completo[col].isna(), col] = 0
+            
+            # Para días pasados sin datos, mantener NaN (no mostrar)
+            # o llenar con 0 si es necesario
+            mask_pasado = df_completo['fecha'] <= hoy
+            df_completo.loc[mask_pasado & df_completo[col].isna(), col] = np.nan
+    
+    # Agregar columna para identificar días futuros
+    df_completo['es_futuro'] = df_completo['fecha'] > hoy
+    
+    return df_completo
+
+# ============================================================
+# FUNCIÓN PARA CREAR LA GRÁFICA - CON SOPORTE FUTURO
+# ============================================================
+def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -437,14 +443,21 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
             font=dict(size=16, color="red")
         )
         return fig
-
-    # Generar proyecciones
-    df_con_proyecciones = generar_proyecciones(df, meses_futuros)
     
-    # Separar datos reales y proyecciones
-    df_reales = df_con_proyecciones[df_con_proyecciones['es_proyeccion'] == False]
-    df_futuro = df_con_proyecciones[df_con_proyecciones['es_proyeccion'] == True]
-
+    # ============================================================
+    # CALCULAR RANGO INTELIGENTE
+    # ============================================================
+    fecha_inicio, fecha_fin = calcular_rango_fechas_inteligente(df, zoom_meses)
+    
+    # ============================================================
+    # CREAR EJE COMPLETO CON FECHAS FUTURAS
+    # ============================================================
+    df_completo = crear_eje_fechas_completo(df, fecha_inicio, fecha_fin)
+    
+    # Si df_completo es None o vacío, usar el df original
+    if df_completo is None or df_completo.empty:
+        df_completo = df
+    
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
 
@@ -455,152 +468,94 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - DATOS REALES (SIN HOVER)
+    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
     # ============================================================
-    if 'Precipitacion ' in df_reales.columns and not df_reales['Precipitacion '].dropna().empty:
-        fig.add_trace(go.Bar(
-            x=df_reales['fecha'],
-            y=df_reales['Precipitacion '],
-            name='Precipitación (Real)',
-            marker=dict(color='#87CEEB', opacity=0.5),
-            yaxis='y2',
-            hoverinfo='skip'
-        ))
+    if 'Precipitacion ' in df_completo.columns:
+        # Filtrar datos futuros para no mostrar barras
+        df_precip = df_completo[df_completo['fecha'] <= pd.Timestamp.now().normalize()].copy()
+        if not df_precip['Precipitacion '].dropna().empty:
+            fig.add_trace(go.Bar(
+                x=df_precip['fecha'],
+                y=df_precip['Precipitacion '],
+                name='Precipitación',
+                marker=dict(color='#87CEEB', opacity=0.5),
+                yaxis='y2',
+                hoverinfo='skip'
+            ))
 
     # ============================================================
-    # PRECIPITACIÓN - PROYECCIONES (MÁS TRANSPARENTE)
+    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
     # ============================================================
-    if 'Precipitacion ' in df_futuro.columns and not df_futuro['Precipitacion '].dropna().empty:
-        fig.add_trace(go.Bar(
-            x=df_futuro['fecha'],
-            y=df_futuro['Precipitacion '],
-            name='Precipitación (Proyectada)',
-            marker=dict(color='#87CEEB', opacity=0.25, pattern_shape='/'),
-            yaxis='y2',
-            hoverinfo='skip'
-        ))
+    if 'Temperaturas minimas  (°C)' in df_completo.columns:
+        # Mostrar solo datos pasados y presentes
+        df_temp = df_completo[df_completo['fecha'] <= pd.Timestamp.now().normalize()].copy()
+        if not df_temp['Temperaturas minimas  (°C)'].dropna().empty:
+            fig.add_trace(go.Scatter(
+                x=df_temp['fecha'],
+                y=df_temp['Temperaturas minimas  (°C)'],
+                mode='lines+markers',
+                name='Temperatura mínima',
+                line=dict(color='#2563EB', width=2.5),
+                marker=dict(size=4, color='#2563EB'),
+                opacity=0.9,
+                hoverinfo='skip'
+            ))
 
     # ============================================================
-    # TEMPERATURA - DATOS REALES (SIN HOVER)
+    # VIENTO - SIN HOVER (hoverinfo='skip')
     # ============================================================
-    if 'Temperaturas minimas  (°C)' in df_reales.columns and not df_reales['Temperaturas minimas  (°C)'].dropna().empty:
-        fig.add_trace(go.Scatter(
-            x=df_reales['fecha'],
-            y=df_reales['Temperaturas minimas  (°C)'],
-            mode='lines+markers',
-            name='Temperatura mínima (Real)',
-            line=dict(color='#2563EB', width=2.5),
-            marker=dict(size=4, color='#2563EB'),
-            opacity=0.9,
-            hoverinfo='skip'
-        ))
+    if 'Vel. viento (Km/h)' in df_completo.columns:
+        df_viento = df_completo[df_completo['fecha'] <= pd.Timestamp.now().normalize()].copy()
+        if not df_viento['Vel. viento (Km/h)'].dropna().empty:
+            fig.add_trace(go.Scatter(
+                x=df_viento['fecha'],
+                y=df_viento['Vel. viento (Km/h)'],
+                mode='lines',
+                name='Viento',
+                line=dict(color='#808080', width=2, dash='dash'),
+                opacity=0.6,
+                hoverinfo='skip'
+            ))
 
     # ============================================================
-    # TEMPERATURA - PROYECCIONES (DISCONTINUA)
-    # ============================================================
-    if 'Temperaturas minimas  (°C)' in df_futuro.columns and not df_futuro['Temperaturas minimas  (°C)'].dropna().empty:
-        fig.add_trace(go.Scatter(
-            x=df_futuro['fecha'],
-            y=df_futuro['Temperaturas minimas  (°C)'],
-            mode='lines+markers',
-            name='Temperatura mínima (Proyectada)',
-            line=dict(color='#2563EB', width=2, dash='dot'),
-            marker=dict(size=5, color='#2563EB', symbol='diamond'),
-            opacity=0.6,
-            hoverinfo='skip'
-        ))
-
-    # ============================================================
-    # VIENTO - DATOS REALES (SIN HOVER)
-    # ============================================================
-    if 'Vel. viento (Km/h)' in df_reales.columns and not df_reales['Vel. viento (Km/h)'].dropna().empty:
-        fig.add_trace(go.Scatter(
-            x=df_reales['fecha'],
-            y=df_reales['Vel. viento (Km/h)'],
-            mode='lines',
-            name='Viento (Real)',
-            line=dict(color='#808080', width=2, dash='dash'),
-            opacity=0.6,
-            hoverinfo='skip'
-        ))
-
-    # ============================================================
-    # VIENTO - PROYECCIONES
-    # ============================================================
-    if 'Vel. viento (Km/h)' in df_futuro.columns and not df_futuro['Vel. viento (Km/h)'].dropna().empty:
-        fig.add_trace(go.Scatter(
-            x=df_futuro['fecha'],
-            y=df_futuro['Vel. viento (Km/h)'],
-            mode='lines',
-            name='Viento (Proyectado)',
-            line=dict(color='#A0A0A0', width=1.5, dash='dot'),
-            opacity=0.4,
-            hoverinfo='skip'
-        ))
-
-    # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SOLO REAL)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
-        fig.add_trace(go.Scatter(
-            x=fecha_smooth,
-            y=enfermos_smooth,
-            mode='lines',
-            name='Alpacas enfermas (Real)',
-            line=dict(color='#8B0000', width=2.5),
-            opacity=0.8,
-            fill='tozeroy',
-            fillgradient=dict(
-                type='vertical',
-                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
-            ),
-            yaxis='y2',
-            hoverinfo='skip',
-            showlegend=True
-        ))
+        # Mostrar solo la curva hasta la fecha actual
+        mask_actual = fecha_smooth <= pd.Timestamp.now().normalize()
+        fecha_smooth_actual = fecha_smooth[mask_actual]
+        enfermos_smooth_actual = enfermos_smooth[mask_actual]
+        
+        if len(fecha_smooth_actual) > 0:
+            fig.add_trace(go.Scatter(
+                x=fecha_smooth_actual,
+                y=enfermos_smooth_actual,
+                mode='lines',
+                name='Alpacas enfermas',
+                line=dict(color='#8B0000', width=2.5),
+                opacity=0.8,
+                fill='tozeroy',
+                fillgradient=dict(
+                    type='vertical',
+                    colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
+                ),
+                yaxis='y2',
+                hoverinfo='skip',
+                showlegend=True
+            ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - PROYECCIÓN
+    # ALPACAS MUERTAS - SOLO DATOS REALES
     # ============================================================
-    if not df_futuro.empty and 'Enfermos' in df_futuro.columns:
-        # Generar línea suavizada para proyecciones
-        try:
-            x_futuro = df_futuro['fecha'].map(pd.Timestamp.to_julian_date).values
-            y_futuro = df_futuro['Enfermos'].values
-            
-            if len(x_futuro) >= 2:
-                x_suave_fut = np.linspace(x_futuro.min(), x_futuro.max(), 100)
-                # Usar spline simple para proyecciones
-                from scipy.interpolate import interp1d
-                f_interp = interp1d(x_futuro, y_futuro, kind='cubic', fill_value='extrapolate')
-                y_suave_fut = f_interp(x_suave_fut)
-                
-                fecha_smooth_fut = pd.to_datetime(x_suave_fut, unit='D', origin='julian')
-                
-                fig.add_trace(go.Scatter(
-                    x=fecha_smooth_fut,
-                    y=y_suave_fut,
-                    mode='lines',
-                    name='Alpacas enfermas (Proyectadas)',
-                    line=dict(color='#FF6B6B', width=2, dash='dot'),
-                    opacity=0.6,
-                    yaxis='y2',
-                    hoverinfo='skip'
-                ))
-        except:
-            pass
-
-    # ============================================================
-    # ALPACAS MUERTAS - REALES (SIN HOVER)
-    # ============================================================
-    if 'Muertos' in df_reales.columns:
-        df_muertos = df_reales[df_reales['Muertos'] > 0].copy()
+    if 'Muertos' in df_completo.columns:
+        df_muertos = df_completo[(df_completo['Muertos'] > 0) & 
+                                 (df_completo['fecha'] <= pd.Timestamp.now().normalize())].copy()
         if not df_muertos.empty:
             fig.add_trace(go.Scatter(
                 x=df_muertos['fecha'],
                 y=[0.2] * len(df_muertos),
                 mode='markers',
-                name='Alpacas muertas (Real)',
+                name='Alpacas muertas',
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
                 yaxis='y2',
                 customdata=df_muertos['Muertos'],
@@ -608,33 +563,17 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
             ))
 
     # ============================================================
-    # ALPACAS MUERTAS - PROYECCIONES
+    # ABORTOS - SOLO DATOS REALES
     # ============================================================
-    if 'Muertos' in df_futuro.columns:
-        df_muertos_fut = df_futuro[df_futuro['Muertos'] > 0].copy()
-        if not df_muertos_fut.empty:
-            fig.add_trace(go.Scatter(
-                x=df_muertos_fut['fecha'],
-                y=[0.2] * len(df_muertos_fut),
-                mode='markers',
-                name='Alpacas muertas (Proyectadas)',
-                marker=dict(size=10, color='#999999', symbol='x', line=dict(color='#666', width=1)),
-                yaxis='y2',
-                customdata=df_muertos_fut['Muertos'],
-                hoverinfo='skip'
-            ))
-
-    # ============================================================
-    # ABORTOS - REALES (SIN HOVER)
-    # ============================================================
-    if 'Abortos' in df_reales.columns:
-        df_abortos = df_reales[df_reales['Abortos'] > 0].copy()
+    if 'Abortos' in df_completo.columns:
+        df_abortos = df_completo[(df_completo['Abortos'] > 0) & 
+                                 (df_completo['fecha'] <= pd.Timestamp.now().normalize())].copy()
         if not df_abortos.empty:
             fig.add_trace(go.Scatter(
                 x=df_abortos['fecha'],
                 y=[0.25] * len(df_abortos),
                 mode='markers',
-                name='Abortos (Real)',
+                name='Abortos',
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
                 yaxis='y2',
                 customdata=df_abortos['Abortos'],
@@ -642,26 +581,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
             ))
 
     # ============================================================
-    # ABORTOS - PROYECCIONES
+    # TRACE INVISIBLE CON TODOS LOS DATOS (PARA HOVER)
     # ============================================================
-    if 'Abortos' in df_futuro.columns:
-        df_abortos_fut = df_futuro[df_futuro['Abortos'] > 0].copy()
-        if not df_abortos_fut.empty:
-            fig.add_trace(go.Scatter(
-                x=df_abortos_fut['fecha'],
-                y=[0.25] * len(df_abortos_fut),
-                mode='markers',
-                name='Abortos (Proyectados)',
-                marker=dict(size=10, color='#87CEEB', symbol='x', line=dict(color='#4A90D9', width=1)),
-                yaxis='y2',
-                customdata=df_abortos_fut['Abortos'],
-                hoverinfo='skip'
-            ))
-
-    # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
-    # ============================================================
-    df_hover = df_con_proyecciones.copy()
+    df_hover = df_completo.copy()
     
     for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
                 'Enfermos', 'Muertos', 'Abortos']:
@@ -670,25 +592,24 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
     
     hover_texts = []
     for _, row in df_hover.iterrows():
-        es_proy = row.get('es_proyeccion', False)
-        etiqueta = "🔮 PROYECCIÓN" if es_proy else "📊 DATO REAL"
-        color_etiqueta = "#FF6B6B" if es_proy else "#2c3e50"
-        
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
-        texto += f"<span style='color:{color_etiqueta};'><b>{etiqueta}</b></span><br>"
         
-        if pd.notna(row['Precipitacion ']):
-            texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
-        if pd.notna(row['Temperaturas minimas  (°C)']):
-            texto += f"<b>🌡️ Temperatura mínima:</b> {row['Temperaturas minimas  (°C)']:.1f} °C<br>"
-        if pd.notna(row['Vel. viento (Km/h)']):
-            texto += f"<b>💨 Viento:</b> {row['Vel. viento (Km/h)']:.0f} Km/h<br>"
-        if pd.notna(row['Enfermos']) and row['Enfermos'] > 0:
-            texto += f"<b>🦙 Alpacas enfermas:</b> {row['Enfermos']:.0f}<br>"
-        if pd.notna(row['Muertos']) and row['Muertos'] > 0:
-            texto += f"<b>💀 Alpacas muertas:</b> {row['Muertos']:.0f}<br>"
-        if pd.notna(row['Abortos']) and row['Abortos'] > 0:
-            texto += f"<b>⚠️ Abortos:</b> {row['Abortos']:.0f}<br>"
+        # Indicar si es fecha futura
+        if row['fecha'] > pd.Timestamp.now().normalize():
+            texto += "<i style='color: #888;'>📌 Sin datos disponibles</i><br>"
+        else:
+            if pd.notna(row['Precipitacion ']):
+                texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
+            if pd.notna(row['Temperaturas minimas  (°C)']):
+                texto += f"<b>🌡️ Temperatura mínima:</b> {row['Temperaturas minimas  (°C)']:.1f} °C<br>"
+            if pd.notna(row['Vel. viento (Km/h)']):
+                texto += f"<b>💨 Viento:</b> {row['Vel. viento (Km/h)']:.0f} Km/h<br>"
+            if pd.notna(row['Enfermos']) and row['Enfermos'] > 0:
+                texto += f"<b>🦙 Alpacas enfermas:</b> {row['Enfermos']:.0f}<br>"
+            if pd.notna(row['Muertos']) and row['Muertos'] > 0:
+                texto += f"<b>💀 Alpacas muertas:</b> {row['Muertos']:.0f}<br>"
+            if pd.notna(row['Abortos']) and row['Abortos'] > 0:
+                texto += f"<b>⚠️ Abortos:</b> {row['Abortos']:.0f}<br>"
         
         hover_texts.append(texto)
     
@@ -722,22 +643,29 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
 
     if not es_movil:
         if img_enferma is not None and len(enfermos_smooth) > 0:
-            for idx in [0, -1]:
-                images_plotly.append({
-                    'source': f"data:image/png;base64,{img_enferma}",
-                    'xref': 'x',
-                    'yref': 'y2',
-                    'x': fecha_smooth[idx],
-                    'y': float(enfermos_smooth[idx]),
-                    'sizex': 8,
-                    'sizey': 8,
-                    'xanchor': 'center',
-                    'yanchor': 'middle',
-                    'layer': 'above'
-                })
+            # Mostrar imágenes solo en fechas reales (no futuras)
+            mask_actual = fecha_smooth <= pd.Timestamp.now().normalize()
+            fecha_smooth_actual = fecha_smooth[mask_actual]
+            enfermos_smooth_actual = enfermos_smooth[mask_actual]
+            
+            for idx in [0, -1] if len(fecha_smooth_actual) > 1 else [0]:
+                if idx < len(fecha_smooth_actual):
+                    images_plotly.append({
+                        'source': f"data:image/png;base64,{img_enferma}",
+                        'xref': 'x',
+                        'yref': 'y2',
+                        'x': fecha_smooth_actual[idx],
+                        'y': float(enfermos_smooth_actual[idx]),
+                        'sizex': 8,
+                        'sizey': 8,
+                        'xanchor': 'center',
+                        'yanchor': 'middle',
+                        'layer': 'above'
+                    })
 
-        if img_muerta is not None and 'Muertos' in df_reales.columns:
-            df_muertos_varios = df_reales[df_reales['Muertos'] >= 3].copy()
+        if img_muerta is not None and 'Muertos' in df_completo.columns:
+            df_muertos_varios = df_completo[(df_completo['Muertos'] >= 3) & 
+                                            (df_completo['fecha'] <= pd.Timestamp.now().normalize())].copy()
             if not df_muertos_varios.empty:
                 for _, row in df_muertos_varios.iterrows():
                     images_plotly.append({
@@ -753,8 +681,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
                         'layer': 'above'
                     })
 
-        if img_aborto is not None and 'Abortos' in df_reales.columns:
-            df_abortos_pos = df_reales[df_reales['Abortos'] > 0].copy()
+        if img_aborto is not None and 'Abortos' in df_completo.columns:
+            df_abortos_pos = df_completo[(df_completo['Abortos'] > 0) & 
+                                         (df_completo['fecha'] <= pd.Timestamp.now().normalize())].copy()
             if not df_abortos_pos.empty:
                 for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
                     if idx < len(df_abortos_pos):
@@ -774,61 +703,42 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
     # ============================================================
     # RANGOS
     # ============================================================
-    min_temp = df_reales['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df_reales.columns and not df_reales['Temperaturas minimas  (°C)'].dropna().empty else 0
-    max_temp = max(
-        df_reales['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df_reales.columns and not df_reales['Temperaturas minimas  (°C)'].dropna().empty else 0,
-        df_futuro['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df_futuro.columns and not df_futuro['Temperaturas minimas  (°C)'].dropna().empty else 0
-    )
-    max_wind = max(
-        df_reales['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df_reales.columns and not df_reales['Vel. viento (Km/h)'].dropna().empty else 0,
-        df_futuro['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df_futuro.columns and not df_futuro['Vel. viento (Km/h)'].dropna().empty else 0
-    )
+    # Usar solo datos reales para calcular rangos
+    df_real = df_completo[df_completo['fecha'] <= pd.Timestamp.now().normalize()].copy()
+    
+    min_temp = df_real['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df_real.columns and not df_real['Temperaturas minimas  (°C)'].dropna().empty else 0
+    max_temp = df_real['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df_real.columns and not df_real['Temperaturas minimas  (°C)'].dropna().empty else 10
+    max_wind = df_real['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df_real.columns and not df_real['Vel. viento (Km/h)'].dropna().empty else 0
 
     y1_min = min_temp * 1.2 if min_temp < 0 else -5
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
     max_y2 = 1
     if len(enfermos_smooth) > 0:
-        max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
-    if 'Muertos' in df_reales.columns and not df_reales['Muertos'].dropna().empty:
-        max_y2 = max(max_y2, df_reales['Muertos'].max() * 1.5)
-    if 'Muertos' in df_futuro.columns and not df_futuro['Muertos'].dropna().empty:
-        max_y2 = max(max_y2, df_futuro['Muertos'].max() * 1.5)
-    if 'Abortos' in df_reales.columns and not df_reales['Abortos'].dropna().empty:
-        max_y2 = max(max_y2, df_reales['Abortos'].max() * 1.5)
-    if 'Abortos' in df_futuro.columns and not df_futuro['Abortos'].dropna().empty:
-        max_y2 = max(max_y2, df_futuro['Abortos'].max() * 1.5)
-    if 'Precipitacion ' in df_reales.columns and not df_reales['Precipitacion '].dropna().empty:
-        max_y2 = max(max_y2, df_reales['Precipitacion '].max() * 1.1)
-    if 'Precipitacion ' in df_futuro.columns and not df_futuro['Precipitacion '].dropna().empty:
-        max_y2 = max(max_y2, df_futuro['Precipitacion '].max() * 1.1)
+        # Solo usar datos reales para el máximo
+        mask_actual = fecha_smooth <= pd.Timestamp.now().normalize()
+        if np.any(mask_actual):
+            max_y2 = max(max_y2, max(enfermos_smooth[mask_actual]) * 1.3)
+    if 'Muertos' in df_real.columns and not df_real['Muertos'].dropna().empty:
+        max_y2 = max(max_y2, df_real['Muertos'].max() * 1.5)
+    if 'Abortos' in df_real.columns and not df_real['Abortos'].dropna().empty:
+        max_y2 = max(max_y2, df_real['Abortos'].max() * 1.5)
+    if 'Precipitacion ' in df_real.columns and not df_real['Precipitacion '].dropna().empty:
+        max_y2 = max(max_y2, df_real['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
-
-    # ============================================================
-    # ZOOM INICIAL - INCLUYENDO PROYECCIONES
-    # ============================================================
-    if zoom_meses is None:
-        # Mostrar desde el inicio de los datos hasta el final de las proyecciones
-        fecha_inicio_zoom = df_con_proyecciones['fecha'].min()
-        fecha_fin_zoom = df_con_proyecciones['fecha'].max()
-    else:
-        fecha_fin_zoom = df_con_proyecciones['fecha'].max()
-        fecha_inicio_zoom = df_con_proyecciones['fecha'].max() - pd.DateOffset(months=zoom_meses)
-        if fecha_inicio_zoom < df_con_proyecciones['fecha'].min():
-            fecha_inicio_zoom = df_con_proyecciones['fecha'].min()
 
     # ============================================================
     # TICKS
     # ============================================================
     if es_movil:
-        fecha_ticks = pd.date_range(start=df_con_proyecciones['fecha'].min(), end=df_con_proyecciones['fecha'].max(), freq='MS')
+        fecha_ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df_con_proyecciones['fecha'].min(), end=df_con_proyecciones['fecha'].max(), freq='MS')
+        fecha_ticks = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
@@ -856,7 +766,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
-            'range': [fecha_inicio_zoom, fecha_fin_zoom],
+            'range': [fecha_inicio, fecha_fin],
         },
         yaxis={
             'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
@@ -904,20 +814,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False, meses_futur
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
-    # Añadir anotación de línea divisoria entre datos reales y proyecciones
-    ultima_fecha_real = df_reales['fecha'].max()
-    fig.add_vline(x=ultima_fecha_real, line_dash="dash", line_color="red", line_width=1.5, opacity=0.6)
-    
-    fig.add_annotation(
-        x=ultima_fecha_real,
-        y=max_y2 * 0.9,
-        text="⬅️ Datos Reales | 🔮 Proyecciones ➡️",
-        showarrow=False,
-        font=dict(size=12, color="red"),
-        bgcolor="rgba(255,255,255,0.9)",
-        bordercolor="red",
-        borderwidth=1
-    )
+    # ============================================================
+    # AÑADIR LÍNEA VERTICAL INDICANDO EL DÍA ACTUAL
+    # ============================================================
+    hoy = pd.Timestamp.now().normalize()
+    if fecha_inicio <= hoy <= fecha_fin:
+        fig.add_vline(
+            x=hoy,
+            line_dash="dash",
+            line_color="red",
+            line_width=1.5,
+            opacity=0.5,
+            annotation_text="Hoy",
+            annotation_position="top"
+        )
 
     if es_movil:
         fig.update_layout(
@@ -936,10 +846,14 @@ def main():
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
-        <p style="color: #FF6B6B; font-size: 0.9rem;">🔮 Las proyecciones se generan automáticamente para el mes siguiente</p>
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
+    
+    # ============================================================
+    # INDICADORES DE ESTADO
+    # ============================================================
+    hoy = pd.Timestamp.now().normalize()
     
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
@@ -963,16 +877,20 @@ def main():
         
         st.markdown("---")
         
-        st.markdown("**🔮 Proyecciones futuras:**")
-        meses_futuros = st.slider(
-            "Meses a proyectar",
-            min_value=1,
-            max_value=6,
-            value=3,
-            step=1,
-            help="Número de meses futuros que se proyectarán en la gráfica"
+        # ============================================================
+        # OPCIÓN PARA MOSTRAR DATOS FUTUROS
+        # ============================================================
+        st.markdown("**🔮 Visualización futura:**")
+        mostrar_futuro = st.checkbox(
+            "Mostrar espacio para días futuros",
+            value=True,
+            help="Muestra el mes siguiente aunque no haya datos"
         )
-        st.session_state.meses_futuros = meses_futuros
+        
+        if mostrar_futuro:
+            st.info("📌 Se mostrará espacio para el mes siguiente sin datos")
+        else:
+            st.info("📌 Solo se mostrarán fechas con datos disponibles")
         
         st.markdown("---")
         
@@ -980,7 +898,6 @@ def main():
             st.markdown("""
             - **🖱️ Pasa el cursor** sobre la gráfica para ver:
               - 📅 Fecha (una sola vez al inicio)
-              - 🔮 Indicador de dato real o proyección
               - 🦙 Alpacas enfermas (valor real)
               - 🌡️ Temperatura
               - 💧 Precipitación
@@ -989,7 +906,7 @@ def main():
               - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
-            - **🔴 Línea roja vertical**: Separa datos reales de proyecciones
+            - **📌 Línea roja**: Indica el día de hoy
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
@@ -1009,15 +926,58 @@ def main():
     }
 
     zoom_meses = st.session_state.get('zoom_periodo', None)
-    meses_futuros = st.session_state.get('meses_futuros', 3)
     es_movil = False
 
     with st.spinner('🔄 Cargando datos desde Google Sheets...'):
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica interactiva con proyecciones...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil, meses_futuros)
+        
+        # ============================================================
+        # MOSTRAR ESTADO DE ACTUALIZACIÓN
+        # ============================================================
+        fecha_max = df['fecha'].max()
+        dias_atraso = (hoy - fecha_max).days
+        
+        if dias_atraso <= 1:
+            status_color = "🟢"
+            status_text = "✅ Datos actualizados al día"
+            status_style = "color: green;"
+        elif dias_atraso <= 3:
+            status_color = "🟡"
+            status_text = "⚠️ Datos con 2-3 días de retraso"
+            status_style = "color: orange;"
+        elif dias_atraso <= 7:
+            status_color = "🟠"
+            status_text = f"⚠️ Datos con {dias_atraso} días de retraso"
+            status_style = "color: darkorange;"
+        else:
+            status_color = "🔴"
+            status_text = f"❌ Datos desactualizados ({dias_atraso} días)"
+            status_style = "color: red;"
+        
+        st.markdown(f"""
+        <div class="status-indicator">
+            <span style="{status_style}">
+                {status_color} {status_text} | 
+                📅 Último registro: {fecha_max.strftime('%d/%m/%Y')}
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Mostrar alerta si los datos están muy desactualizados
+        if dias_atraso > 7:
+            st.warning(f"""
+            ⚠️ **Los datos tienen {dias_atraso} días de antigüedad.**
+            Por favor, actualiza la información en Google Sheets para ver datos recientes.
+            """)
+        
+        # Mostrar información sobre datos futuros
+        if mostrar_futuro:
+            st.info(f"📌 Mostrando espacio para días futuros hasta el {pd.Timestamp.now().normalize() + pd.DateOffset(months=1):%d/%m/%Y}")
+        
+        with st.spinner('📊 Generando gráfica interactiva...'):
+            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
 
         if fig is not None:
             st.plotly_chart(fig, use_container_width=True, config={
@@ -1053,7 +1013,7 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Las proyecciones futuras se muestran en color más claro y con línea punteada.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
