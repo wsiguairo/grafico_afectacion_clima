@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - ÚLTIMOS 4 MESES AUTOMÁTICOS
+# app.py - VERSIÓN SIGUAIRO - ULTRA ROBUSTA (Últimos 4 meses automáticos)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,6 +8,7 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
+from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
 
@@ -323,7 +324,53 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - ÚLTIMOS 4 MESES
+# FUNCIÓN ROBUSTA PARA CALCULAR EL ZOOM - SIEMPRE ÚLTIMOS 4 MESES
+# ============================================================
+def calcular_zoom_4_meses(df):
+    """
+    Función robusta que siempre calcula los últimos 4 meses con datos
+    con múltiples mecanismos de respaldo
+    """
+    # Mecanismo 1: Intentar con la fecha más reciente
+    try:
+        fecha_max = df['fecha'].max()
+        fecha_inicio = fecha_max - pd.DateOffset(months=4)
+        fecha_fin = fecha_max + pd.DateOffset(days=7)
+        
+        # Verificar si hay datos en este rango
+        datos_rango = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
+        
+        if not datos_rango.empty:
+            # Ajustar al primer y último dato real
+            fecha_inicio_real = datos_rango['fecha'].min() - pd.DateOffset(days=1)
+            fecha_fin_real = datos_rango['fecha'].max() + pd.DateOffset(days=1)
+            return fecha_inicio_real, fecha_fin_real
+    except:
+        pass
+    
+    # Mecanismo 2: Si falla, usar los últimos 4 meses del calendario
+    try:
+        hoy = datetime.now()
+        fecha_inicio = hoy - pd.DateOffset(months=4)
+        fecha_fin = hoy + pd.DateOffset(days=7)
+        
+        # Asegurar que no sea antes de junio del año actual
+        if fecha_inicio.month < 6:
+            fecha_inicio = pd.Timestamp(year=hoy.year, month=6, day=1)
+        
+        return fecha_inicio, fecha_fin
+    except:
+        pass
+    
+    # Mecanismo 3: Fallback final - usar todo el rango de datos
+    try:
+        return df['fecha'].min(), df['fecha'].max()
+    except:
+        # Mecanismo 4: Último recurso - fechas por defecto
+        return pd.Timestamp('2024-06-01'), pd.Timestamp('2024-12-31')
+
+# ============================================================
+# FUNCIÓN PARA CREAR LA GRÁFICA - ULTRA ROBUSTA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -571,36 +618,21 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - SIEMPRE LOS ÚLTIMOS 4 MESES CON DATOS
+    # ZOOM INICIAL - ULTRA ROBUSTO (SIEMPRE ÚLTIMOS 4 MESES)
     # ============================================================
     if zoom_meses is None:
-        # Obtener la fecha más reciente con datos
-        fecha_max = df['fecha'].max()
+        # Usar la función robusta para calcular el zoom
+        fecha_inicio_zoom, fecha_fin_zoom = calcular_zoom_4_meses(df)
         
-        # Calcular la fecha de inicio: 4 meses antes de la fecha más reciente
-        fecha_inicio_zoom = fecha_max - pd.DateOffset(months=4)
+        # DEBUG: Mostrar información en la consola (opcional)
+        # st.write(f"Zoom calculado: {fecha_inicio_zoom} - {fecha_fin_zoom}")
         
-        # Ajustar para que no sea antes de junio
-        año_datos = fecha_max.year
-        fecha_inicio_minima = pd.Timestamp(year=año_datos, month=6, day=1)
-        if fecha_inicio_zoom < fecha_inicio_minima:
-            fecha_inicio_zoom = fecha_inicio_minima
-        
-        # Fecha de fin: un poco después del último dato para dar contexto
-        fecha_fin_zoom = fecha_max + pd.DateOffset(days=7)
-        
-        # Verificar si hay datos en el rango calculado
+        # Verificación final: asegurar que el rango tenga al menos algunos datos
         datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-        
-        if not datos_en_rango.empty:
-            # Ajustar el rango exacto a los datos disponibles
-            min_fecha = datos_en_rango['fecha'].min()
-            if min_fecha > fecha_inicio_zoom:
-                fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
-            
-            max_fecha = datos_en_rango['fecha'].max()
-            if max_fecha < fecha_fin_zoom:
-                fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
+        if datos_en_rango.empty:
+            # Si no hay datos en el rango, mostrar todos los datos
+            fecha_inicio_zoom = df['fecha'].min() - pd.DateOffset(days=1)
+            fecha_fin_zoom = df['fecha'].max() + pd.DateOffset(days=1)
     else:
         # Si el usuario seleccionó un período específico
         fecha_fin_zoom = df['fecha'].max()
@@ -713,6 +745,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
         <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+        <p style="font-size: clamp(0.8rem, 2vw, 1rem); color: #666;">📊 Mostrando automáticamente los últimos 4 meses con datos</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -751,6 +784,7 @@ def main():
             - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
             - **📊 La gráfica muestra automáticamente los últimos 4 meses con datos**
+            - **🔄 Los datos se actualizan automáticamente al cargar la página**
             """)
         
         if st.button("🔄 Actualizar datos", use_container_width=True):
@@ -776,6 +810,13 @@ def main():
         df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
 
     if df is not None and not df.empty:
+        # Mostrar información de los datos
+        with st.expander("📊 Información de los datos cargados", expanded=False):
+            col1, col2, col3 = st.columns(3)
+            col1.metric("📅 Fecha más reciente", df['fecha'].max().strftime('%d/%m/%Y'))
+            col2.metric("📅 Fecha más antigua", df['fecha'].min().strftime('%d/%m/%Y'))
+            col3.metric("📊 Total de registros", len(df))
+        
         with st.spinner('📊 Generando gráfica interactiva...'):
             fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
 
@@ -798,7 +839,7 @@ def main():
                 ]
             })
 
-            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
+            with st.expander("📊 Ver estadísticas completas de los datos", expanded=False):
                 if es_movil:
                     col1, col2, col3 = st.columns(1)
                 else:
@@ -817,7 +858,7 @@ def main():
         else:
             st.error("❌ Error al generar la gráfica")
     else:
-        st.error("❌ No se pudieron cargar los datos")
+        st.error("❌ No se pudieron cargar los datos. Verifica la conexión a Google Sheets.")
 
 if __name__ == "__main__":
     main()
