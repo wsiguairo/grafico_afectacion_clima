@@ -326,48 +326,25 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
 # ============================================================
 # FUNCIÓN ROBUSTA PARA CALCULAR EL ZOOM - SIEMPRE ÚLTIMOS 4 MESES
 # ============================================================
-def calcular_zoom_4_meses(df):
-    """
-    Función robusta que siempre calcula los últimos 4 meses con datos
-    con múltiples mecanismos de respaldo
-    """
-    # Mecanismo 1: Intentar con la fecha más reciente
-    try:
-        fecha_max = df['fecha'].max()
-        fecha_inicio = fecha_max - pd.DateOffset(months=4)
-        fecha_fin = fecha_max + pd.DateOffset(days=7)
-        
-        # Verificar si hay datos en este rango
-        datos_rango = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
-        
-        if not datos_rango.empty:
-            # Ajustar al primer y último dato real
-            fecha_inicio_real = datos_rango['fecha'].min() - pd.DateOffset(days=1)
-            fecha_fin_real = datos_rango['fecha'].max() + pd.DateOffset(days=1)
-            return fecha_inicio_real, fecha_fin_real
-    except:
-        pass
+# ============================================================
+# ZOOM INICIAL - SIEMPRE LOS ÚLTIMOS 4 MESES CON DATOS
+# ============================================================
+if zoom_meses is None:
+    # Tomar la fecha más reciente con datos
+    fecha_fin_zoom = df['fecha'].max()
     
-    # Mecanismo 2: Si falla, usar los últimos 4 meses del calendario
-    try:
-        hoy = datetime.now()
-        fecha_inicio = hoy - pd.DateOffset(months=4)
-        fecha_fin = hoy + pd.DateOffset(days=7)
-        
-        # Asegurar que no sea antes de junio del año actual
-        if fecha_inicio.month < 6:
-            fecha_inicio = pd.Timestamp(year=hoy.year, month=6, day=1)
-        
-        return fecha_inicio, fecha_fin
-    except:
-        pass
+    # Calcular 4 meses hacia atrás
+    fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
     
-    # Mecanismo 3: Fallback final - usar todo el rango de datos
-    try:
-        return df['fecha'].min(), df['fecha'].max()
-    except:
-        # Mecanismo 4: Último recurso - fechas por defecto
-        return pd.Timestamp('2024-06-01'), pd.Timestamp('2024-12-31')
+    # Asegurar que no nos pasemos del inicio de los datos
+    if fecha_inicio_zoom < df['fecha'].min():
+        fecha_inicio_zoom = df['fecha'].min()
+else:
+    # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
+    fecha_fin_zoom = df['fecha'].max()
+    fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
+    if fecha_inicio_zoom < df['fecha'].min():
+        fecha_inicio_zoom = df['fecha'].min()
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA - ULTRA ROBUSTA
