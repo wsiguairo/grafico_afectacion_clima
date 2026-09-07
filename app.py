@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA - ZOOM DINÁMICO 4 MESES
+# app.py - VERSIÓN CORREGIDA - ZOOM DINÁMICO 4 MESES (FINAL)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -359,27 +359,30 @@ def calcular_rango_zoom_dinamico(df, zoom_meses=None):
     # Obtener los últimos 4 meses con datos
     ultimos_4_meses = meses_con_datos[-4:]
     
-    # Calcular el inicio: primer día del primer mes de los últimos 4
+    # ===== CORRECCIÓN IMPORTANTE: Calcular el rango de fechas =====
+    # Inicio: primer día del primer mes de los últimos 4
     fecha_inicio = pd.Timestamp(year=ultimos_4_meses[0].year, 
                                month=ultimos_4_meses[0].month, 
                                day=1)
     
-    # Calcular el fin: último día del último mes de los últimos 4
-    ultimo_mes = ultimos_4_meses[-1]
-    fecha_fin = pd.Timestamp(year=ultimo_mes.year, 
-                            month=ultimo_mes.month, 
-                            day=1) + pd.DateOffset(months=1) - pd.DateOffset(days=1)
+    # Fin: usar la fecha máxima de los datos (NO el último día del mes)
+    # Esto asegura que se vean TODOS los datos del último mes
+    fecha_fin = df['fecha'].max()
     
-    # Si la fecha máxima es mayor que el último día del último mes,
-    # usar la fecha máxima como fin (puede haber datos parciales en el mes actual)
-    if df['fecha'].max() > fecha_fin:
-        fecha_fin = df['fecha'].max()
+    # Asegurar que el fin sea al menos el último día del último mes
+    ultimo_mes = ultimos_4_meses[-1]
+    fecha_fin_mes = pd.Timestamp(year=ultimo_mes.year, 
+                                month=ultimo_mes.month, 
+                                day=1) + pd.DateOffset(months=1) - pd.DateOffset(days=1)
+    
+    # Si la fecha máxima es menor que el último día del mes, usar el último día del mes
+    if fecha_fin < fecha_fin_mes:
+        fecha_fin = fecha_fin_mes
     
     # ===== CREAR TICKS SOLO PARA LOS 4 MESES =====
-    # Esto es lo que estaba mal: ahora creamos ticks SOLO para los 4 meses del zoom
     ticks_zoom = []
     for mes in ultimos_4_meses:
-        ticks_zoom.append(pd.Timestamp(year=mes.year, month=mes.month, day=1))
+        ticks_zoom.append(pd.Timestamp(year=mes.year, month=mes.month, day=15))  # Usar día 15 para centrar
     
     return fecha_inicio, fecha_fin, ticks_zoom
 
@@ -640,10 +643,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     tick_labels = []
     for tick in ticks_zoom:
         tick_labels.append(fecha_espanol(tick))
-    
-    # DEBUG: Mostrar en consola los ticks para verificar
-    print("TICKS ZOOM:", ticks_zoom)
-    print("TICK LABELS:", tick_labels)
 
     # ============================================================
     # CONFIGURACIÓN DE TAMAÑOS
@@ -670,8 +669,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'type': 'date',
-            'tickvals': ticks_zoom,  # SOLO los 4 meses del zoom
-            'ticktext': tick_labels,  # Etiquetas en español
+            'tickvals': ticks_zoom,
+            'ticktext': tick_labels,
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
