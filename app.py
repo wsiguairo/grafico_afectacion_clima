@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (MODIFICADA)
+# app.py - VERSIÓN SIGUAIRO (MODIFICADA - ÚLTIMOS 4 MESES SIEMPRE)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -572,7 +572,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (ÚLTIMOS 4 MESES)
+    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE ÚLTIMOS 4 MESES)
     # ============================================================
     fecha_inicio = df['fecha'].min()
     fecha_fin = df['fecha'].max()
@@ -582,7 +582,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         # Obtener la fecha más reciente con datos
         fecha_mas_reciente = df['fecha'].max()
         
-        # Calcular fecha de inicio (4 meses atrás desde la fecha más reciente)
+        # Calcular fecha de inicio (4 meses hacia atrás desde la fecha más reciente)
         fecha_inicio_zoom = fecha_mas_reciente - pd.DateOffset(months=4)
         
         # Asegurar que no se pase del inicio de los datos
@@ -591,9 +591,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         
         fecha_fin_zoom = fecha_mas_reciente
         
-        # Si hay pocos datos o están muy dispersos, ajustar para mostrar todos
+        # Si hay muy pocos datos (menos de 30 días), mostrar todos
         if (fecha_fin_zoom - fecha_inicio_zoom).days < 30:
-            # Si hay menos de 30 días de datos, mostrar todo
             fecha_inicio_zoom = df['fecha'].min()
             fecha_fin_zoom = df['fecha'].max()
     else:
@@ -744,74 +743,4 @@ def main():
               - 💀 Muertos
               - ⚠️ Abortos
             - **🖱️ Deslizar**: Arrastra el mouse ← →
-            - **🔍 Zoom**: Rueda del mouse
-            """)
-        
-        if st.button("🔄 Actualizar datos", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-
-    GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'sintomas'
-    SHEET_NAME_TEMPERATURAS = 'temperaturas'
-
-    os.makedirs('imagenes', exist_ok=True)
-    
-    IMAGES = {
-        'enferma': 'imagenes/enferma.png',
-        'muerta': 'imagenes/muerta.png',
-        'aborto': 'imagenes/aborto.png'
-    }
-
-    zoom_meses = st.session_state.get('zoom_periodo', None)
-    es_movil = False
-
-    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
-
-    if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
-
-        if fig is not None:
-            st.plotly_chart(fig, use_container_width=True, config={
-                'displayModeBar': True,
-                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
-                'displaylogo': False,
-                'scrollZoom': True,
-                'responsive': True,
-                'modeBarButtonsToAdd': [
-                    'zoom2d',
-                    'pan2d',
-                    'select2d',
-                    'lasso2d',
-                    'zoomIn2d',
-                    'zoomOut2d',
-                    'autoScale2d',
-                    'resetScale2d'
-                ]
-            })
-
-            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                if es_movil:
-                    col1, col2, col3 = st.columns(1)
-                else:
-                    col1, col2, col3 = st.columns(3)
-                
-                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-
-                st.dataframe(df, use_container_width=True)
-
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
-        else:
-            st.error("❌ Error al generar la gráfica")
-    else:
-        st.error("❌ No se pudieron cargar los datos")
-
-if __name__ == "__main__":
-    main()
+            - **🔍 Zoom**: Rued
