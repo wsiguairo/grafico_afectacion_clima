@@ -8,6 +8,8 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 warnings.filterwarnings('ignore')
 
@@ -572,16 +574,19 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES HACIA ATRÁS)
+    # ZOOM INICIAL - AUTOMÁTICO (SIEMPRE 4 MESES)
     # ============================================================
     fecha_fin = df['fecha'].max()
     fecha_inicio = df['fecha'].min()
-
-    # Calcular fecha de inicio: 4 meses antes de la fecha más reciente
-    # Usamos DateOffset para restar exactamente 4 meses
-    fecha_inicio_zoom = fecha_fin - pd.DateOffset(months=4)
     
-    # Si el inicio calculado es anterior al inicio de datos, ajustar
+    # Calcular el primer día del mes de inicio (4 meses atrás desde la fecha más reciente)
+    # Usamos relativedelta para restar exactamente 4 meses
+    fecha_inicio_zoom = fecha_fin - relativedelta(months=4)
+    
+    # Ajustar al primer día del mes
+    fecha_inicio_zoom = fecha_inicio_zoom.replace(day=1)
+    
+    # Si el inicio calculado es anterior al inicio de datos, usar el inicio de datos
     if fecha_inicio_zoom < fecha_inicio:
         fecha_inicio_zoom = fecha_inicio
     
