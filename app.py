@@ -572,18 +572,31 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - SIEMPRE LOS ÚLTIMOS 4 MESES CON DATOS
+    # ZOOM INICIAL - MOSTRAR SOLO LOS ÚLTIMOS 4 MESES CON DATOS
     # ============================================================
     if zoom_meses is None:
-        # Tomar la fecha más reciente con datos
-        fecha_fin_zoom = df['fecha'].max()
+        # Obtener todas las fechas únicas por mes con datos
+        df_fechas_unicas = df.copy()
+        df_fechas_unicas['mes_ano'] = df_fechas_unicas['fecha'].dt.to_period('M')
         
-        # Calcular 4 meses hacia atrás
-        fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
+        # Obtener los últimos 4 meses únicos que tienen datos
+        meses_con_datos = sorted(df_fechas_unicas['mes_ano'].unique())
+        ultimos_4_meses = meses_con_datos[-4:] if len(meses_con_datos) >= 4 else meses_con_datos
         
-        # Asegurar que no nos pasemos del inicio de los datos
-        if fecha_inicio_zoom < df['fecha'].min():
+        # Calcular el rango de fechas: desde el primer día del primer mes al último día del último mes
+        if ultimos_4_meses:
+            fecha_inicio_zoom = pd.Timestamp(ultimos_4_meses[0].start_time)
+            fecha_fin_zoom = pd.Timestamp(ultimos_4_meses[-1].end_time)
+            
+            # Asegurar que no nos pasemos del rango de datos
+            if fecha_inicio_zoom < df['fecha'].min():
+                fecha_inicio_zoom = df['fecha'].min()
+            if fecha_fin_zoom > df['fecha'].max():
+                fecha_fin_zoom = df['fecha'].max()
+        else:
+            # Fallback: usar todo el rango de datos
             fecha_inicio_zoom = df['fecha'].min()
+            fecha_fin_zoom = df['fecha'].max()
     else:
         # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
