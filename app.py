@@ -574,17 +574,16 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - FORZADO A 4 MESES EXACTOS
+    # ZOOM INICIAL - FORZADO A 4 MESES EXACTOS EN EL EJE X
     # ============================================================
     fecha_fin = df['fecha'].max()
-    fecha_inicio = df['fecha'].min()
     
-    # FORZAR: Si el mes más reciente es agosto (8), mostrar mayo(5)-agosto(8)
-    # Si es septiembre(9), mostrar junio(6)-septiembre(9)
-    # Es decir: mes_inicio = mes_fin - 3 (para tener 4 meses: inicio, inicio+1, inicio+2, fin)
+    # Obtener el mes y año de la fecha más reciente
     mes_fin = fecha_fin.month
     año_fin = fecha_fin.year
     
+    # Calcular el mes de inicio: 3 meses antes del mes más reciente
+    # Ej: Si mes_fin=9 (septiembre), mes_inicio=6 (junio) → Muestra: junio, julio, agosto, septiembre
     mes_inicio = mes_fin - 3
     año_inicio = año_fin
     
@@ -592,31 +591,31 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         mes_inicio += 12
         año_inicio -= 1
     
-    # Primer día del mes de inicio
+    # Crear fecha de inicio: primer día del mes de inicio
     fecha_inicio_zoom = pd.Timestamp(year=año_inicio, month=mes_inicio, day=1)
     
-    # Último día del mes de fin
+    # Crear fecha de fin: último día del mes más reciente
     if mes_fin == 12:
         fecha_fin_zoom = pd.Timestamp(year=año_fin, month=12, day=31)
     else:
         fecha_fin_zoom = pd.Timestamp(year=año_fin, month=mes_fin+1, day=1) - pd.Timedelta(days=1)
     
-    # Si el inicio calculado es anterior al inicio de datos, usar el inicio de datos
-    if fecha_inicio_zoom < fecha_inicio:
-        fecha_inicio_zoom = fecha_inicio
+    # Si hay menos de 4 meses de datos, ajustar para mostrar desde el inicio
+    if fecha_inicio_zoom < df['fecha'].min():
+        fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
     # TICKS
     # ============================================================
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        fecha_ticks = pd.date_range(start=fecha_inicio_zoom, end=fecha_fin_zoom, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        fecha_ticks = pd.date_range(start=fecha_inicio_zoom, end=fecha_fin_zoom, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
