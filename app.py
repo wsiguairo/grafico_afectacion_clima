@@ -573,33 +573,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - SOLO JUNIO, JULIO, AGOSTO, SEPTIEMBRE
+    # ZOOM INICIAL - SIEMPRE ÚLTIMOS 4 MESES DE DATOS
     # ============================================================
     if zoom_meses is None:
-        año_datos = df['fecha'].max().year
+        # Obtener la fecha más reciente con datos
+        fecha_max = df['fecha'].max()
+        fecha_min = df['fecha'].min()
         
-        # Rango fijo: 1 de Junio al 30 de Septiembre
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
+        # Definir el rango: últimos 4 meses desde la fecha máxima
+        fecha_inicio_zoom = max(fecha_max - pd.DateOffset(months=4), fecha_min)
+        fecha_fin_zoom = fecha_max
         
-        # Verificar si realmente hay datos en ese rango
-        datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-        
-        if datos_en_rango.empty:
-            # Si no hay datos, mostrar los últimos 4 meses disponibles
-            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
-            fecha_fin_zoom = df['fecha'].max()
-        else:
-            # Ajustar el rango exacto a los datos disponibles dentro de junio-septiembre
-            # Si los datos empiezan después del 1 de junio, ajustar el inicio
-            min_fecha = datos_en_rango['fecha'].min()
-            if min_fecha > fecha_inicio_zoom:
-                fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
-            
-            # Si los datos terminan antes del 30 de septiembre, ajustar el fin
-            max_fecha = datos_en_rango['fecha'].max()
-            if max_fecha < fecha_fin_zoom:
-                fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
+        # Si hay menos de 4 meses de datos, ajustar para mostrar todo
+        if (fecha_max - fecha_min).days < 120:  # ~4 meses
+            fecha_inicio_zoom = fecha_min
     else:
         # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
