@@ -323,43 +323,44 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# ZOOM INICIAL - VERSIÓN DINÁMICA PARA DATOS FUTUROS
+# ZOOM INICIAL - DETECCIÓN AUTOMÁTICA DE MESES CON DATOS
 # ============================================================
 fecha_inicio = df['fecha'].min()
 fecha_fin = df['fecha'].max()
 
 if zoom_meses is None:
-    año_datos = df['fecha'].max().year
-    mes_inicio = 6  # Junio
-    mes_fin = 9     # Septiembre
+    # Detectar los meses con más datos (top 4 meses)
+    df['mes'] = df['fecha'].dt.month
+    conteo_meses = df['mes'].value_counts().head(4)
     
-    fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=mes_inicio, day=1)
-    fecha_fin_zoom = pd.Timestamp(year=año_datos, month=mes_fin, day=30)
-    
-    # Verificar si hay datos en el rango
-    datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-    
-    if datos_en_rango.empty:
-        # Si no hay datos en el rango, mostrar últimos 6 meses
+    if len(conteo_meses) >= 4:
+        # Obtener los meses más comunes
+        meses_populares = sorted(conteo_meses.index)
+        mes_inicio = min(meses_populares)
+        mes_fin = max(meses_populares)
+        
+        año_datos = df['fecha'].max().year
+        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=mes_inicio, day=1)
+        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=mes_fin, day=30)
+    else:
+        # Si no hay suficientes meses con datos, usar un rango de 6 meses
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
         fecha_fin_zoom = df['fecha'].max()
-    else:
-        # Verificar si hay datos después del rango
-        datos_despues = df[df['fecha'] > fecha_fin_zoom]
-        if not datos_despues.empty:
-            # Extender hasta el último dato disponible
-            fecha_fin_zoom = df['fecha'].max()
-            
-            # Si hay muchos datos después, mostrar un rango más amplio
-            meses_despues = (df['fecha'].max() - fecha_fin_zoom).days / 30
-            if meses_despues > 3:
-                # Si hay más de 3 meses después, ajustar el inicio
-                fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+    
+    # Asegurar que el rango incluya todos los datos
+    if df[df['fecha'] < fecha_inicio_zoom].empty == False:
+        fecha_inicio_zoom = df['fecha'].min()
+    if df[df['fecha'] > fecha_fin_zoom].empty == False:
+        fecha_fin_zoom = df['fecha'].max()
 else:
     fecha_fin_zoom = df['fecha'].max()
     fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
     if fecha_inicio_zoom < df['fecha'].min():
         fecha_inicio_zoom = df['fecha'].min()
+
+# Eliminar la columna temporal
+df.drop('mes', axis=1, inplace=True)
+
 
 # ============================================================
 # FUNCIÓN PARA CREAR LA GRÁFICA
