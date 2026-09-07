@@ -571,8 +571,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    
-   # ============================================================
+    # ============================================================
 # ZOOM INICIAL - SOLO JUNIO, JULIO, AGOSTO, SEPTIEMBRE
 # ============================================================
 fecha_inicio = df['fecha'].min()
@@ -628,6 +627,8 @@ if zoom_meses is None:
         # Si hay datos fuera del rango, ajustar para incluir solo datos reales
         fecha_inicio_zoom = df['fecha'].min()
         fecha_fin_zoom = df['fecha'].max()
+   
+
 
     # ============================================================
     # TICKS
