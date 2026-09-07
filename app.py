@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (CORREGIDA)
+# app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -572,63 +572,39 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-# ZOOM INICIAL - SOLO JUNIO, JULIO, AGOSTO, SEPTIEMBRE
-# ============================================================
-fecha_inicio = df['fecha'].min()
-fecha_fin = df['fecha'].max()
-
-if zoom_meses is None:
-    año_datos = df['fecha'].max().year
-    
-    # Forzar el rango exacto de Junio a Septiembre
-    fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
-    fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
-    
-    # Verificar si hay datos reales en el rango junio-septiembre
-    datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-    
-    if datos_en_rango.empty:
-        # Si no hay datos en junio-septiembre, mostrar los últimos 4 meses disponibles
-        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
-        fecha_fin_zoom = df['fecha'].max()
-    else:
-        # Si hay datos, mantener el rango exacto junio-septiembre
-        # NO extender más allá de septiembre
+    # ZOOM INICIAL - SOLO JUNIO, JULIO, AGOSTO, SEPTIEMBRE
+    # ============================================================
+    if zoom_meses is None:
+        año_datos = df['fecha'].max().year
+        
+        # Rango fijo: 1 de Junio al 30 de Septiembre
         fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
         fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
         
-        # Verificar si los datos disponibles cubren todo el rango
-        # Si hay datos solo hasta agosto, ajustar el fin a agosto
-        max_fecha_en_rango = datos_en_rango['fecha'].max()
-        if max_fecha_en_rango < fecha_fin_zoom:
-            fecha_fin_zoom = max_fecha_en_rango + pd.DateOffset(days=1)
+        # Verificar si realmente hay datos en ese rango
+        datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
         
-        # Si los datos empiezan después de junio, ajustar el inicio
-        min_fecha_en_rango = datos_en_rango['fecha'].min()
-        if min_fecha_en_rango > fecha_inicio_zoom:
-            fecha_inicio_zoom = min_fecha_en_rango - pd.DateOffset(days=1)
-else:
-    # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
-    fecha_fin_zoom = df['fecha'].max()
-    fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
-    if fecha_inicio_zoom < df['fecha'].min():
-        fecha_inicio_zoom = df['fecha'].min()
-
-# Verificación final: asegurar que no se muestren meses sin datos
-# Si el rango incluye meses vacíos, acortarlo
-if zoom_meses is None:
-    # Obtener los meses que tienen datos
-    meses_con_datos = df['fecha'].dt.month.unique()
-    # Si solo hay datos de junio a septiembre, mantener ese rango
-    if all(mes in [6, 7, 8, 9] for mes in meses_con_datos):
-        # Todo bien, mantener rango de junio a septiembre
-        pass
+        if datos_en_rango.empty:
+            # Si no hay datos, mostrar los últimos 4 meses disponibles
+            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
+            fecha_fin_zoom = df['fecha'].max()
+        else:
+            # Ajustar el rango exacto a los datos disponibles dentro de junio-septiembre
+            # Si los datos empiezan después del 1 de junio, ajustar el inicio
+            min_fecha = datos_en_rango['fecha'].min()
+            if min_fecha > fecha_inicio_zoom:
+                fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
+            
+            # Si los datos terminan antes del 30 de septiembre, ajustar el fin
+            max_fecha = datos_en_rango['fecha'].max()
+            if max_fecha < fecha_fin_zoom:
+                fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
     else:
-        # Si hay datos fuera del rango, ajustar para incluir solo datos reales
-        fecha_inicio_zoom = df['fecha'].min()
+        # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
-   
-
+        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
+        if fecha_inicio_zoom < df['fecha'].min():
+            fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
     # TICKS
