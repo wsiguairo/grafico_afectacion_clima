@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO
+# app.py - VERSIÓN SIGUAIRO (CON DETECCIÓN AUTOMÁTICA DE DATOS FUTUROS)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -281,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO - CÓDIGO PROPORCIONADO
+        # SUAVIZADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -291,7 +291,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
-                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -346,7 +345,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
+    # PRECIPITACIÓN - SIN HOVER
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -359,7 +358,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
+    # TEMPERATURA - SIN HOVER
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -374,7 +373,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - SIN HOVER (hoverinfo='skip')
+    # VIENTO - SIN HOVER
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -388,7 +387,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -409,7 +408,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
+    # ALPACAS MUERTAS - SIN HOVER
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -426,7 +425,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - SIN HOVER (hoverinfo='skip')
+    # ABORTOS - SIN HOVER
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -494,7 +493,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
+    # IMÁGENES PEQUEÑAS - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -572,35 +571,50 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - SOLO JUNIO, JULIO, AGOSTO, SEPTIEMBRE
+    # ZOOM INICIAL - DINÁMICO (SE ADAPTA A DATOS FUTUROS)
     # ============================================================
     if zoom_meses is None:
         año_datos = df['fecha'].max().year
         
-        # Rango fijo: 1 de Junio al 30 de Septiembre
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
+        # Definir el rango base: junio a septiembre
+        fecha_inicio_base = pd.Timestamp(year=año_datos, month=6, day=1)
+        fecha_fin_base = pd.Timestamp(year=año_datos, month=9, day=30)
         
-        # Verificar si realmente hay datos en ese rango
-        datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
+        # Verificar si hay datos más allá de septiembre (octubre, noviembre, etc.)
+        datos_despues_septiembre = df[df['fecha'] > fecha_fin_base]
         
-        if datos_en_rango.empty:
-            # Si no hay datos, mostrar los últimos 4 meses disponibles
-            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
+        if not datos_despues_septiembre.empty:
+            # ¡Hay datos futuros! Mostrar desde junio hasta el último dato disponible
+            fecha_inicio_zoom = fecha_inicio_base
             fecha_fin_zoom = df['fecha'].max()
-        else:
-            # Ajustar el rango exacto a los datos disponibles dentro de junio-septiembre
-            # Si los datos empiezan después del 1 de junio, ajustar el inicio
-            min_fecha = datos_en_rango['fecha'].min()
-            if min_fecha > fecha_inicio_zoom:
-                fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
             
-            # Si los datos terminan antes del 30 de septiembre, ajustar el fin
-            max_fecha = datos_en_rango['fecha'].max()
-            if max_fecha < fecha_fin_zoom:
-                fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
+            # Asegurar que el inicio sea junio o el primer dato disponible
+            datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
+            if not datos_en_rango.empty and datos_en_rango['fecha'].min() > fecha_inicio_zoom:
+                fecha_inicio_zoom = datos_en_rango['fecha'].min() - pd.DateOffset(days=1)
+        else:
+            # No hay datos después de septiembre, mostrar solo junio-septiembre
+            fecha_inicio_zoom = fecha_inicio_base
+            fecha_fin_zoom = fecha_fin_base
+            
+            # Verificar si hay datos en el rango junio-septiembre
+            datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
+            
+            if datos_en_rango.empty:
+                # Si no hay datos en junio-septiembre, mostrar los últimos 4 meses
+                fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=4)
+                fecha_fin_zoom = df['fecha'].max()
+            else:
+                # Ajustar a los datos reales dentro del rango
+                min_fecha = datos_en_rango['fecha'].min()
+                if min_fecha > fecha_inicio_zoom:
+                    fecha_inicio_zoom = min_fecha - pd.DateOffset(days=1)
+                
+                max_fecha = datos_en_rango['fecha'].max()
+                if max_fecha < fecha_fin_zoom:
+                    fecha_fin_zoom = max_fecha + pd.DateOffset(days=1)
     else:
-        # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
+        # Si el usuario seleccionó un período específico
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
