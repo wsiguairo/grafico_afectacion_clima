@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - ZOOM AUTOMÁTICO 4 MESES (CORREGIDO FINAL)
+# app.py - VERSIÓN SIGUAIRO (CORREGIDA)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -281,7 +281,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO
+        # SUAVIZADO - CÓDIGO PROPORCIONADO
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -291,6 +291,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
+                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -323,47 +324,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# ZOOM INICIAL - DETECCIÓN AUTOMÁTICA DE MESES CON DATOS
-# ============================================================
-fecha_inicio = df['fecha'].min()
-fecha_fin = df['fecha'].max()
-
-if zoom_meses is None:
-    # Detectar los meses con más datos (top 4 meses)
-    df['mes'] = df['fecha'].dt.month
-    conteo_meses = df['mes'].value_counts().head(4)
-    
-    if len(conteo_meses) >= 4:
-        # Obtener los meses más comunes
-        meses_populares = sorted(conteo_meses.index)
-        mes_inicio = min(meses_populares)
-        mes_fin = max(meses_populares)
-        
-        año_datos = df['fecha'].max().year
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=mes_inicio, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=mes_fin, day=30)
-    else:
-        # Si no hay suficientes meses con datos, usar un rango de 6 meses
-        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
-        fecha_fin_zoom = df['fecha'].max()
-    
-    # Asegurar que el rango incluya todos los datos
-    if df[df['fecha'] < fecha_inicio_zoom].empty == False:
-        fecha_inicio_zoom = df['fecha'].min()
-    if df[df['fecha'] > fecha_fin_zoom].empty == False:
-        fecha_fin_zoom = df['fecha'].max()
-else:
-    fecha_fin_zoom = df['fecha'].max()
-    fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
-    if fecha_inicio_zoom < df['fecha'].min():
-        fecha_inicio_zoom = df['fecha'].min()
-
-# Eliminar la columna temporal
-df.drop('mes', axis=1, inplace=True)
-
-
-# ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -385,7 +346,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN
+    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -398,7 +359,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA
+    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -413,7 +374,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO
+    # VIENTO - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -427,7 +388,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -448,7 +409,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS
+    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -465,7 +426,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS
+    # ABORTOS - SIN HOVER (hoverinfo='skip')
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -482,7 +443,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS
+    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
     # ============================================================
     df_hover = df.copy()
     
@@ -533,7 +494,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     ))
 
     # ============================================================
-    # IMÁGENES PEQUEÑAS - SOLO EN PC
+    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
     # ============================================================
     images_plotly = []
     y_offset = 0.2
@@ -541,19 +502,18 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if not es_movil:
         if img_enferma is not None and len(enfermos_smooth) > 0:
             for idx in [0, -1]:
-                if idx < len(fecha_smooth):
-                    images_plotly.append({
-                        'source': f"data:image/png;base64,{img_enferma}",
-                        'xref': 'x',
-                        'yref': 'y2',
-                        'x': fecha_smooth[idx],
-                        'y': float(enfermos_smooth[idx]) if idx < len(enfermos_smooth) else 1,
-                        'sizex': 8,
-                        'sizey': 8,
-                        'xanchor': 'center',
-                        'yanchor': 'middle',
-                        'layer': 'above'
-                    })
+                images_plotly.append({
+                    'source': f"data:image/png;base64,{img_enferma}",
+                    'xref': 'x',
+                    'yref': 'y2',
+                    'x': fecha_smooth[idx],
+                    'y': float(enfermos_smooth[idx]),
+                    'sizex': 8,
+                    'sizey': 8,
+                    'xanchor': 'center',
+                    'yanchor': 'middle',
+                    'layer': 'above'
+                })
 
         if img_muerta is not None and 'Muertos' in df.columns:
             df_muertos_varios = df[df['Muertos'] >= 3].copy()
@@ -575,8 +535,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         if img_aborto is not None and 'Abortos' in df.columns:
             df_abortos_pos = df[df['Abortos'] > 0].copy()
             if not df_abortos_pos.empty:
-                indices = [0, -1] if len(df_abortos_pos) > 1 else [0]
-                for idx in indices:
+                for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
                     if idx < len(df_abortos_pos):
                         images_plotly.append({
                             'source': f"data:image/png;base64,{img_aborto}",
@@ -613,60 +572,47 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTOMÁTICO (ÚLTIMOS 4 MESES)
+    # ZOOM INICIAL - MODIFICADO PARA MOSTRAR JUNIO A SEPTIEMBRE
     # ============================================================
+    fecha_inicio = df['fecha'].min()
+    fecha_fin = df['fecha'].max()
+    
     if zoom_meses is None:
-        # Calcular automáticamente los últimos 4 meses
-        fecha_inicio_zoom, fecha_fin_zoom = calcular_rango_zoom_automatico(df)
+        año_datos = df['fecha'].max().year
+        # Cambiado: ahora muestra de junio a septiembre
+        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
+        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
         
-        # Si el cálculo falló, usar todo el rango
-        if fecha_inicio_zoom is None or fecha_fin_zoom is None:
-            fecha_inicio_zoom = df['fecha'].min()
+        # Verificar si hay datos en el rango, si no, ajustar
+        if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
+            # Si no hay datos, mostrar los últimos 6 meses
+            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
             fecha_fin_zoom = df['fecha'].max()
-    elif zoom_meses == 'todo':
-        # Si el usuario presionó "Ver todo", mostrar todo el rango
-        fecha_inicio_zoom = df['fecha'].min()
-        fecha_fin_zoom = df['fecha'].max()
+        else:
+            # Asegurar que el rango cubra todos los datos disponibles hasta septiembre
+            # Si hay datos después de septiembre, ajustar para incluirlos
+            datos_despues_septiembre = df[df['fecha'] > fecha_fin_zoom]
+            if not datos_despues_septiembre.empty:
+                fecha_fin_zoom = df['fecha'].max()
     else:
-        # Zoom personalizado por cantidad de meses
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
             fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
-    # TICKS - Generar ticks para los 4 meses del zoom
+    # TICKS
     # ============================================================
-    # Asegurar que los ticks cubran exactamente el rango de zoom
-    # Comenzar desde el primer día del mes de fecha_inicio_zoom
-    inicio_ticks = fecha_inicio_zoom.replace(day=1)
-    
-    # Terminar en el primer día del mes siguiente a fecha_fin_zoom
-    if fecha_fin_zoom.month == 12:
-        fin_ticks = fecha_fin_zoom.replace(year=fecha_fin_zoom.year + 1, month=1, day=1)
-    else:
-        fin_ticks = fecha_fin_zoom.replace(month=fecha_fin_zoom.month + 1, day=1)
-    
-    # Generar ticks mensuales
-    fecha_ticks = pd.date_range(start=inicio_ticks, end=fin_ticks, freq='MS')
-    
-    # Si no hay ticks, usar el rango completo
-    if len(fecha_ticks) == 0:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-    
-    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-    
-    # Debug: imprimir ticks
-    print(f"DEBUG - fecha_ticks: {fecha_ticks}")
-    print(f"DEBUG - tick_labels: {tick_labels}")
-    
-    # Configurar tamaños según dispositivo
     if es_movil:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
+        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
@@ -765,26 +711,24 @@ def main():
     with st.sidebar:
         st.markdown("### 🎛️ Controles")
         
-        st.markdown("**Zoom automático:**")
-        st.info("📊 Mostrando últimos 4 meses completos (se actualiza automáticamente)")
+        st.markdown("**Seleccionar período:**")
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("📅 Ver todo", use_container_width=True):
-                st.session_state.zoom_periodo = 'todo'
-                st.rerun()
-        with col2:
-            if st.button("🔄 4 meses", use_container_width=True):
+            if st.button("📅 1 Mes", use_container_width=True):
+                st.session_state.zoom_periodo = 1
+            if st.button("📅 6 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 6
+            if st.button("📅 Todo", use_container_width=True):
                 st.session_state.zoom_periodo = None
-                st.rerun()
+        
+        with col2:
+            if st.button("📅 3 Meses", use_container_width=True):
+                st.session_state.zoom_periodo = 3
+            if st.button("📅 1 Año", use_container_width=True):
+                st.session_state.zoom_periodo = 12
         
         st.markdown("---")
-        
-        # Mostrar información del rango actual
-        if 'df' in locals() and df is not None and not df.empty:
-            fecha_min = df['fecha'].min().strftime('%d/%m/%Y')
-            fecha_max = df['fecha'].max().strftime('%d/%m/%Y')
-            st.info(f"📅 Datos: {fecha_min} - {fecha_max}")
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
@@ -816,7 +760,6 @@ def main():
         'aborto': 'imagenes/aborto.png'
     }
 
-    # Obtener el zoom de la sesión (None = automático, 'todo' = todo el rango)
     zoom_meses = st.session_state.get('zoom_periodo', None)
     es_movil = False
 
@@ -847,7 +790,10 @@ def main():
             })
 
             with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                col1, col2, col3 = st.columns(3)
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)
+                else:
+                    col1, col2, col3 = st.columns(3)
                 
                 if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
                     col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
