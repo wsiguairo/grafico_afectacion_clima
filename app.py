@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (CORREGIDA)
+# app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -572,84 +572,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL - AUTO AJUSTE A LOS MESES CON DATOS
+    # ZOOM INICIAL
     # ============================================================
+    fecha_inicio = df['fecha'].min()
+    fecha_fin = df['fecha'].max()
+    
     if zoom_meses is None:
-        # OBTENER EL AÑO DE LOS DATOS
         año_datos = df['fecha'].max().year
+        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
+        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
         
-        # DEFINIR EL RANGO DE MESES DE INTERÉS (JUNIO, JULIO, AGOSTO, SEPTIEMBRE)
-        # O los 4 meses que tengan datos disponibles
-        mes_inicio = 6  # Junio
-        mes_fin = 9     # Septiembre
-        
-        # Crear fechas de inicio y fin para el rango de interés
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=mes_inicio, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=mes_fin, day=30)
-        
-        # Verificar si hay datos en el rango definido
-        datos_en_rango = df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)]
-        
-        if datos_en_rango.empty:
-            # SI NO HAY DATOS EN EL RANGO JUN-SEP, BUSCAR LOS 4 MESES CON MÁS DATOS
-            st.warning("No se encontraron datos en Junio-Septiembre. Mostrando los 4 meses con más datos.")
-            
-            # Agrupar por mes y contar registros
-            df['mes'] = df['fecha'].dt.month
-            df['año'] = df['fecha'].dt.year
-            
-            # Buscar el año con más datos
-            años_con_datos = df.groupby('año').size().sort_values(ascending=False)
-            if not años_con_datos.empty:
-                año_principal = años_con_datos.index[0]
-                
-                # Obtener los meses con más datos en ese año
-                meses_con_datos = df[df['año'] == año_principal].groupby('mes').size().sort_values(ascending=False)
-                
-                if len(meses_con_datos) >= 4:
-                    # Tomar los 4 meses con más datos
-                    meses_top = meses_con_datos.head(4).index.tolist()
-                    meses_top.sort()
-                    
-                    # Crear rango desde el primer mes al último de los top 4
-                    mes_inicio_auto = meses_top[0]
-                    mes_fin_auto = meses_top[-1]
-                    
-                    fecha_inicio_zoom = pd.Timestamp(year=año_principal, month=mes_inicio_auto, day=1)
-                    # Último día del mes final
-                    if mes_fin_auto == 12:
-                        fecha_fin_zoom = pd.Timestamp(year=año_principal + 1, month=1, day=1) - pd.Timedelta(days=1)
-                    else:
-                        fecha_fin_zoom = pd.Timestamp(year=año_principal, month=mes_fin_auto + 1, day=1) - pd.Timedelta(days=1)
-                else:
-                    # Si hay menos de 4 meses con datos, mostrar todo el rango de datos
-                    fecha_inicio_zoom = df['fecha'].min()
-                    fecha_fin_zoom = df['fecha'].max()
-            else:
-                # Si no hay datos, mostrar todo el rango
-                fecha_inicio_zoom = df['fecha'].min()
-                fecha_fin_zoom = df['fecha'].max()
-        else:
-            # Hay datos en Jun-Sept, ajustar exactamente a los datos disponibles
-            min_fecha = datos_en_rango['fecha'].min()
-            max_fecha = datos_en_rango['fecha'].max()
-            
-            # Ajustar el inicio al primer día del mes del primer dato
-            fecha_inicio_zoom = pd.Timestamp(year=min_fecha.year, month=min_fecha.month, day=1)
-            
-            # Ajustar el fin al último día del mes del último dato
-            if max_fecha.month == 12:
-                fecha_fin_zoom = pd.Timestamp(year=max_fecha.year + 1, month=1, day=1) - pd.Timedelta(days=1)
-            else:
-                fecha_fin_zoom = pd.Timestamp(year=max_fecha.year, month=max_fecha.month + 1, day=1) - pd.Timedelta(days=1)
-            
-            # Asegurar que no se salga de los límites de Jun-Sept
-            if fecha_inicio_zoom < pd.Timestamp(year=año_datos, month=6, day=1):
-                fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=6, day=1)
-            if fecha_fin_zoom > pd.Timestamp(year=año_datos, month=9, day=30):
-                fecha_fin_zoom = pd.Timestamp(year=año_datos, month=9, day=30)
+        if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
+            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
+            fecha_fin_zoom = df['fecha'].max()
     else:
-        # Si el usuario seleccionó un período específico (1 mes, 3 meses, etc.)
         fecha_fin_zoom = df['fecha'].max()
         fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
         if fecha_inicio_zoom < df['fecha'].min():
