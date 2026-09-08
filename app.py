@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO - VENTANA FIJA DE 4 MESES (CORREGIDA)
+# app.py - VERSIÓN CORREGIDA CON FILTRO DE FECHAS FUTURAS
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,6 +8,7 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
+from datetime import datetime
 
 warnings.filterwarnings('ignore')
 
@@ -261,6 +262,17 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = pd.merge(df_sintomas, df_temperaturas, on='fecha', how='outer')
         df = df.sort_values(by='fecha').reset_index(drop=True)
         df = df.dropna(subset=['fecha'])
+
+        # ============================================================
+        # FILTRO: ELIMINAR FECHAS FUTURAS
+        # ============================================================
+        fecha_actual = pd.Timestamp.now().normalize()
+        df = df[df['fecha'] <= fecha_actual].copy()
+        
+        # Si después de filtrar no quedan datos, mostrar advertencia
+        if df.empty:
+            st.warning("⚠️ No se encontraron datos con fechas válidas (no futuras)")
+            return None
 
         columnas_numericas = ['Enfermos', 'Muertos', 'Abortos', 'Temperaturas minimas  (°C)', 
                             'Vel. viento (Km/h)', 'Precipitacion ']
@@ -574,7 +586,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     # ZOOM INICIAL - VENTANA DE 4 MESES (desde el mes más reciente)
     # ============================================================
-    # Obtener la fecha más reciente con datos
+    # Obtener la fecha más reciente con datos (ya filtrada, sin futuras)
     fecha_mas_reciente = df['fecha'].max()
     
     # Obtener el año y mes de la fecha más reciente
@@ -582,7 +594,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     mes_reciente = fecha_mas_reciente.month
     
     # Calcular el mes de inicio (4 meses atrás, incluyendo el mes actual)
-    # Si mes_reciente - 3 <= 0, ajustar el año
     if mes_reciente - 3 <= 0:
         anio_inicio = anio_reciente - 1
         mes_inicio = mes_reciente - 3 + 12
