@@ -1,4 +1,4 @@
-# app.py - VERSIÓN FINAL (SOLO AGREGA UN MES FUTURO AL DESLIZAR)
+# app.py - VERSIÓN FINAL (CON MES FUTURO VISIBLE AL DESLIZAR)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -608,17 +608,21 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fecha_fin_zoom_extendida = fecha_fin_zoom + pd.DateOffset(months=1)
 
     # ============================================================
-    # TICKS
+    # TICKS - EXTENDIDOS PARA INCLUIR EL MES FUTURO
     # ============================================================
+    # Calcular fecha máxima extendida para los ticks
+    fecha_max_ticks = df['fecha'].max() + pd.DateOffset(months=1)
+    fecha_min_ticks = df['fecha'].min()
+
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
+        fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
@@ -646,7 +650,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
-            'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],  # <--- MODIFICADO AQUÍ
+            'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
         },
         yaxis={
             'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
