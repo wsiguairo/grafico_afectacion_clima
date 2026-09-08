@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA CON FILTRO DE FECHAS FUTURAS
+# app.py - VERSIÓN SIGUAIRO - CON MESES FUTUROS VISIBLES AL DESLIZAR
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,7 +8,6 @@ from scipy.ndimage import uniform_filter1d
 import warnings
 import base64
 import os
-from datetime import datetime
 
 warnings.filterwarnings('ignore')
 
@@ -269,7 +268,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         fecha_actual = pd.Timestamp.now().normalize()
         df = df[df['fecha'] <= fecha_actual].copy()
         
-        # Si después de filtrar no quedan datos, mostrar advertencia
         if df.empty:
             st.warning("⚠️ No se encontraron datos con fechas válidas (no futuras)")
             return None
@@ -303,7 +301,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_filtrado = df_filtrado.sort_values('fecha')
                 
-                # --- Lógica de la línea suavizada ---
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
                 
@@ -586,14 +583,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     # ZOOM INICIAL - VENTANA DE 4 MESES (desde el mes más reciente)
     # ============================================================
-    # Obtener la fecha más reciente con datos (ya filtrada, sin futuras)
     fecha_mas_reciente = df['fecha'].max()
     
-    # Obtener el año y mes de la fecha más reciente
     anio_reciente = fecha_mas_reciente.year
     mes_reciente = fecha_mas_reciente.month
     
-    # Calcular el mes de inicio (4 meses atrás, incluyendo el mes actual)
     if mes_reciente - 3 <= 0:
         anio_inicio = anio_reciente - 1
         mes_inicio = mes_reciente - 3 + 12
@@ -601,30 +595,38 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         anio_inicio = anio_reciente
         mes_inicio = mes_reciente - 3
     
-    # Crear fecha de inicio (primer día del mes)
     fecha_inicio_zoom = pd.Timestamp(year=anio_inicio, month=mes_inicio, day=1)
-    
-    # La fecha fin es la fecha más reciente
     fecha_fin_zoom = fecha_mas_reciente
     
-    # Si no hay datos en el rango, mostrar todos
     if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
         fecha_inicio_zoom = df['fecha'].min()
         fecha_fin_zoom = df['fecha'].max()
 
     # ============================================================
-    # TICKS
+    # EXTENDER EL RANGO DEL EJE X PARA MOSTRAR MESES FUTUROS
     # ============================================================
+    # Añadir 6 meses futuros al rango del eje X para que se puedan ver al deslizar
+    fecha_fin_eje = fecha_fin_zoom + pd.DateOffset(months=6)
+    
+    # Calcular el rango completo del eje X (desde el inicio del zoom hasta 6 meses después)
+    rango_x_inicio = fecha_inicio_zoom
+    rango_x_fin = fecha_fin_eje
+
+    # ============================================================
+    # TICKS - Incluir meses futuros en las etiquetas
+    # ============================================================
+    # Generar ticks desde el inicio de los datos hasta 6 meses después del último dato
+    fecha_ticks_inicio = df['fecha'].min()
+    fecha_ticks_fin = df['fecha'].max() + pd.DateOffset(months=6)
+    fecha_ticks = pd.date_range(start=fecha_ticks_inicio, end=fecha_ticks_fin, freq='MS')
+    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+
     if es_movil:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
         height = 500
     else:
-        fecha_ticks = pd.date_range(start=df['fecha'].min(), end=df['fecha'].max(), freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11
         legend_font_size = 11
         title_font_size = 13
@@ -651,7 +653,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
             'fixedrange': False,
-            'range': [fecha_inicio_zoom, fecha_fin_zoom],
+            'range': [rango_x_inicio, rango_x_fin],  # Rango extendido con meses futuros
         },
         yaxis={
             'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
@@ -752,7 +754,7 @@ def main():
               - 💨 Viento
               - 💀 Muertos
               - ⚠️ Abortos
-            - **🖱️ Deslizar**: Arrastra el mouse ← →
+            - **🖱️ Deslizar**: Arrastra el mouse ← → para ver meses futuros
             - **🔍 Zoom**: Rueda del mouse
             """)
         
@@ -816,7 +818,7 @@ def main():
 
                 st.dataframe(df, use_container_width=True)
 
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
+            st.success("✅ ¡Gráfica cargada exitosamente! Desliza hacia la derecha para ver meses futuros.")
         else:
             st.error("❌ Error al generar la gráfica")
     else:
