@@ -624,9 +624,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     else:
         fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        tick_font_size = 11
-        legend_font_size = 11
-        title_font_size = 13
+        tick_font_size = 11  # CAMBIAR NUMERO
+        legend_font_size = 16   # CAMBIAR TAMAÑO LEYENDA
+        title_font_size = 18   # CAMBIAR TAMAÑO DE TITULO EJE Y
         height = 750
 
     # ============================================================
