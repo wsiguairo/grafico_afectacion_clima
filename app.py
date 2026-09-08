@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO
+# app.py - VERSIÓN SIGUAIRO - CON VENTANA DE 4 MESES
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -572,24 +572,15 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     max_y2 = max(max_y2, 2)
 
     # ============================================================
-    # ZOOM INICIAL
+    # ZOOM INICIAL - VENTANA DE 4 MESES SIEMPRE
     # ============================================================
-    fecha_inicio = df['fecha'].min()
-    fecha_fin = df['fecha'].max()
+    fecha_fin_zoom = df['fecha'].max()
+    fecha_inicio_zoom = fecha_fin_zoom - pd.DateOffset(months=4)
     
-    if zoom_meses is None:
-        año_datos = df['fecha'].max().year
-        fecha_inicio_zoom = pd.Timestamp(year=año_datos, month=5, day=1)
-        fecha_fin_zoom = pd.Timestamp(year=año_datos, month=8, day=31)
-        
-        if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
-            fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=6)
-            fecha_fin_zoom = df['fecha'].max()
-    else:
+    # Si no hay datos en los últimos 4 meses, usar el rango completo
+    if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
+        fecha_inicio_zoom = df['fecha'].min()
         fecha_fin_zoom = df['fecha'].max()
-        fecha_inicio_zoom = df['fecha'].max() - pd.DateOffset(months=zoom_meses)
-        if fecha_inicio_zoom < df['fecha'].min():
-            fecha_inicio_zoom = df['fecha'].min()
 
     # ============================================================
     # TICKS
