@@ -1,4 +1,4 @@
-# app.py - VERSIÓN FINAL (CON MES FUTURO VISIBLE AL DESLIZAR)
+# app.py - VERSIÓN SIGUAIRO
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
