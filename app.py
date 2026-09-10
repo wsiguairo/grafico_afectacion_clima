@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO
+# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s optimizado)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -707,6 +707,19 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     return fig
 
 # ============================================================
+# FRAGMENTO DE AUTO-REFRESH (SOLO ESTE TROZO SE RE-EJECUTA)
+# ============================================================
+@st.fragment(run_every="60s")
+def auto_refresh_60s():
+    """
+    Este fragmento se ejecuta automáticamente cada 60 segundos.
+    Limpia el caché de datos para forzar la recarga desde Google Sheets
+    en el siguiente ciclo natural de la app.
+    NO hace rerun de toda la app → no hay parpadeo ni consumo excesivo.
+    """
+    st.cache_data.clear()
+
+# ============================================================
 # MAIN
 # ============================================================
 def main():
@@ -820,6 +833,14 @@ def main():
             st.error("❌ Error al generar la gráfica")
     else:
         st.error("❌ No se pudieron cargar los datos")
+
+    # ============================================================
+    # AUTO-REFRESH CADA 60 SEGUNDOS (SIN PARPADEO)
+    # ============================================================
+    # Este fragmento SOLO se re-ejecuta cada 60s.
+    # Limpia el caché para que en el siguiente ciclo los datos
+    # se vuelvan a descargar desde Google Sheets automáticamente.
+    auto_refresh_60s()
 
 if __name__ == "__main__":
     main()
