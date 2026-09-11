@@ -15,7 +15,7 @@ warnings.filterwarnings('ignore')
 # CONFIGURACIÓN DE PÁGINA
 # ============================================================
 st.set_page_config(
-    page_title="Gráfica Alpacas Interactiva",
+    page_title="Gráfica afectación alpaca",
     page_icon="🦙",
     layout="wide",
     initial_sidebar_state="expanded"
