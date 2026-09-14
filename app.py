@@ -610,7 +610,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ============================================================
     # TICKS - EXTENDIDOS PARA INCLUIR EL MES FUTURO
     # ============================================================
-    # Calcular fecha máxima extendida para los ticks
     fecha_max_ticks = df['fecha'].max() + pd.DateOffset(months=1)
     fecha_min_ticks = df['fecha'].min()
 
@@ -624,9 +623,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     else:
         fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        tick_font_size = 11  # CAMBIAR NUMERO
-        legend_font_size = 16   # CAMBIAR TAMAÑO LEYENDA
-        title_font_size = 18   # CAMBIAR TAMAÑO DE TITULO EJE Y
+        tick_font_size = 11  
+        legend_font_size = 16   
+        title_font_size = 18   
         height = 750
 
     # ============================================================
@@ -649,6 +648,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
+            'showline': True,          # <-- LÍNEA SÓLIDA EJE X
+            'linecolor': '#2c3e50',    # Color de la línea del eje X
+            'linewidth': 1.5,          # Grosor de la línea del eje X
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
         },
@@ -662,6 +664,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'zeroline': True,
             'zerolinecolor': 'rgba(128, 128, 128, 0.5)',
             'zerolinewidth': 1,
+            'showline': True,          # <-- LÍNEA SÓLIDA EJE Y PRINCIPAL
+            'linecolor': '#2c3e50',    # Color de la línea del eje Y
+            'linewidth': 1.5,          # Grosor de la línea del eje Y
             'fixedrange': False,
             'side': 'left'
         },
@@ -676,6 +681,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
             'gridwidth': 0.3,
             'showgrid': True,
+            'showline': True,          # <-- LÍNEA SÓLIDA EJE Y SECUNDARIO
+            'linecolor': '#2c3e50',    # Color de la línea del eje Y secundario
+            'linewidth': 1.5,          # Grosor de la línea del eje Y secundario
             'fixedrange': False
         },
         images=images_plotly,
@@ -827,20 +835,6 @@ def main():
                     col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
 
                 st.dataframe(df, use_container_width=True)
-
-            st.success("✅ ¡Gráfica cargada exitosamente! Pasa el cursor sobre la gráfica para ver todos los valores con fecha única.")
-        else:
-            st.error("❌ Error al generar la gráfica")
-    else:
-        st.error("❌ No se pudieron cargar los datos")
-
-    # ============================================================
-    # AUTO-REFRESH CADA 60 SEGUNDOS (SIN PARPADEO)
-    # ============================================================
-    # Este fragmento SOLO se re-ejecuta cada 60s.
-    # Limpia el caché para que en el siguiente ciclo los datos
-    # se vuelvan a descargar desde Google Sheets automáticamente.
-    auto_refresh_60s()
 
 if __name__ == "__main__":
     main()
