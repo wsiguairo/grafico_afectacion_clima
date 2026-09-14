@@ -648,9 +648,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
-            'showline': True,          # <-- LÍNEA SÓLIDA EJE X
-            'linecolor': '#2c3e50',    # Color de la línea del eje X
-            'linewidth': 1.5,          # Grosor de la línea del eje X
+            'showline': True,
+            'linecolor': '#2c3e50',
+            'linewidth': 1.5,
+            'ticks': 'outside',        # <-- MARCAS DE GRADUACIÓN EXTERIOR EJE X
+            'ticklen': 6,
+            'tickwidth': 1.5,
+            'tickcolor': '#2c3e50',
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
         },
@@ -664,9 +668,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'zeroline': True,
             'zerolinecolor': 'rgba(128, 128, 128, 0.5)',
             'zerolinewidth': 1,
-            'showline': True,          # <-- LÍNEA SÓLIDA EJE Y PRINCIPAL
-            'linecolor': '#2c3e50',    # Color de la línea del eje Y
-            'linewidth': 1.5,          # Grosor de la línea del eje Y
+            'showline': True,
+            'linecolor': '#2c3e50',
+            'linewidth': 1.5,
+            'ticks': 'outside',        # <-- MARCAS DE GRADUACIÓN EXTERIOR EJE Y
+            'ticklen': 6,
+            'tickwidth': 1.5,
+            'tickcolor': '#2c3e50',
             'fixedrange': False,
             'side': 'left'
         },
@@ -681,9 +689,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
             'gridwidth': 0.3,
             'showgrid': True,
-            'showline': True,          # <-- LÍNEA SÓLIDA EJE Y SECUNDARIO
-            'linecolor': '#2c3e50',    # Color de la línea del eje Y secundario
-            'linewidth': 1.5,          # Grosor de la línea del eje Y secundario
+            'showline': True,
+            'linecolor': '#2c3e50',
+            'linewidth': 1.5,
+            'ticks': 'outside',        # <-- MARCAS DE GRADUACIÓN EXTERIOR EJE Y SECUNDARIO
+            'ticklen': 6,
+            'tickwidth': 1.5,
+            'tickcolor': '#2c3e50',
             'fixedrange': False
         },
         images=images_plotly,
