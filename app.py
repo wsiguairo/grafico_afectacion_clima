@@ -495,10 +495,10 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         hoverinfo='text',
         text=hover_texts,
         hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',  # Fondo transparente al 75%
+            bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO DE CAJA TRASLÚCIDO/TRANSPARENTE
             font_size=13,
             font_color='#2c3e50',
-            bordercolor='rgba(189, 195, 199, 0.5)' # Borde sutil transparente
+            bordercolor='rgba(189, 195, 199, 0.5)'
         )
     ))
 
@@ -636,6 +636,12 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         template='plotly_white',
         height=height,
         dragmode='pan',
+        hoverlabel=dict(
+            bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO GENERAL DEL HOVER TRANSPARENTE
+            bordercolor='rgba(189, 195, 199, 0.5)',
+            font_size=13,
+            font_color='#2c3e50'
+        ),
         xaxis={
             'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'type': 'date',
@@ -655,9 +661,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'ticklen': 6,
             'tickwidth': 1.5,
             'tickcolor': '#2c3e50',
-            'showspikes': True,              # Activa configuración de puntero
-            'spikethickness': 0,             # <-- HACE TRANSPARENTE / INVISIBE LA LÍNEA VERTICAL DEL HOVER
-            'spikecolor': 'rgba(0,0,0,0)',   # <-- COLOR COMPLETAMENTE TRANSPARENTE
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
         },
@@ -723,7 +726,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 
     if es_movil:
         fig.update_layout(
-            hoverlabel={'font_size': 12},
             dragmode='pan',
         )
 
