@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s optimizado)
+# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s optimizado y PANTALLA COMPLETA RESPONSIVA)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,29 +22,38 @@ st.set_page_config(
 )
 
 # ============================================================
-# ESTILOS RESPONSIVE - LOGO SENAMHI
+# ESTILOS RESPONSIVE Y PANTALLA COMPLETA - LOGO SENAMHI
 # ============================================================
 st.markdown("""
 <style>
+    /* Ajuste global para ocupar el 100% de la pantalla */
     .main .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 0.2rem !important;
         padding-bottom: 0rem !important;
         max-width: 100% !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-left: 0.3rem !important;
+        padding-right: 0.3rem !important;
     }
     
     h1, h2, h3 {
         margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
+        margin-bottom: 0.2rem !important;
     }
     
     header { display: none !important; }
     footer { display: none !important; }
     
-    .stPlotlyChart > div {
-        margin-top: -10px !important;
+    /* Gráfica adaptada a la altura de la pantalla (Viewport Height) */
+    .stPlotlyChart {
         width: 100% !important;
+        height: 82vh !important;
+        min-height: 480px !important;
+    }
+    
+    .stPlotlyChart > div, .js-plotly-plot, .plot-container {
+        width: 100% !important;
+        height: 100% !important;
+        margin-top: 0px !important;
     }
     
     .rangeselector { display: none !important; }
@@ -70,44 +79,41 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
+    /* Dispositivos Móviles */
     @media only screen and (max-width: 768px) {
+        .stPlotlyChart {
+            height: 78vh !important;
+            min-height: 420px !important;
+        }
+        
         .logo-senamhi {
-            width: 55px;
+            width: 50px;
             top: 5px;
             left: 5px;
-            padding: 3px;
+            padding: 2px;
             border-radius: 6px;
         }
         
         .main .block-container {
-            padding-left: 0.2rem !important;
-            padding-right: 0.2rem !important;
-            padding-top: 0.2rem !important;
+            padding-left: 0.1rem !important;
+            padding-right: 0.1rem !important;
+            padding-top: 0.1rem !important;
         }
         
-        h1 { font-size: 1.5rem !important; }
-        h2 { font-size: 1.2rem !important; }
-        h3 { font-size: 1rem !important; }
+        h2 { font-size: 1.1rem !important; }
         
         .stButton button {
-            font-size: 14px !important;
-            padding: 8px 12px !important;
-            min-height: 44px !important;
+            font-size: 13px !important;
+            padding: 6px 10px !important;
+            min-height: 38px !important;
         }
         
-        .css-1d391kg { width: 280px !important; }
-        
-        .stMetric { font-size: 14px !important; }
-        .stMetric label { font-size: 12px !important; }
-        .stMetric .stMetricValue { font-size: 18px !important; }
-        
-        .stDataFrame { font-size: 12px !important; }
-        .stDataFrame table { font-size: 11px !important; }
-        
-        .stSpinner > div { font-size: 14px !important; }
-        .row-widget.stColumns { gap: 0.2rem !important; }
+        .stMetric { font-size: 12px !important; }
+        .stMetric label { font-size: 11px !important; }
+        .stMetric .stMetricValue { font-size: 16px !important; }
     }
     
+    /* Tablets */
     @media only screen and (min-width: 769px) and (max-width: 1024px) {
         .logo-senamhi {
             width: 65px;
@@ -116,16 +122,12 @@ st.markdown("""
         }
         
         .main .block-container {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-        
-        .stButton button {
-            font-size: 15px !important;
-            padding: 10px 16px !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }
     }
     
+    /* PC y Pantallas Grandes */
     @media only screen and (min-width: 1025px) {
         .logo-senamhi {
             width: 80px;
@@ -134,10 +136,9 @@ st.markdown("""
         }
         
         .main .block-container {
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
-            max-width: 1400px !important;
-            margin: 0 auto !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            max-width: 100% !important;
         }
     }
     
@@ -147,7 +148,7 @@ st.markdown("""
     
     body {
         font-size: 16px !important;
-        line-height: 1.5 !important;
+        line-height: 1.4 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -333,7 +334,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA (RESPONSIVA)
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -355,7 +356,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     fig = go.Figure()
 
     # ============================================================
-    # PRECIPITACIÓN - SIN HOVER (hoverinfo='skip')
+    # PRECIPITACIÓN
     # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
@@ -368,7 +369,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # TEMPERATURA - SIN HOVER (hoverinfo='skip')
+    # TEMPERATURA
     # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -383,7 +384,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # VIENTO - SIN HOVER (hoverinfo='skip')
+    # VIENTO
     # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
@@ -397,7 +398,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (SIN HOVER)
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA
     # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
@@ -418,7 +419,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS MUERTAS - SIN HOVER (hoverinfo='skip')
+    # ALPACAS MUERTAS
     # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
@@ -435,7 +436,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             ))
 
     # ============================================================
-    # ABORTOS - SIN HOVER (hoverinfo='skip')
+    # ABORTOS
     # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
@@ -495,7 +496,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         hoverinfo='text',
         text=hover_texts,
         hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO DE CAJA TRASLÚCIDO/TRANSPARENTE
+            bgcolor='rgba(255, 255, 255, 0.75)',
             font_size=13,
             font_color='#2c3e50',
             bordercolor='rgba(189, 195, 199, 0.5)'
@@ -602,42 +603,36 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         fecha_inicio_zoom = df['fecha'].min()
         fecha_fin_zoom = df['fecha'].max()
 
-    # ============================================================
-    # EXTENDER UN MES HACIA EL FUTURO PARA PERMITIR DESLIZAR
-    # ============================================================
     fecha_fin_zoom_extendida = fecha_fin_zoom + pd.DateOffset(months=1)
 
     # ============================================================
-    # TICKS - EXTENDIDOS PARA INCLUIR EL MES FUTURO
+    # TICKS
     # ============================================================
     fecha_max_ticks = df['fecha'].max() + pd.DateOffset(months=1)
     fecha_min_ticks = df['fecha'].min()
 
+    fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
+    tick_labels = [fecha_espanol(f) for f in fecha_ticks]
+    
     if es_movil:
-        fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 9
-        legend_font_size = 10
+        legend_font_size = 11
         title_font_size = 11
-        height = 500
     else:
-        fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
-        tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11  
-        legend_font_size = 16   
-        title_font_size = 18   
-        height = 750
+        legend_font_size = 14   
+        title_font_size = 15   
 
     # ============================================================
-    # LAYOUT
+    # LAYOUT AUTOSIZE Y MARGENES RESPONSIVOS
     # ============================================================
     fig.update_layout(
+        autosize=True,
         hovermode='x unified',
         template='plotly_white',
-        height=height,
         dragmode='pan',
         hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO GENERAL DEL HOVER TRANSPARENTE
+            bgcolor='rgba(255, 255, 255, 0.75)',
             bordercolor='rgba(189, 195, 199, 0.5)',
             font_size=13,
             font_color='#2c3e50'
@@ -708,7 +703,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         legend={
             'orientation': 'h',
             'x': 0.5,
-            'y': -0.15,
+            'y': -0.18,
             'xanchor': 'center',
             'yanchor': 'top',
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
@@ -720,7 +715,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 20, 'b': 20, 'l': 40, 'r': 40} if es_movil else {'t': 30, 'b': 30, 'l': 50, 'r': 60}
+        # Margen inferior 'b' ampliado para asegurar que la leyenda no se corte nunca
+        margin={'t': 20, 'b': 95, 'l': 35, 'r': 35} if es_movil else {'t': 30, 'b': 105, 'l': 50, 'r': 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
@@ -738,9 +734,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 def auto_refresh_60s():
     """
     Este fragmento se ejecuta automáticamente cada 60 segundos.
-    Limpia el caché de datos para forzar la recarga desde Google Sheets
-    en el siguiente ciclo natural de la app.
-    NO hace rerun de toda la app → no hay parpadeo ni consumo excesivo.
+    Limpia el caché de datos para forzar la recarga desde Google Sheets.
     """
     st.cache_data.clear()
 
@@ -748,12 +742,11 @@ def auto_refresh_60s():
 # MAIN
 # ============================================================
 def main():
-    
     mostrar_logo_senamhi()
     
     st.markdown("""
-    <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+    <div style="text-align: center; padding: 0.2rem 0;">
+        <h2 style="font-size: clamp(1.1rem, 3.2vw, 1.8rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
     
@@ -838,20 +831,5 @@ def main():
                 ]
             })
 
-            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                if es_movil:
-                    col1, col2, col3 = st.columns(1)
-                else:
-                    col1, col2, col3 = st.columns(3)
-                
-                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-
-                st.dataframe(df, use_container_width=True)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
