@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s, gráfico compacto y ESTADÍSTICAS debajo de la leyenda)
+# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s y ESTADÍSTICAS DESPLEGABLES)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -333,7 +333,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -354,6 +354,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 
     fig = go.Figure()
 
+    # ============================================================
+    # PRECIPITACIÓN
+    # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
             x=df['fecha'],
@@ -364,6 +367,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             hoverinfo='skip'
         ))
 
+    # ============================================================
+    # TEMPERATURA
+    # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
             x=df['fecha'],
@@ -376,6 +382,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             hoverinfo='skip'
         ))
 
+    # ============================================================
+    # VIENTO
+    # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
             x=df['fecha'],
@@ -387,6 +396,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             hoverinfo='skip'
         ))
 
+    # ============================================================
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
             x=fecha_smooth,
@@ -405,6 +417,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             showlegend=True
         ))
 
+    # ============================================================
+    # ALPACAS MUERTAS
+    # ============================================================
     if 'Muertos' in df.columns:
         df_muertos = df[df['Muertos'] > 0].copy()
         if not df_muertos.empty:
@@ -419,6 +434,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 hoverinfo='skip'
             ))
 
+    # ============================================================
+    # ABORTOS
+    # ============================================================
     if 'Abortos' in df.columns:
         df_abortos = df[df['Abortos'] > 0].copy()
         if not df_abortos.empty:
@@ -433,8 +451,11 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                 hoverinfo='skip'
             ))
 
-    # Trace con hover unificado
+    # ============================================================
+    # TRACE INVISIBLE CON HOVER Y FECHA ÚNICA
+    # ============================================================
     df_hover = df.copy()
+    
     for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
                 'Enfermos', 'Muertos', 'Abortos']:
         if col not in df_hover.columns:
@@ -443,6 +464,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     hover_texts = []
     for _, row in df_hover.iterrows():
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
+        
         if pd.notna(row['Precipitacion ']):
             texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
         if pd.notna(row['Temperaturas minimas  (°C)']):
@@ -476,7 +498,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         )
     ))
 
-    # Imágenes pequeñas
+    # ============================================================
+    # IMÁGENES PEQUEÑAS (SOLO PC)
+    # ============================================================
     images_plotly = []
     y_offset = 0.2
 
@@ -516,6 +540,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
                             'xanchor': 'center', 'yanchor': 'middle', 'layer': 'above'
                         })
 
+    # ============================================================
+    # RANGOS Y VISTA INICIAL
+    # ============================================================
     min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
     max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 10
     max_wind = df['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty else 0
@@ -547,11 +574,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     
     fecha_inicio_zoom = pd.Timestamp(year=anio_inicio, month=mes_inicio, day=1)
     fecha_fin_zoom = fecha_mas_reciente
-    
-    if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
-        fecha_inicio_zoom = df['fecha'].min()
-        fecha_fin_zoom = df['fecha'].max()
-
     fecha_fin_zoom_extendida = fecha_fin_zoom + pd.DateOffset(months=1)
 
     fecha_max_ticks = df['fecha'].max() + pd.DateOffset(months=1)
@@ -665,13 +687,10 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
-    if es_movil:
-        fig.update_layout(dragmode='pan')
-
     return fig
 
 # ============================================================
-# FRAGMENTO DE AUTO-REFRESH (60s)
+# FRAGMENTO DE AUTO-REFRESH (60 SEGUNDOS EN SEGUNDO PLANO)
 # ============================================================
 @st.fragment(run_every="60s")
 def auto_refresh_60s():
@@ -681,14 +700,15 @@ def auto_refresh_60s():
 # MAIN
 # ============================================================
 def main():
+    
     mostrar_logo_senamhi()
     
-    # Auto-refresh de 60 segundos
+    # Activar auto-refresh
     auto_refresh_60s()
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
     
@@ -715,15 +735,8 @@ def main():
         
         with st.expander("ℹ️ Cómo interactuar", expanded=False):
             st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
-              - 📅 Fecha (una sola vez al inicio)
-              - 🦙 Alpacas enfermas (valor real)
-              - 🌡️ Temperatura
-              - 💧 Precipitación
-              - 💨 Viento
-              - 💀 Muertos
-              - ⚠️ Abortos
-            - **🖱️ Deslizar**: Arrastra el mouse ← → (puedes deslizar hasta 1 mes futuro)
+            - **🖱️ Pasa el cursor** sobre la gráfica para ver los datos diarios
+            - **🖱️ Deslizar**: Arrastra el mouse ← →
             - **🔍 Zoom**: Rueda del mouse
             """)
         
@@ -754,6 +767,7 @@ def main():
             fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
 
         if fig is not None:
+            # 1. MUESTRA LA GRÁFICA
             st.plotly_chart(fig, use_container_width=True, config={
                 'displayModeBar': True,
                 'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
@@ -766,62 +780,41 @@ def main():
                 ]
             })
 
-            # ============================================================
-            # SECCIÓN DE ESTADÍSTICAS Y MÉTRICAS (DEBAJO DE LA LEYENDA)
-            # ============================================================
-            st.markdown("---")
-            st.markdown("### 📊 Resumen Estadístico")
-
-            col1, col2, col3, col4, col5 = st.columns(5)
-            
-            with col1:
-                total_enfermas = int(df['Enfermos'].sum()) if 'Enfermos' in df.columns else 0
-                st.metric("🦙 Total Enfermas", f"{total_enfermas:,}")
-
-            with col2:
-                total_muertas = int(df['Muertos'].sum()) if 'Muertos' in df.columns else 0
-                st.metric("💀 Total Muertas", f"{total_muertas:,}")
-
-            with col3:
-                total_abortos = int(df['Abortos'].sum()) if 'Abortos' in df.columns else 0
-                st.metric("⚠️ Total Abortos", f"{total_abortos:,}")
-
-            with col4:
-                temp_min_extrema = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns else 0
-                st.metric("🌡️ T° Mínima Extrema", f"{temp_min_extrema:.1f} °C")
-
-            with col5:
-                precip_total = df['Precipitacion '].sum() if 'Precipitacion ' in df.columns else 0
-                st.metric("💧 Precip. Acumulada", f"{precip_total:.1f} mm")
-
-            st.markdown("### 📋 Datos Recientes")
-            columnas_mostrar = ['fecha']
-            col_renombradas = {'fecha': 'Fecha'}
-
-            if 'Enfermos' in df.columns:
-                columnas_mostrar.append('Enfermos')
-                col_renombradas['Enfermos'] = 'Enfermas'
-            if 'Muertos' in df.columns:
-                columnas_mostrar.append('Muertos')
-                col_renombradas['Muertos'] = 'Muertas'
-            if 'Abortos' in df.columns:
-                columnas_mostrar.append('Abortos')
-                col_renombradas['Abortos'] = 'Abortos'
-            if 'Temperaturas minimas  (°C)' in df.columns:
-                columnas_mostrar.append('Temperaturas minimas  (°C)')
-                col_renombradas['Temperaturas minimas  (°C)'] = 'T° Mín (°C)'
-            if 'Precipitacion ' in df.columns:
-                columnas_mostrar.append('Precipitacion ')
-                col_renombradas['Precipitacion '] = 'Precip. (mm)'
-            if 'Vel. viento (Km/h)' in df.columns:
-                columnas_mostrar.append('Vel. viento (Km/h)')
-                col_renombradas['Vel. viento (Km/h)'] = 'Viento (Km/h)'
-
-            df_reciente = df[columnas_mostrar].tail(10).sort_values(by='fecha', ascending=False)
-            df_reciente['fecha'] = df_reciente['fecha'].dt.strftime('%d/%m/%Y')
-            df_reciente = df_reciente.rename(columns=col_renombradas)
-
-            st.dataframe(df_reciente, use_container_width=True, hide_index=True)
+            # 2. BLOQUE CON ICONO/BOTÓN DE ESTADÍSTICAS BAJO LA LEYENDA (DESPLEGABLE AL HACER CLIC)
+            st.markdown("<br>", unsafe_allow_html=True)
+            with st.expander("📊 **Ver Estadísticas Generales y Resumen del Período**", expanded=False):
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    total_enfermas = int(df['Enfermos'].sum()) if 'Enfermos' in df.columns else 0
+                    st.metric("🦙 Alpacas Enfermas", f"{total_enfermas:,}")
+                    
+                with col2:
+                    total_muertas = int(df['Muertos'].sum()) if 'Muertos' in df.columns else 0
+                    st.metric("💀 Alpacas Muertas", f"{total_muertas:,}")
+                    
+                with col3:
+                    total_abortos = int(df['Abortos'].sum()) if 'Abortos' in df.columns else 0
+                    st.metric("⚠️ Abortos Registrados", f"{total_abortos:,}")
+                    
+                with col4:
+                    temp_min_abs = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns else 0.0
+                    st.metric("❄️ Temp. Mínima Absoluta", f"{temp_min_abs:.1f} °C")
+                
+                st.markdown("---")
+                
+                # Tabla resumen rápida
+                st.markdown("##### 📋 Resumen Promediado y Acumulado:")
+                col_t1, col_t2 = st.columns(2)
+                with col_t1:
+                    precip_total = df['Precipitacion '].sum() if 'Precipitacion ' in df.columns else 0
+                    viento_prom = df['Vel. viento (Km/h)'].mean() if 'Vel. viento (Km/h)' in df.columns else 0
+                    st.write(f"- **Precipitación total acumulada:** {precip_total:.1f} mm")
+                    st.write(f"- **Velocidad promedio del viento:** {viento_prom:.1f} km/h")
+                with col_t2:
+                    temp_prom = df['Temperaturas minimas  (°C)'].mean() if 'Temperaturas minimas  (°C)' in df.columns else 0
+                    st.write(f"- **Temperatura mínima promedio:** {temp_prom:.1f} °C")
+                    st.write(f"- **Total de días con datos registrados:** {len(df)} días")
 
 if __name__ == '__main__':
     main()
