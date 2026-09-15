@@ -616,17 +616,17 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if es_movil:
         fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        tick_font_size = 9
-        legend_font_size = 10
-        title_font_size = 11
-        height = 500
+        tick_font_size = 8
+        legend_font_size = 9
+        title_font_size = 10
+        height = 320
     else:
         fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-        tick_font_size = 11  
-        legend_font_size = 16   
-        title_font_size = 18   
-        height = 750
+        tick_font_size = 10  
+        legend_font_size = 12   
+        title_font_size = 13   
+        height = 480
 
     # ============================================================
     # LAYOUT
@@ -639,7 +639,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         hoverlabel=dict(
             bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO GENERAL DEL HOVER TRANSPARENTE
             bordercolor='rgba(189, 195, 199, 0.5)',
-            font_size=13,
+            font_size=12,
             font_color='#2c3e50'
         ),
         xaxis={
@@ -708,7 +708,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         legend={
             'orientation': 'h',
             'x': 0.5,
-            'y': -0.15,
+            'y': -0.22,
             'xanchor': 'center',
             'yanchor': 'top',
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
@@ -720,7 +720,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 20, 'b': 20, 'l': 40, 'r': 40} if es_movil else {'t': 30, 'b': 30, 'l': 50, 'r': 60}
+        margin={'t': 15, 'b': 15, 'l': 30, 'r': 30} if es_movil else {'t': 20, 'b': 20, 'l': 45, 'r': 45}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
@@ -750,6 +750,9 @@ def auto_refresh_60s():
 def main():
     
     mostrar_logo_senamhi()
+    
+    # Automatización del auto-refresh de 60 segundos activada
+    auto_refresh_60s()
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
@@ -838,20 +841,5 @@ def main():
                 ]
             })
 
-            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
-                if es_movil:
-                    col1, col2, col3 = st.columns(1)
-                else:
-                    col1, col2, col3 = st.columns(3)
-                
-                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
-                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
-                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
-                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
-
-                st.dataframe(df, use_container_width=True)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
