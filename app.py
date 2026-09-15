@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s optimizado)
+# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s, gráfico responsive y Estadísticas)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -495,7 +495,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         hoverinfo='text',
         text=hover_texts,
         hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO DE CAJA TRASLÚCIDO/TRANSPARENTE
+            bgcolor='rgba(255, 255, 255, 0.75)',
             font_size=13,
             font_color='#2c3e50',
             bordercolor='rgba(189, 195, 199, 0.5)'
@@ -637,7 +637,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         height=height,
         dragmode='pan',
         hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO GENERAL DEL HOVER TRANSPARENTE
+            bgcolor='rgba(255, 255, 255, 0.75)',
             bordercolor='rgba(189, 195, 199, 0.5)',
             font_size=12,
             font_color='#2c3e50'
@@ -738,9 +738,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
 def auto_refresh_60s():
     """
     Este fragmento se ejecuta automáticamente cada 60 segundos.
-    Limpia el caché de datos para forzar la recarga desde Google Sheets
-    en el siguiente ciclo natural de la app.
-    NO hace rerun de toda la app → no hay parpadeo ni consumo excesivo.
+    Limpia el caché de datos para forzar la recarga desde Google Sheets.
     """
     st.cache_data.clear()
 
@@ -840,6 +838,40 @@ def main():
                     'resetScale2d'
                 ]
             })
+
+        # ============================================================
+        # SECCIÓN DE ESTADÍSTICAS GENERALES (DEBAJO DE LA LEYENDA)
+        # ============================================================
+        with st.expander("📊 Estadísticas Generales del Período", expanded=False):
+            col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+            
+            with col_stat1:
+                if 'Enfermos' in df.columns:
+                    st.metric("Total Enfermos", f"{int(df['Enfermos'].sum())}")
+                if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
+                    st.metric("Temp. Mínima Absoluta", f"{df['Temperaturas minimas  (°C)'].min():.1f} °C")
+            
+            with col_stat2:
+                if 'Muertos' in df.columns:
+                    st.metric("Total Muertos", f"{int(df['Muertos'].sum())}")
+                if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
+                    st.metric("Temp. Mínima Promedio", f"{df['Temperaturas minimas  (°C)'].mean():.1f} °C")
+            
+            with col_stat3:
+                if 'Abortos' in df.columns:
+                    st.metric("Total Abortos", f"{int(df['Abortos'].sum())}")
+                if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
+                    st.metric("Precipitación Max.", f"{df['Precipitacion '].max():.1f} mm")
+            
+            with col_stat4:
+                total_afectados = 0
+                if 'Enfermos' in df.columns: total_afectados += df['Enfermos'].sum()
+                if 'Muertos' in df.columns: total_afectados += df['Muertos'].sum()
+                if 'Abortos' in df.columns: total_afectados += df['Abortos'].sum()
+                st.metric("Total Afectaciones", f"{int(total_afectados)}")
+                
+                if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
+                    st.metric("Viento Promedio", f"{df['Vel. viento (Km/h)'].mean():.1f} Km/h")
 
 if __name__ == '__main__':
     main()
