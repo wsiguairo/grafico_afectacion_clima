@@ -22,16 +22,10 @@ st.set_page_config(
 )
 
 # ============================================================
-# ESTILOS RESPONSIVE - LOGO SENAMHI Y AJUSTE DE PANTALLA COMPLETA
+# ESTILOS RESPONSIVE - LOGO SENAMHI
 # ============================================================
 st.markdown("""
 <style>
-    /* Ocupar el 100% de la altura de la pantalla */
-    html, body, [data-testid="stAppViewContainer"], .main {
-        height: 100vh !important;
-        overflow-y: auto;
-    }
-
     .main .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
@@ -48,16 +42,9 @@ st.markdown("""
     header { display: none !important; }
     footer { display: none !important; }
     
-    /* Contenedor Plotly adaptativo al alto del viewport */
-    .stPlotlyChart {
-        height: 85vh !important;
-        width: 100% !important;
-    }
-
     .stPlotlyChart > div {
-        height: 100% !important;
+        margin-top: -10px !important;
         width: 100% !important;
-        margin-top: 0px !important;
     }
     
     .rangeselector { display: none !important; }
@@ -98,10 +85,6 @@ st.markdown("""
             padding-top: 0.2rem !important;
         }
         
-        .stPlotlyChart {
-            height: 70vh !important;
-        }
-
         h1 { font-size: 1.5rem !important; }
         h2 { font-size: 1.2rem !important; }
         h3 { font-size: 1rem !important; }
@@ -153,7 +136,7 @@ st.markdown("""
         .main .block-container {
             padding-left: 2rem !important;
             padding-right: 2rem !important;
-            max-width: 100% !important;
+            max-width: 1400px !important;
             margin: 0 auto !important;
         }
     }
@@ -350,7 +333,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA Y RESPONSIVE
+# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA
 # ============================================================
 def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if df is None or df.empty:
@@ -636,20 +619,22 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         tick_font_size = 9
         legend_font_size = 10
         title_font_size = 11
+        height = 500
     else:
         fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
         tick_labels = [fecha_espanol(f) for f in fecha_ticks]
         tick_font_size = 11  
         legend_font_size = 16   
         title_font_size = 18   
+        height = 750
 
     # ============================================================
     # LAYOUT
     # ============================================================
     fig.update_layout(
-        autosize=True,
         hovermode='x unified',
         template='plotly_white',
+        height=height,
         dragmode='pan',
         hoverlabel=dict(
             bgcolor='rgba(255, 255, 255, 0.75)',  # <-- FONDO GENERAL DEL HOVER TRANSPARENTE
@@ -735,7 +720,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin={'t': 10, 'b': 20, 'l': 30, 'r': 30} if es_movil else {'t': 20, 'b': 30, 'l': 50, 'r': 60}
+        margin={'t': 20, 'b': 20, 'l': 40, 'r': 40} if es_movil else {'t': 30, 'b': 30, 'l': 50, 'r': 60}
     )
     fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
 
@@ -768,7 +753,7 @@ def main():
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
     </div>
     """, unsafe_allow_html=True)
     
@@ -852,6 +837,21 @@ def main():
                     'resetScale2d'
                 ]
             })
+
+            with st.expander("📊 Ver estadísticas de los datos", expanded=False):
+                if es_movil:
+                    col1, col2, col3 = st.columns(1)
+                else:
+                    col1, col2, col3 = st.columns(3)
+                
+                if 'Enfermos' in df.columns and not df['Enfermos'].dropna().empty:
+                    col1.metric("🦙 Total Enfermos", f"{df['Enfermos'].sum():.0f}")
+                if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
+                    col2.metric("💀 Total Muertos", f"{df['Muertos'].sum():.0f}")
+                if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
+                    col3.metric("⚠️ Total Abortos", f"{df['Abortos'].sum():.0f}")
+
+                st.dataframe(df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
