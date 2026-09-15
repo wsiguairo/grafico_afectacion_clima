@@ -495,10 +495,10 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         hoverinfo='text',
         text=hover_texts,
         hoverlabel=dict(
-            bgcolor='white',
+            bgcolor='rgba(255, 255, 255, 0.75)',  # Fondo transparente al 75%
             font_size=13,
             font_color='#2c3e50',
-            bordercolor='#bdc3c7'
+            bordercolor='rgba(189, 195, 199, 0.5)' # Borde sutil transparente
         )
     ))
 
@@ -651,10 +651,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'showline': True,
             'linecolor': '#2c3e50',
             'linewidth': 1.5,
-            'ticks': 'outside',        # <-- MARCAS DE GRADUACIÓN EXTERIOR EJE X
+            'ticks': 'outside',
             'ticklen': 6,
             'tickwidth': 1.5,
             'tickcolor': '#2c3e50',
+            'showspikes': True,              # Activa configuración de puntero
+            'spikethickness': 0,             # <-- HACE TRANSPARENTE / INVISIBE LA LÍNEA VERTICAL DEL HOVER
+            'spikecolor': 'rgba(0,0,0,0)',   # <-- COLOR COMPLETAMENTE TRANSPARENTE
             'fixedrange': False,
             'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
         },
@@ -671,7 +674,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'showline': True,
             'linecolor': '#2c3e50',
             'linewidth': 1.5,
-            'ticks': 'outside',        # <-- MARCAS DE GRADUACIÓN EXTERIOR EJE Y
+            'ticks': 'outside',
             'ticklen': 6,
             'tickwidth': 1.5,
             'tickcolor': '#2c3e50',
@@ -692,7 +695,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'showline': True,
             'linecolor': '#2c3e50',
             'linewidth': 1.5,
-            'ticks': 'outside',        # <-- MARCAS DE GRADUACIÓN EXTERIOR EJE Y SECUNDARIO
+            'ticks': 'outside',
             'ticklen': 6,
             'tickwidth': 1.5,
             'tickcolor': '#2c3e50',
