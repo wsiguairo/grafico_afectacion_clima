@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s optimizado y PANTALLA COMPLETA RESPONSIVA)
+# app.py - VERSIÓN PANTALLA COMPLETA OPTIMIZADA
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -18,164 +18,81 @@ st.set_page_config(
     page_title="Gráfica afectación alpaca",
     page_icon="🦙",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"  # Minimiza la barra lateral para dar prioridad a la gráfica
 )
 
 # ============================================================
-# ESTILOS RESPONSIVE Y PANTALLA COMPLETA - LOGO SENAMHI
+# ESTILOS PARA MAXIMIZAR A PANTALLA COMPLETA
 # ============================================================
 st.markdown("""
 <style>
-    /* Ajuste global para ocupar el 100% de la pantalla */
+    /* 1. Eliminar paddings y márgenes del contenedor principal de Streamlit */
     .main .block-container {
-        padding-top: 0.2rem !important;
+        padding-top: 0rem !important;
         padding-bottom: 0rem !important;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
         max-width: 100% !important;
-        padding-left: 0.3rem !important;
-        padding-right: 0.3rem !important;
-    }
-    
-    h1, h2, h3 {
-        margin-top: 0rem !important;
-        margin-bottom: 0.2rem !important;
     }
     
     header { display: none !important; }
     footer { display: none !important; }
     
-    /* Gráfica adaptada a la altura de la pantalla (Viewport Height) */
+    /* 2. Forzar que el gráfico ocupe la altura máxima del Viewport (pantalla) */
     .stPlotlyChart {
         width: 100% !important;
-        height: 82vh !important;
-        min-height: 480px !important;
+        height: 92vh !important; /* Maximiza la altura en pantalla */
+        min-height: 500px !important;
     }
     
     .stPlotlyChart > div, .js-plotly-plot, .plot-container {
         width: 100% !important;
         height: 100% !important;
-        margin-top: 0px !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    
-    .rangeselector { display: none !important; }
-    
+
     .logo-senamhi {
         position: fixed;
-        top: 10px;
-        left: 10px;
+        top: 8px;
+        left: 8px;
         z-index: 999999;
-        width: 80px;
+        width: 65px;
         height: auto;
         opacity: 0.9;
-        transition: all 0.3s ease;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 6px;
         background: rgba(255, 255, 255, 0.85);
-        padding: 4px;
+        padding: 3px;
     }
-    
-    .logo-senamhi:hover {
-        opacity: 1;
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    
-    /* Dispositivos Móviles */
+
     @media only screen and (max-width: 768px) {
         .stPlotlyChart {
-            height: 78vh !important;
-            min-height: 420px !important;
+            height: 88vh !important;
         }
-        
         .logo-senamhi {
-            width: 50px;
-            top: 5px;
-            left: 5px;
-            padding: 2px;
-            border-radius: 6px;
+            width: 45px;
         }
-        
-        .main .block-container {
-            padding-left: 0.1rem !important;
-            padding-right: 0.1rem !important;
-            padding-top: 0.1rem !important;
-        }
-        
-        h2 { font-size: 1.1rem !important; }
-        
-        .stButton button {
-            font-size: 13px !important;
-            padding: 6px 10px !important;
-            min-height: 38px !important;
-        }
-        
-        .stMetric { font-size: 12px !important; }
-        .stMetric label { font-size: 11px !important; }
-        .stMetric .stMetricValue { font-size: 16px !important; }
-    }
-    
-    /* Tablets */
-    @media only screen and (min-width: 769px) and (max-width: 1024px) {
-        .logo-senamhi {
-            width: 65px;
-            top: 8px;
-            left: 8px;
-        }
-        
-        .main .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-        }
-    }
-    
-    /* PC y Pantallas Grandes */
-    @media only screen and (min-width: 1025px) {
-        .logo-senamhi {
-            width: 80px;
-            top: 10px;
-            left: 10px;
-        }
-        
-        .main .block-container {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            max-width: 100% !important;
-        }
-    }
-    
-    .js-plotly-plot .plotly .scrollbar {
-        display: none !important;
-    }
-    
-    body {
-        font-size: 16px !important;
-        line-height: 1.4 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# MOSTRAR LOGO SENAMHI
+# FUNCIONES DE CARGA Y LOGO
 # ============================================================
 def mostrar_logo_senamhi():
     ruta_logo = "fotosenamhi.png"
-    
     if os.path.exists(ruta_logo):
         try:
             with open(ruta_logo, "rb") as f:
                 imagen_base64 = base64.b64encode(f.read()).decode()
-            
             st.markdown(f"""
             <img src="data:image/png;base64,{imagen_base64}" 
                  class="logo-senamhi" 
-                 alt="Logo SENAMHI"
-                 title="SENAMHI - Servicio Nacional de Meteorología e Hidrología">
+                 alt="Logo SENAMHI">
             """, unsafe_allow_html=True)
         except:
             pass
 
-# ============================================================
-# DICCIONARIO DE MESES
-# ============================================================
 MESES_ES = {
     1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
     5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
@@ -196,9 +113,6 @@ def image_to_base64(filepath):
             return None
     return None
 
-# ============================================================
-# FUNCIONES DE PROCESAMIENTO
-# ============================================================
 @st.cache_data(ttl=10)
 def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
     try:
@@ -233,19 +147,17 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         col_fecha_sintomas = encontrar_columna_fecha(df_sintomas)
         col_fecha_temp = encontrar_columna_fecha(df_temperaturas)
 
-        mapeo_sintomas = {
+        df_sintomas = estandarizar_columnas(df_sintomas, {
             'Enfermos': ['enfermos', 'enfermo', 'enfermas'],
             'Muertos': ['muertos', 'muerto', 'muertas', 'fallecidos'],
             'Abortos': ['abortos', 'aborto', 'abortadas']
-        }
-        df_sintomas = estandarizar_columnas(df_sintomas, mapeo_sintomas)
+        })
 
-        mapeo_temp = {
+        df_temperaturas = estandarizar_columnas(df_temperaturas, {
             'Temperaturas minimas  (°C)': ['temperatura minima', 'temp min', 'tmin'],
             'Vel. viento (Km/h)': ['viento', 'velocidad viento', 'wind'],
             'Precipitacion ': ['precipitacion', 'precipitación', 'lluvia']
-        }
-        df_temperaturas = estandarizar_columnas(df_temperaturas, mapeo_temp)
+        })
 
         df_sintomas['fecha'] = pd.to_datetime(df_sintomas[col_fecha_sintomas], errors='coerce')
         df_temperaturas['fecha'] = pd.to_datetime(df_temperaturas[col_fecha_temp], errors='coerce')
@@ -253,71 +165,38 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df_sintomas = df_sintomas.dropna(subset=['fecha'])
         df_temperaturas = df_temperaturas.dropna(subset=['fecha'])
 
-        columnas_sintomas = ['fecha'] + [col for col in ['Enfermos', 'Muertos', 'Abortos'] if col in df_sintomas.columns]
-        columnas_temp = ['fecha'] + [col for col in ['Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 'Precipitacion '] if col in df_temperaturas.columns]
-        
-        df_sintomas = df_sintomas[columnas_sintomas]
-        df_temperaturas = df_temperaturas[columnas_temp]
+        df = pd.merge(df_sintomas, df_temperaturas, on='fecha', how='outer').sort_values('fecha').reset_index(drop=True)
+        df = df[df['fecha'] <= pd.Timestamp.now().normalize()]
 
-        df = pd.merge(df_sintomas, df_temperaturas, on='fecha', how='outer')
-        df = df.sort_values(by='fecha').reset_index(drop=True)
-        df = df.dropna(subset=['fecha'])
-
-        # ============================================================
-        # FILTRO: ELIMINAR FECHAS FUTURAS
-        # ============================================================
-        fecha_actual = pd.Timestamp.now().normalize()
-        df = df[df['fecha'] <= fecha_actual].copy()
-        
-        if df.empty:
-            st.warning("⚠️ No se encontraron datos con fechas válidas (no futuras)")
-            return None
-
-        columnas_numericas = ['Enfermos', 'Muertos', 'Abortos', 'Temperaturas minimas  (°C)', 
-                            'Vel. viento (Km/h)', 'Precipitacion ']
+        columnas_numericas = ['Enfermos', 'Muertos', 'Abortos', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 'Precipitacion ']
         for col in columnas_numericas:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
                 if col in ['Enfermos', 'Muertos', 'Abortos']:
                     df[col] = df[col].fillna(0)
 
-        agg_dict = {}
-        for col in ['Enfermos', 'Muertos', 'Abortos']:
-            if col in df.columns:
-                agg_dict[col] = 'sum'
-        for col in ['Temperaturas minimas  (°C)', 'Precipitacion ', 'Vel. viento (Km/h)']:
-            if col in df.columns:
-                agg_dict[col] = 'mean'
+        agg_dict = {col: 'sum' for col in ['Enfermos', 'Muertos', 'Abortos'] if col in df.columns}
+        agg_dict.update({col: 'mean' for col in ['Temperaturas minimas  (°C)', 'Precipitacion ', 'Vel. viento (Km/h)'] if col in df.columns})
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
-        # ============================================================
-        # SUAVIZADO - CÓDIGO PROPORCIONADO
-        # ============================================================
-        fecha_smooth = np.array([])
-        enfermos_smooth = np.array([])
-        
-        df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())].copy()
+        fecha_smooth, enfermos_smooth = np.array([]), np.array([])
+        df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())]
         if len(df_filtrado) >= 3:
             try:
-                df_filtrado = df_filtrado.sort_values('fecha')
-                
                 x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_filtrado['Enfermos'].values
-                
                 x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
+                
                 spline = make_interp_spline(x_tiempo, y, k=4)
                 y_suave = spline(x_suave)
                 
                 spline_extra = UnivariateSpline(x_tiempo, y, s=len(y)*1.5, k=4)
                 y_suave_extra = spline_extra(x_suave)
                 
-                y_suave_final = 0.7 * y_suave_extra + 0.3 * y_suave
-                y_suave_final = np.clip(y_suave_final, 0.1, None)
-                
-                window_size = min(5, len(y_suave_final) // 10)
-                if window_size > 1:
-                    y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
+                y_suave_final = np.clip(0.7 * y_suave_extra + 0.3 * y_suave, 0.1, None)
+                if min(5, len(y_suave_final) // 10) > 1:
+                    y_suave_final = uniform_filter1d(y_suave_final, size=min(5, len(y_suave_final) // 10), mode='nearest')
                 
                 fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                 enfermos_smooth = y_suave_final
@@ -326,417 +205,159 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
-
         return df
-
     except Exception as e:
-        st.error(f"❌ Error al cargar datos: {e}")
+        st.error(f"Error al cargar datos: {e}")
         return None
 
 # ============================================================
-# FUNCIÓN PARA CREAR LA GRÁFICA - FECHA ÚNICA (RESPONSIVA)
+# CREACIÓN DE GRÁFICA AJUSTADA
 # ============================================================
-def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
+def crear_grafica(df, images_paths):
     if df is None or df.empty:
-        fig = go.Figure()
-        fig.add_annotation(
-            text="No se pudieron cargar los datos",
-            x=0.5, y=0.5, showarrow=False,
-            font=dict(size=16, color="red")
-        )
-        return fig
+        return go.Figure()
 
     fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
     enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
 
-    img_enferma = image_to_base64(images_paths.get('enferma', ''))
-    img_muerta = image_to_base64(images_paths.get('muerta', ''))
-    img_aborto = image_to_base64(images_paths.get('aborto', ''))
-
     fig = go.Figure()
 
-    # ============================================================
-    # PRECIPITACIÓN
-    # ============================================================
     if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
         fig.add_trace(go.Bar(
-            x=df['fecha'],
-            y=df['Precipitacion '],
-            name='Precipitación',
-            marker=dict(color='#87CEEB', opacity=0.5),
-            yaxis='y2',
-            hoverinfo='skip'
+            x=df['fecha'], y=df['Precipitacion '], name='Precipitación',
+            marker=dict(color='#87CEEB', opacity=0.5), yaxis='y2', hoverinfo='skip'
         ))
 
-    # ============================================================
-    # TEMPERATURA
-    # ============================================================
     if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty:
         fig.add_trace(go.Scatter(
-            x=df['fecha'],
-            y=df['Temperaturas minimas  (°C)'],
-            mode='lines+markers',
-            name='Temperatura mínima',
-            line=dict(color='#2563EB', width=2.5),
-            marker=dict(size=4, color='#2563EB'),
-            opacity=0.9,
-            hoverinfo='skip'
+            x=df['fecha'], y=df['Temperaturas minimas  (°C)'], mode='lines+markers',
+            name='Temperatura mínima', line=dict(color='#2563EB', width=2.5),
+            marker=dict(size=4, color='#2563EB'), hoverinfo='skip'
         ))
 
-    # ============================================================
-    # VIENTO
-    # ============================================================
     if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty:
         fig.add_trace(go.Scatter(
-            x=df['fecha'],
-            y=df['Vel. viento (Km/h)'],
-            mode='lines',
-            name='Viento',
-            line=dict(color='#808080', width=2, dash='dash'),
-            opacity=0.6,
-            hoverinfo='skip'
+            x=df['fecha'], y=df['Vel. viento (Km/h)'], mode='lines',
+            name='Viento', line=dict(color='#808080', width=2, dash='dash'), hoverinfo='skip'
         ))
 
-    # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
-    # ============================================================
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
-            x=fecha_smooth,
-            y=enfermos_smooth,
-            mode='lines',
-            name='Alpacas enfermas',
-            line=dict(color='#8B0000', width=2.5),
-            opacity=0.8,
-            fill='tozeroy',
-            fillgradient=dict(
-                type='vertical',
-                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
-            ),
-            yaxis='y2',
-            hoverinfo='skip',
-            showlegend=True
+            x=fecha_smooth, y=enfermos_smooth, mode='lines', name='Alpacas enfermas',
+            line=dict(color='#8B0000', width=2.5), fill='tozeroy',
+            fillgradient=dict(type='vertical', colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]),
+            yaxis='y2', hoverinfo='skip'
         ))
 
-    # ============================================================
-    # ALPACAS MUERTAS
-    # ============================================================
     if 'Muertos' in df.columns:
-        df_muertos = df[df['Muertos'] > 0].copy()
-        if not df_muertos.empty:
+        df_m = df[df['Muertos'] > 0]
+        if not df_m.empty:
             fig.add_trace(go.Scatter(
-                x=df_muertos['fecha'],
-                y=[0.2] * len(df_muertos),
-                mode='markers',
-                name='Alpacas muertas',
+                x=df_m['fecha'], y=[0.2] * len(df_m), mode='markers', name='Alpacas muertas',
                 marker=dict(size=12, color='#555555', line=dict(color='black', width=0.5)),
-                yaxis='y2',
-                customdata=df_muertos['Muertos'],
-                hoverinfo='skip'
+                yaxis='y2', hoverinfo='skip'
             ))
 
-    # ============================================================
-    # ABORTOS
-    # ============================================================
     if 'Abortos' in df.columns:
-        df_abortos = df[df['Abortos'] > 0].copy()
-        if not df_abortos.empty:
+        df_a = df[df['Abortos'] > 0]
+        if not df_a.empty:
             fig.add_trace(go.Scatter(
-                x=df_abortos['fecha'],
-                y=[0.25] * len(df_abortos),
-                mode='markers',
-                name='Abortos',
+                x=df_a['fecha'], y=[0.25] * len(df_a), mode='markers', name='Abortos',
                 marker=dict(size=12, color='#1E90FF', line=dict(color='#87CEEB', width=1)),
-                yaxis='y2',
-                customdata=df_abortos['Abortos'],
-                hoverinfo='skip'
+                yaxis='y2', hoverinfo='skip'
             ))
 
-    # ============================================================
-    # TRACE INVISIBLE CON TODOS LOS DATOS Y FECHA ÚNICA
-    # ============================================================
+    # Trace hover único
     df_hover = df.copy()
-    
-    for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 
-                'Enfermos', 'Muertos', 'Abortos']:
+    for col in ['Precipitacion ', 'Temperaturas minimas  (°C)', 'Vel. viento (Km/h)', 'Enfermos', 'Muertos', 'Abortos']:
         if col not in df_hover.columns:
             df_hover[col] = np.nan
-    
+
     hover_texts = []
     for _, row in df_hover.iterrows():
         texto = f"<b>📅 {row['fecha'].strftime('%d/%m/%Y')}</b><br>"
-        
-        if pd.notna(row['Precipitacion ']):
-            texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
-        if pd.notna(row['Temperaturas minimas  (°C)']):
-            texto += f"<b>🌡️ Temperatura mínima:</b> {row['Temperaturas minimas  (°C)']:.1f} °C<br>"
-        if pd.notna(row['Vel. viento (Km/h)']):
-            texto += f"<b>💨 Viento:</b> {row['Vel. viento (Km/h)']:.0f} Km/h<br>"
-        if pd.notna(row['Enfermos']) and row['Enfermos'] > 0:
-            texto += f"<b>🦙 Alpacas enfermas:</b> {row['Enfermos']:.0f}<br>"
-        if pd.notna(row['Muertos']) and row['Muertos'] > 0:
-            texto += f"<b>💀 Alpacas muertas:</b> {row['Muertos']:.0f}<br>"
-        if pd.notna(row['Abortos']) and row['Abortos'] > 0:
-            texto += f"<b>⚠️ Abortos:</b> {row['Abortos']:.0f}<br>"
-        
+        if pd.notna(row['Precipitacion ']): texto += f"<b>💧 Precipitación:</b> {row['Precipitacion ']:.0f} mm<br>"
+        if pd.notna(row['Temperaturas minimas  (°C)']): texto += f"<b>🌡️ Temperatura mínima:</b> {row['Temperaturas minimas  (°C)']:.1f} °C<br>"
+        if pd.notna(row['Vel. viento (Km/h)']): texto += f"<b>💨 Viento:</b> {row['Vel. viento (Km/h)']:.0f} Km/h<br>"
+        if pd.notna(row['Enfermos']) and row['Enfermos'] > 0: texto += f"<b>🦙 Alpacas enfermas:</b> {row['Enfermos']:.0f}<br>"
+        if pd.notna(row['Muertos']) and row['Muertos'] > 0: texto += f"<b>💀 Alpacas muertas:</b> {row['Muertos']:.0f}<br>"
+        if pd.notna(row['Abortos']) and row['Abortos'] > 0: texto += f"<b>⚠️ Abortos:</b> {row['Abortos']:.0f}<br>"
         hover_texts.append(texto)
-    
+
     fig.add_trace(go.Scatter(
-        x=df_hover['fecha'],
-        y=[0] * len(df_hover),
-        mode='markers',
-        name='',
-        marker=dict(
-            size=0.1,
-            color='rgba(0,0,0,0)',
-            opacity=0
-        ),
-        yaxis='y2',
-        showlegend=False,
-        hoverinfo='text',
-        text=hover_texts,
-        hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',
-            font_size=13,
-            font_color='#2c3e50',
-            bordercolor='rgba(189, 195, 199, 0.5)'
-        )
+        x=df_hover['fecha'], y=[0] * len(df_hover), mode='markers', name='',
+        marker=dict(size=0.1, color='rgba(0,0,0,0)'), yaxis='y2', showlegend=False,
+        hoverinfo='text', text=hover_texts
     ))
 
-    # ============================================================
-    # IMÁGENES PEQUEÑAS (TAMAÑO 8) - SOLO EN PC
-    # ============================================================
-    images_plotly = []
-    y_offset = 0.2
-
-    if not es_movil:
-        if img_enferma is not None and len(enfermos_smooth) > 0:
-            for idx in [0, -1]:
-                images_plotly.append({
-                    'source': f"data:image/png;base64,{img_enferma}",
-                    'xref': 'x',
-                    'yref': 'y2',
-                    'x': fecha_smooth[idx],
-                    'y': float(enfermos_smooth[idx]),
-                    'sizex': 8,
-                    'sizey': 8,
-                    'xanchor': 'center',
-                    'yanchor': 'middle',
-                    'layer': 'above'
-                })
-
-        if img_muerta is not None and 'Muertos' in df.columns:
-            df_muertos_varios = df[df['Muertos'] >= 3].copy()
-            if not df_muertos_varios.empty:
-                for _, row in df_muertos_varios.iterrows():
-                    images_plotly.append({
-                        'source': f"data:image/png;base64,{img_muerta}",
-                        'xref': 'x',
-                        'yref': 'y2',
-                        'x': row['fecha'],
-                        'y': y_offset,
-                        'sizex': 8,
-                        'sizey': 8,
-                        'xanchor': 'center',
-                        'yanchor': 'middle',
-                        'layer': 'above'
-                    })
-
-        if img_aborto is not None and 'Abortos' in df.columns:
-            df_abortos_pos = df[df['Abortos'] > 0].copy()
-            if not df_abortos_pos.empty:
-                for idx in [0, -1] if len(df_abortos_pos) > 1 else [0]:
-                    if idx < len(df_abortos_pos):
-                        images_plotly.append({
-                            'source': f"data:image/png;base64,{img_aborto}",
-                            'xref': 'x',
-                            'yref': 'y2',
-                            'x': df_abortos_pos['fecha'].iloc[idx],
-                            'y': y_offset,
-                            'sizex': 8,
-                            'sizey': 8,
-                            'xanchor': 'center',
-                            'yanchor': 'middle',
-                            'layer': 'above'
-                        })
-
-    # ============================================================
-    # RANGOS
-    # ============================================================
-    min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 0
-    max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns and not df['Temperaturas minimas  (°C)'].dropna().empty else 10
-    max_wind = df['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df.columns and not df['Vel. viento (Km/h)'].dropna().empty else 0
+    # Rangos de ejes
+    min_temp = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns else 0
+    max_temp = df['Temperaturas minimas  (°C)'].max() if 'Temperaturas minimas  (°C)' in df.columns else 10
+    max_wind = df['Vel. viento (Km/h)'].max() if 'Vel. viento (Km/h)' in df.columns else 0
 
     y1_min = min_temp * 1.2 if min_temp < 0 else -5
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
     max_y2 = 1
-    if len(enfermos_smooth) > 0:
-        max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
-    if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
-        max_y2 = max(max_y2, df['Muertos'].max() * 1.5)
-    if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
-        max_y2 = max(max_y2, df['Abortos'].max() * 1.5)
-    if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
-        max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
+    if len(enfermos_smooth) > 0: max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
+    if 'Precipitacion ' in df.columns: max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
-    # ============================================================
-    # ZOOM INICIAL - VENTANA DE 4 MESES + 1 MES FUTURO PARA DESLIZAR
-    # ============================================================
-    fecha_mas_reciente = df['fecha'].max()
-    
-    anio_reciente = fecha_mas_reciente.year
-    mes_reciente = fecha_mas_reciente.month
-    
-    if mes_reciente - 3 <= 0:
-        anio_inicio = anio_reciente - 1
-        mes_inicio = mes_reciente - 3 + 12
-    else:
-        anio_inicio = anio_reciente
-        mes_inicio = mes_reciente - 3
-    
-    fecha_inicio_zoom = pd.Timestamp(year=anio_inicio, month=mes_inicio, day=1)
-    fecha_fin_zoom = fecha_mas_reciente
-    
-    if df[(df['fecha'] >= fecha_inicio_zoom) & (df['fecha'] <= fecha_fin_zoom)].empty:
-        fecha_inicio_zoom = df['fecha'].min()
-        fecha_fin_zoom = df['fecha'].max()
+    fecha_max = df['fecha'].max()
+    fecha_inicio_zoom = fecha_max - pd.DateOffset(months=3)
+    fecha_fin_zoom_extendida = fecha_max + pd.DateOffset(months=1)
 
-    fecha_fin_zoom_extendida = fecha_fin_zoom + pd.DateOffset(months=1)
-
-    # ============================================================
-    # TICKS
-    # ============================================================
-    fecha_max_ticks = df['fecha'].max() + pd.DateOffset(months=1)
-    fecha_min_ticks = df['fecha'].min()
-
-    fecha_ticks = pd.date_range(start=fecha_min_ticks, end=fecha_max_ticks, freq='MS')
+    fecha_ticks = pd.date_range(start=df['fecha'].min(), end=fecha_max + pd.DateOffset(months=1), freq='MS')
     tick_labels = [fecha_espanol(f) for f in fecha_ticks]
-    
-    if es_movil:
-        tick_font_size = 9
-        legend_font_size = 11
-        title_font_size = 11
-    else:
-        tick_font_size = 11  
-        legend_font_size = 14   
-        title_font_size = 15   
 
-    # ============================================================
-    # LAYOUT AUTOSIZE Y MARGENES RESPONSIVOS
-    # ============================================================
+    # Layout optimizado para pantalla completa
     fig.update_layout(
         autosize=True,
         hovermode='x unified',
         template='plotly_white',
         dragmode='pan',
-        hoverlabel=dict(
-            bgcolor='rgba(255, 255, 255, 0.75)',
-            bordercolor='rgba(189, 195, 199, 0.5)',
-            font_size=13,
-            font_color='#2c3e50'
-        ),
         xaxis={
-            'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
+            'title': {'text': 'Meses', 'font': {'size': 12}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
-            'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
-            'ticklabelmode': 'period',
-            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
+            'tickfont': {'size': 11},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
-            'gridwidth': 0.5,
-            'showline': True,
-            'linecolor': '#2c3e50',
-            'linewidth': 1.5,
-            'ticks': 'outside',
-            'ticklen': 6,
-            'tickwidth': 1.5,
-            'tickcolor': '#2c3e50',
-            'fixedrange': False,
-            'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
+            'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida]
         },
         yaxis={
-            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
+            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': 12}},
             'range': [y1_min, y1_max],
-            'tickformat': '.1f',
-            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
+            'tickfont': {'size': 11},
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
-            'gridwidth': 0.5,
-            'zeroline': True,
-            'zerolinecolor': 'rgba(128, 128, 128, 0.5)',
-            'zerolinewidth': 1,
-            'showline': True,
-            'linecolor': '#2c3e50',
-            'linewidth': 1.5,
-            'ticks': 'outside',
-            'ticklen': 6,
-            'tickwidth': 1.5,
-            'tickcolor': '#2c3e50',
-            'fixedrange': False,
             'side': 'left'
         },
         yaxis2={
-            'title': {'text': 'Precipitación / Afectación', 'font': {'size': title_font_size, 'color': '#34495e'}},
+            'title': {'text': 'Precipitación / Afectación', 'font': {'size': 12}},
             'range': [0, max_y2],
-            'tickformat': 'd',
-            'dtick': max(2, int(max_y2 / 8)),
-            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
+            'tickfont': {'size': 11},
             'overlaying': 'y',
             'side': 'right',
-            'gridcolor': 'rgba(200, 200, 200, 0.15)',
-            'gridwidth': 0.3,
-            'showgrid': True,
-            'showline': True,
-            'linecolor': '#2c3e50',
-            'linewidth': 1.5,
-            'ticks': 'outside',
-            'ticklen': 6,
-            'tickwidth': 1.5,
-            'tickcolor': '#2c3e50',
-            'fixedrange': False
+            'showgrid': False
         },
-        images=images_plotly,
         legend={
             'orientation': 'h',
             'x': 0.5,
-            'y': -0.18,
+            'y': -0.12,
             'xanchor': 'center',
             'yanchor': 'top',
-            'bgcolor': 'rgba(255, 255, 255, 0.95)',
+            'bgcolor': 'rgba(255, 255, 255, 0.9)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 1,
-            'font': {'size': legend_font_size, 'color': '#2c3e50'},
-            'itemwidth': 30,
-            'tracegroupgap': 5
+            'font': {'size': 12}
         },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        # Margen inferior 'b' ampliado para asegurar que la leyenda no se corte nunca
-        margin={'t': 20, 'b': 95, 'l': 35, 'r': 35} if es_movil else {'t': 30, 'b': 105, 'l': 50, 'r': 60}
+        margin={'t': 10, 'b': 85, 'l': 40, 'r': 40}
     )
-    fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
-
-    if es_movil:
-        fig.update_layout(
-            dragmode='pan',
-        )
-
     return fig
-
-# ============================================================
-# FRAGMENTO DE AUTO-REFRESH (SOLO ESTE TROZO SE RE-EJECUTA)
-# ============================================================
-@st.fragment(run_every="60s")
-def auto_refresh_60s():
-    """
-    Este fragmento se ejecuta automáticamente cada 60 segundos.
-    Limpia el caché de datos para forzar la recarga desde Google Sheets.
-    """
-    st.cache_data.clear()
 
 # ============================================================
 # MAIN
@@ -744,92 +365,17 @@ def auto_refresh_60s():
 def main():
     mostrar_logo_senamhi()
     
-    st.markdown("""
-    <div style="text-align: center; padding: 0.2rem 0;">
-        <h2 style="font-size: clamp(1.1rem, 3.2vw, 1.8rem);">🦙 Monitoreo Diario - Temperatura, Precipitación y Afectación de Alpacas</h2>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    with st.sidebar:
-        st.markdown("### 🎛️ Controles")
-        
-        st.markdown("**Seleccionar período:**")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📅 1 Mes", use_container_width=True):
-                st.session_state.zoom_periodo = 1
-            if st.button("📅 6 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 6
-            if st.button("📅 Todo", use_container_width=True):
-                st.session_state.zoom_periodo = None
-        
-        with col2:
-            if st.button("📅 3 Meses", use_container_width=True):
-                st.session_state.zoom_periodo = 3
-            if st.button("📅 1 Año", use_container_width=True):
-                st.session_state.zoom_periodo = 12
-        
-        st.markdown("---")
-        
-        with st.expander("ℹ️ Cómo interactuar", expanded=False):
-            st.markdown("""
-            - **🖱️ Pasa el cursor** sobre la gráfica para ver:
-              - 📅 Fecha (una sola vez al inicio)
-              - 🦙 Alpacas enfermas (valor real)
-              - 🌡️ Temperatura
-              - 💧 Precipitación
-              - 💨 Viento
-              - 💀 Muertos
-              - ⚠️ Abortos
-            - **🖱️ Deslizar**: Arrastra el mouse ← → (ahora podrás ver 1 mes futuro)
-            - **🔍 Zoom**: Rueda del mouse
-            """)
-        
-        if st.button("🔄 Actualizar datos", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-
     GOOGLE_SHEETS_ID = '11UWULdTZL2tKKpeGRETXOHvQt_3jHxIMgap2lfkDpro'
-    SHEET_NAME_SINTOMAS = 'sintomas'
-    SHEET_NAME_TEMPERATURAS = 'temperaturas'
-
-    os.makedirs('imagenes', exist_ok=True)
-    
-    IMAGES = {
-        'enferma': 'imagenes/enferma.png',
-        'muerta': 'imagenes/muerta.png',
-        'aborto': 'imagenes/aborto.png'
-    }
-
-    zoom_meses = st.session_state.get('zoom_periodo', None)
-    es_movil = False
-
-    with st.spinner('🔄 Cargando datos desde Google Sheets...'):
-        df = cargar_datos(GOOGLE_SHEETS_ID, SHEET_NAME_SINTOMAS, SHEET_NAME_TEMPERATURAS)
+    df = cargar_datos(GOOGLE_SHEETS_ID, 'sintomas', 'temperaturas')
 
     if df is not None and not df.empty:
-        with st.spinner('📊 Generando gráfica interactiva...'):
-            fig = crear_grafica(df, IMAGES, zoom_meses, es_movil)
-
-        if fig is not None:
-            st.plotly_chart(fig, use_container_width=True, config={
-                'displayModeBar': True,
-                'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
-                'displaylogo': False,
-                'scrollZoom': True,
-                'responsive': True,
-                'modeBarButtonsToAdd': [
-                    'zoom2d',
-                    'pan2d',
-                    'select2d',
-                    'lasso2d',
-                    'zoomIn2d',
-                    'zoomOut2d',
-                    'autoScale2d',
-                    'resetScale2d'
-                ]
-            })
+        fig = crear_grafica(df, {})
+        st.plotly_chart(fig, use_container_width=True, config={
+            'displayModeBar': True,
+            'displaylogo': False,
+            'scrollZoom': True,
+            'responsive': True
+        })
 
 if __name__ == '__main__':
     main()
