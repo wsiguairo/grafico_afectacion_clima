@@ -698,7 +698,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     )
 
     # ============================================================
-    # LÍNEAS VERTICALES PUNTEADAS EN DÍAS 10 Y 20 DE CADA MES
+    # LÍNEA VERTICAL DÍA 1 DE CADA MES (RESALTADA - MANUAL)
     # ============================================================
     fecha_min_data = df['fecha'].min()
     fecha_max_data = df['fecha'].max()
@@ -709,6 +709,20 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         freq='MS'
     )
 
+    for mes in meses_rango:
+        fecha_dia1 = mes  # día 1 de cada mes
+        if fecha_min_data <= fecha_dia1 <= fecha_max_data:
+            fig.add_vline(
+                x=fecha_dia1,
+                line_dash="dash",
+                line_color="rgba(120, 120, 120, 0.55)",   # gris medio, suave
+                line_width=1.6,                            # un poco más gruesa que las de 10/20
+                opacity=0.6                                # semitransparente
+            )
+
+    # ============================================================
+    # LÍNEAS VERTICALES PUNTEADAS EN DÍAS 10 Y 20 DE CADA MES
+    # ============================================================
     for mes in meses_rango:
         for dia in (10, 20):
             fecha_linea = mes.replace(day=dia)
