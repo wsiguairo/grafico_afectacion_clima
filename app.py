@@ -685,7 +685,41 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         paper_bgcolor='white',
         margin={'t': 15, 'b': 15, 'l': 30, 'r': 30} if es_movil else {'t': 20, 'b': 20, 'l': 45, 'r': 45}
     )
-    fig.add_hline(y=0, line_dash="dash", line_color="gray", line_width=0.8, opacity=0.4)
+
+    # ============================================================
+    # LÍNEA HORIZONTAL EN y=0 (MÁS NOTORIA)
+    # ============================================================
+    fig.add_hline(
+        y=0,
+        line_dash="dash",
+        line_color="gray",
+        line_width=1.5,
+        opacity=0.75
+    )
+
+    # ============================================================
+    # LÍNEAS VERTICALES PUNTEADAS EN DÍAS 10 Y 20 DE CADA MES
+    # ============================================================
+    fecha_min_data = df['fecha'].min()
+    fecha_max_data = df['fecha'].max()
+
+    meses_rango = pd.date_range(
+        start=fecha_min_data.replace(day=1),
+        end=fecha_max_data + pd.DateOffset(months=1),
+        freq='MS'
+    )
+
+    for mes in meses_rango:
+        for dia in (10, 20):
+            fecha_linea = mes.replace(day=dia)
+            if fecha_min_data <= fecha_linea <= fecha_max_data:
+                fig.add_vline(
+                    x=fecha_linea,
+                    line_dash="dot",
+                    line_color="rgba(120, 120, 120, 0.6)",
+                    line_width=1.2,
+                    opacity=0.7
+                )
 
     return fig
 
