@@ -657,7 +657,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'side': 'right',
             'gridcolor': 'rgba(200, 200, 200, 0.15)',
             'gridwidth': 0.3,
-            'showgrid': False,
+            'showgrid': True,
             'showline': False,
             'linecolor': 'rgba(0,0,0,0)',
             'linewidth': 0,
