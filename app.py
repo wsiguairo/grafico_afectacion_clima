@@ -714,7 +714,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         if fecha_min_data <= fecha_dia1 <= fecha_max_data:
             fig.add_vline(
                 x=fecha_dia1,
-                line_dash="dash",
+                line_dash="dot",
                 line_color="rgba(120, 120, 120, 0.55)",   # gris medio, suave
                 line_width=1.6,                            # un poco más gruesa que las de 10/20
                 opacity=0.6                                # semitransparente
