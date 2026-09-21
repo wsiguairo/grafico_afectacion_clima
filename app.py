@@ -1,4 +1,4 @@
-# app.py - VERSIÓN SIGUAIRO (con AUTO-REFRESH 60s y ESTADÍSTICAS DESPLEGABLES)
+# app.py - VERSIÓN SIGUAIRO ( AUTO-REFRESH 60s y ESTADÍSTICAS DESPLEGABLES)
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
