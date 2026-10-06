@@ -756,7 +756,13 @@ def main():
     
     st.markdown("""
     <div style="text-align: center; padding: 0.5rem 0;">
-        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem);">🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas</h2>
+        <h2 style="font-size: clamp(1.2rem, 4vw, 2rem); line-height: 1.3; margin-bottom: 0;">
+            🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas
+            <br>
+            <span style="font-size: clamp(1rem, 3vw, 1.5rem); font-weight: normal; color: #555; display: block; margin-top: 8px;">
+                Sierra Sur
+            </span>
+        </h2>
     </div>
     """, unsafe_allow_html=True)
     
