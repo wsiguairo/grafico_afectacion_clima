@@ -760,7 +760,7 @@ def main():
             🦙 Monitoreo Diaria - Temperatura, Precipitación y Afectación de Alpacas
             <br>
             <span style="font-size: clamp(1rem, 3vw, 1.5rem); font-weight: normal; color: #555; display: block; margin-top: 8px;">
-                Sierra Sur
+                (Sierra Sur)
             </span>
         </h2>
     </div>
