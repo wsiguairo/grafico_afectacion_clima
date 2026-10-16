@@ -613,7 +613,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'hoverformat': '%d de %B de %Y',
             'dtick': 'M1',
             'ticklabelmode': 'period',
-            'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
+            'tickfont': {'size': tick_font_size, 'color': '#2c3e50', 'family': 'Arial Black'},
             'showgrid': True,
             'gridcolor': 'rgba(200, 200, 200, 0.3)',
             'gridwidth': 0.5,
@@ -628,7 +628,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'range': [fecha_inicio_zoom, fecha_fin_zoom_extendida],
         },
         yaxis={
-            'title': {'text': 'Temperatura mínima (°C)', 'font': {'size': title_font_size, 'color': '#34495e'}},
+            'title': {'text': '<b>Temperatura mínima (°C)</b>', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'range': [y1_min, y1_max],
             'tickformat': '.1f',
             'tickfont': {'size': tick_font_size, 'color': '#2c3e50'},
@@ -648,7 +648,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'side': 'left'
         },
         yaxis2={
-            'title': {'text': 'Precipitación / Afectación', 'font': {'size': title_font_size, 'color': '#34495e'}},
+            'title': {'text': '<b>Precipitación / Afectación</b>', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'range': [0, max_y2],
             'tickformat': 'd',
             'dtick': max(2, int(max_y2 / 8)),
@@ -677,7 +677,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             'bgcolor': 'rgba(255, 255, 255, 0.95)',
             'bordercolor': '#bdc3c7',
             'borderwidth': 1,
-            'font': {'size': legend_font_size, 'color': '#2c3e50'},
+            'font': {'size': legend_font_size, 'color': '#2c3e50', 'family': 'Arial Black'},
             'itemwidth': 30,
             'tracegroupgap': 5
         },
