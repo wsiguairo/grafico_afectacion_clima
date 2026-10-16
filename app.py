@@ -606,7 +606,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             font_color='#2c3e50'
         ),
         xaxis={
-            'title': {'text': 'Meses', 'font': {'size': title_font_size, 'color': '#34495e'}},
+            'title': {'text': '<b>Meses</b>', 'font': {'size': title_font_size, 'color': '#34495e'}},
             'type': 'date',
             'tickvals': fecha_ticks,
             'ticktext': tick_labels,
