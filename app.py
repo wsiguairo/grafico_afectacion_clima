@@ -376,7 +376,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             y=df['Temperaturas minimas  (°C)'],
             mode='lines+markers',
             name='Temperatura mínima',
-            line=dict(color='#2563EB', width=2.5),
+            line=dict(color='#0000FF', width=3.0),
             marker=dict(size=4, color='#2563EB'),
             opacity=0.9,
             hoverinfo='skip'
