@@ -482,7 +482,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=[0] * len(df_hover), 
+        y=[10] * len(df_hover),
         mode='markers',
         name='',
         marker=dict(size=0.1, color='rgba(0,0,0,0)', opacity=0),
@@ -603,8 +603,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             bgcolor='rgba(255, 255, 255, 0.75)',
             bordercolor='rgba(189, 195, 199, 0.5)',
             font_size=12,
-            font_color='#2c3e50',
-            align='left'
+            font_color='#2c3e50'
         ),
         xaxis={
             'title': {'text': '<b>Meses</b>', 'font': {'size': title_font_size, 'color': '#34495e'}},
