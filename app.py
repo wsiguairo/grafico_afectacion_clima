@@ -595,7 +595,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         height = 480
 
     fig.update_layout(
-        hovermode='x',
+        hovermode='x unified',
         template='plotly_white',
         height=height,
         dragmode='pan',
