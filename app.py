@@ -604,7 +604,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             bordercolor='rgba(189, 195, 199, 0.5)',
             font_size=12,
             font_color='#2c3e50',
-            align='center',
+            align='left'
         ),
         xaxis={
             'title': {'text': '<b>Meses</b>', 'font': {'size': title_font_size, 'color': '#34495e'}},
