@@ -482,7 +482,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     
     fig.add_trace(go.Scatter(
         x=df_hover['fecha'],
-        y=[max_y2 * 0.15] * len(df_hover),
+        y=[0] * len(df_hover), 
         mode='markers',
         name='',
         marker=dict(size=0.1, color='rgba(0,0,0,0)', opacity=0),
