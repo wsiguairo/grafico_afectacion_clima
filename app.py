@@ -3,8 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import make_interp_spline, UnivariateSpline
-from scipy.ndimage import uniform_filter1d
+from scipy.interpolate import make_interp_spline
 import warnings
 import base64
 import os
@@ -262,9 +261,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.sort_values(by='fecha').reset_index(drop=True)
         df = df.dropna(subset=['fecha'])
 
-        # ============================================================
         # FILTRO: ELIMINAR FECHAS FUTURAS
-        # ============================================================
         fecha_actual = pd.Timestamp.now().normalize()
         df = df[df['fecha'] <= fecha_actual].copy()
         
@@ -291,38 +288,35 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO
+        # SUAVIZADO (ESTILO EXCEL - PASA POR TODOS LOS PUNTOS)
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
-        df_filtrado = df[(df['Enfermos'] > 0) & (df['Enfermos'].notna())].copy()
-        if len(df_filtrado) >= 3:
+        # Usamos TODOS los datos, incluso los ceros, para que la línea baje a 0
+        if len(df) >= 3:
             try:
-                df_filtrado = df_filtrado.sort_values('fecha')
+                df_ordenado = df.sort_values('fecha')
                 
-                x_tiempo = df_filtrado['fecha'].map(pd.Timestamp.to_julian_date).values
-                y = df_filtrado['Enfermos'].values
+                # Convertir fechas a números para la spline
+                x_tiempo = df_ordenado['fecha'].map(pd.Timestamp.to_julian_date).values
+                y = df_ordenado['Enfermos'].values
                 
+                # make_interp_spline con k=3 (cúbica) es el estándar de Excel
                 x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
-                spline = make_interp_spline(x_tiempo, y, k=4)
+                spline = make_interp_spline(x_tiempo, y, k=3) # k=3 para curvas suaves
                 y_suave = spline(x_suave)
                 
-                spline_extra = UnivariateSpline(x_tiempo, y, s=len(y)*1.5, k=4)
-                y_suave_extra = spline_extra(x_suave)
-                
-                y_suave_final = 0.7 * y_suave_extra + 0.3 * y_suave
-                y_suave_final = np.clip(y_suave_final, 0.1, None)
-                
-                window_size = min(5, len(y_suave_final) // 10)
-                if window_size > 1:
-                    y_suave_final = uniform_filter1d(y_suave_final, size=window_size, mode='nearest')
+                # Evitar valores negativos por la oscilación matemática
+                y_suave = np.clip(y_suave, 0, None)
                 
                 fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
-                enfermos_smooth = y_suave_final
-            except:
-                pass
-        
+                enfermos_smooth = y_suave
+            except Exception as e:
+                # Si falla, usamos los datos crudos
+                fecha_smooth = df_ordenado['fecha'].values
+                enfermos_smooth = df_ordenado['Enfermos'].values
+
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
 
@@ -397,14 +391,28 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA Y PUNTOS REALES
     # ============================================================
+    
+    # 1. Puntos reales (como en Excel)
+    fig.add_trace(go.Scatter(
+        x=df['fecha'],
+        y=df['Enfermos'],
+        mode='markers',
+        name='Datos reales',
+        marker=dict(size=6, color='#8B0000', symbol='circle'),
+        yaxis='y2',
+        hoverinfo='skip',
+        showlegend=False
+    ))
+
+    # 2. Línea suavizada (como en Excel)
     if len(enfermos_smooth) > 0:
         fig.add_trace(go.Scatter(
             x=fecha_smooth,
             y=enfermos_smooth,
             mode='lines',
-            name='Alpacas enfermas',
+            name='Alpacas enfermas (Tendencia)',
             line=dict(color='#8B0000', width=2.5),
             opacity=0.8,
             fill='tozeroy',
@@ -550,15 +558,16 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y1_min = min_temp * 1.2 if min_temp < 0 else -5
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
+    # ELIMINAMOS LA PRECIPITACIÓN DEL CÁLCULO PARA QUE NO APLASTE LA GRÁFICA
     max_y2 = 1
     if len(enfermos_smooth) > 0:
         max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
+    if 'Enfermos' in df.columns:
+        max_y2 = max(max_y2, df['Enfermos'].max() * 1.3) # Asegurar que los puntos reales se vean
     if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
         max_y2 = max(max_y2, df['Muertos'].max() * 1.5)
     if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
         max_y2 = max(max_y2, df['Abortos'].max() * 1.5)
-    if 'Precipitacion ' in df.columns and not df['Precipitacion '].dropna().empty:
-        max_y2 = max(max_y2, df['Precipitacion '].max() * 1.1)
     max_y2 = max(max_y2, 2)
 
     fecha_mas_reciente = df['fecha'].max()
@@ -686,9 +695,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         margin={'t': 15, 'b': 15, 'l': 30, 'r': 30} if es_movil else {'t': 20, 'b': 20, 'l': 45, 'r': 45}
     )
 
-    # ============================================================
-    # LÍNEA HORIZONTAL EN y=0 (MÁS NOTORIA)
-    # ============================================================
+    # LÍNEA HORIZONTAL EN y=0
     fig.add_hline(
         y=0,
         line_dash="dash",
@@ -697,9 +704,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         opacity=0.75
     )
 
-    # ============================================================
-    # LÍNEA VERTICAL DÍA 1 DE CADA MES (RESALTADA - MANUAL)
-    # ============================================================
+    # LÍNEA VERTICAL DÍA 1 DE CADA MES
     fecha_min_data = df['fecha'].min()
     fecha_max_data = df['fecha'].max()
 
@@ -710,19 +715,17 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     )
 
     for mes in meses_rango:
-        fecha_dia1 = mes  # día 1 de cada mes
+        fecha_dia1 = mes
         if fecha_min_data <= fecha_dia1 <= fecha_max_data:
             fig.add_vline(
                 x=fecha_dia1,
                 line_dash="dot",
-                line_color="rgba(120, 120, 120, 0.55)",   # gris medio, suave
-                line_width=1.6,                            # un poco más gruesa que las de 10/20
-                opacity=0.6                                # semitransparente
+                line_color="rgba(120, 120, 120, 0.55)",
+                line_width=1.6,
+                opacity=0.6
             )
 
-    # ============================================================
     # LÍNEAS VERTICALES PUNTEADAS EN DÍAS 10 Y 20 DE CADA MES
-    # ============================================================
     for mes in meses_rango:
         for dia in (10, 20):
             fecha_linea = mes.replace(day=dia)
@@ -834,7 +837,7 @@ def main():
                 ]
             })
 
-            # 2. BLOQUE CON ICONO/BOTÓN DE ESTADÍSTICAS BAJO LA LEYENDA (DESPLEGABLE AL HACER CLIC)
+            # 2. BLOQUE CON ICONO/BOTÓN DE ESTADÍSTICAS BAJO LA LEYENDA
             st.markdown("<br>", unsafe_allow_html=True)
             with st.expander("📊 **Ver Estadísticas Generales y Resumen del Período**", expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
