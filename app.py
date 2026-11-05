@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import make_interp_spline
+from scipy.interpolate import PchipInterpolator
 import warnings
 import base64
 import os
@@ -293,7 +293,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
-        # Usamos TODOS los datos, incluso los ceros, para que la línea baje a 0
         if len(df) >= 3:
             try:
                 df_ordenado = df.sort_values('fecha')
@@ -302,18 +301,19 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                 x_tiempo = df_ordenado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_ordenado['Enfermos'].values
                 
-                # make_interp_spline con k=3 (cúbica) es el estándar de Excel
-                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 500)
-                spline = make_interp_spline(x_tiempo, y, k=3) # k=3 para curvas suaves
+                # PchipInterpolator es ideal: no sobreoscila y pasa por todos los puntos
+                spline = PchipInterpolator(x_tiempo, y)
+                
+                # 1000 puntos para que la línea se vea perfectamente fluida
+                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 1000) 
                 y_suave = spline(x_suave)
                 
-                # Evitar valores negativos por la oscilación matemática
+                # Evitar negativos (por si acaso la matemática lo requiere)
                 y_suave = np.clip(y_suave, 0, None)
                 
                 fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                 enfermos_smooth = y_suave
             except Exception as e:
-                # Si falla, usamos los datos crudos
                 fecha_smooth = df_ordenado['fecha'].values
                 enfermos_smooth = df_ordenado['Enfermos'].values
 
@@ -563,7 +563,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     if len(enfermos_smooth) > 0:
         max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
     if 'Enfermos' in df.columns:
-        max_y2 = max(max_y2, df['Enfermos'].max() * 1.3) # Asegurar que los puntos reales se vean
+        max_y2 = max(max_y2, df['Enfermos'].max() * 1.3) 
     if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
         max_y2 = max(max_y2, df['Muertos'].max() * 1.5)
     if 'Abortos' in df.columns and not df['Abortos'].dropna().empty:
