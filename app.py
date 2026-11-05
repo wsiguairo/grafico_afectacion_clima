@@ -288,29 +288,29 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO ROBUSTO (ESTILO EXCEL - LÍNEA SUAVIZADA)
+        # SUAVIZADO ROBUSTO (ESTILO EXCEL - LÍNEA SUAVIZADA PURA)
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
         
-        if len(df) >= 3:
+        if len(df) >= 4:
             try:
                 df_ordenado = df.sort_values('fecha')
                 
-                # Convertir fechas a números para la spline (Días Julianos)
+                # Convertir fechas a números para la spline
                 x_tiempo = df_ordenado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_ordenado['Enfermos'].values
                 
-                # Crear una spline cúbica (k=3) que es exactamente lo que usa Excel
-                # para la opción "Línea suavizada"
+                # Para que la curva sea EXACTAMENTE como en Excel, usamos Spline Cúbica (k=3).
+                # Excel no corta los valles, deja que la ola fluya de forma natural.
+                # Generamos 1000 puntos intermedios para que sea súper suave.
                 x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 1000)
                 spline = make_interp_spline(x_tiempo, y, k=3)
                 y_suave = spline(x_suave)
                 
-                # Opcional: Si quieres que la línea no baje de 0 visualmente,
-                # puedes usar np.maximum(y_suave, 0). Pero para un efecto Excel real,
-                # dejamos que la spline fluya (si baja un poco de 0, se verá como en Excel).
-                y_suave = np.maximum(y_suave, 0) 
+                # NO aplicamos np.maximum ni np.clip aquí para evitar los cortes rectos.
+                # Excel deja que la curva baje un poco de cero para mantener la suavidad.
+                # Como el eje Y empieza en 0, visualmente se verá perfecto.
                 
                 fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                 enfermos_smooth = y_suave
@@ -319,6 +319,10 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
                 # En caso de error, usar datos crudos
                 fecha_smooth = df_ordenado['fecha'].values
                 enfermos_smooth = df_ordenado['Enfermos'].values
+        else:
+            # Si hay muy pocos datos, no forzar la curva
+            fecha_smooth = df['fecha'].values
+            enfermos_smooth = df['Enfermos'].values
 
         df.attrs['fecha_smooth'] = fecha_smooth
         df.attrs['enfermos_smooth'] = enfermos_smooth
