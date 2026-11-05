@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import make_interp_spline
 import warnings
 import base64
 import os
@@ -288,7 +288,7 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
         # ============================================================
-        # SUAVIZADO (ESTILO EXCEL - PASA POR TODOS LOS PUNTOS)
+        # SUAVIZADO ROBUSTO (ESTILO EXCEL - LÍNEA SUAVIZADA)
         # ============================================================
         fecha_smooth = np.array([])
         enfermos_smooth = np.array([])
@@ -297,23 +297,26 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
             try:
                 df_ordenado = df.sort_values('fecha')
                 
-                # Convertir fechas a números para la spline
+                # Convertir fechas a números para la spline (Días Julianos)
                 x_tiempo = df_ordenado['fecha'].map(pd.Timestamp.to_julian_date).values
                 y = df_ordenado['Enfermos'].values
                 
-                # PchipInterpolator es ideal: no sobreoscila y pasa por todos los puntos
-                spline = PchipInterpolator(x_tiempo, y)
-                
-                # 1000 puntos para que la línea se vea perfectamente fluida
-                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 1000) 
+                # Crear una spline cúbica (k=3) que es exactamente lo que usa Excel
+                # para la opción "Línea suavizada"
+                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 1000)
+                spline = make_interp_spline(x_tiempo, y, k=3)
                 y_suave = spline(x_suave)
                 
-                # Evitar negativos (por si acaso la matemática lo requiere)
-                y_suave = np.clip(y_suave, 0, None)
+                # Opcional: Si quieres que la línea no baje de 0 visualmente,
+                # puedes usar np.maximum(y_suave, 0). Pero para un efecto Excel real,
+                # dejamos que la spline fluya (si baja un poco de 0, se verá como en Excel).
+                y_suave = np.maximum(y_suave, 0) 
                 
                 fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
                 enfermos_smooth = y_suave
+                
             except Exception as e:
+                # En caso de error, usar datos crudos
                 fecha_smooth = df_ordenado['fecha'].values
                 enfermos_smooth = df_ordenado['Enfermos'].values
 
