@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import make_interp_spline
 import warnings
 import base64
 import os
@@ -287,46 +286,6 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
-        # ============================================================
-        # SUAVIZADO ROBUSTO (ESTILO EXCEL - LÍNEA SUAVIZADA PURA)
-        # ============================================================
-        fecha_smooth = np.array([])
-        enfermos_smooth = np.array([])
-        
-        if len(df) >= 4:
-            try:
-                df_ordenado = df.sort_values('fecha')
-                
-                # Convertir fechas a números para la spline
-                x_tiempo = df_ordenado['fecha'].map(pd.Timestamp.to_julian_date).values
-                y = df_ordenado['Enfermos'].values
-                
-                # Para que la curva sea EXACTAMENTE como en Excel, usamos Spline Cúbica (k=3).
-                # Excel no corta los valles, deja que la ola fluya de forma natural.
-                # Generamos 1000 puntos intermedios para que sea súper suave.
-                x_suave = np.linspace(x_tiempo.min(), x_tiempo.max(), 1000)
-                spline = make_interp_spline(x_tiempo, y, k=3)
-                y_suave = spline(x_suave)
-                
-                # NO aplicamos np.maximum ni np.clip aquí para evitar los cortes rectos.
-                # Excel deja que la curva baje un poco de cero para mantener la suavidad.
-                # Como el eje Y empieza en 0, visualmente se verá perfecto.
-                
-                fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
-                enfermos_smooth = y_suave
-                
-            except Exception as e:
-                # En caso de error, usar datos crudos
-                fecha_smooth = df_ordenado['fecha'].values
-                enfermos_smooth = df_ordenado['Enfermos'].values
-        else:
-            # Si hay muy pocos datos, no forzar la curva
-            fecha_smooth = df['fecha'].values
-            enfermos_smooth = df['Enfermos'].values
-
-        df.attrs['fecha_smooth'] = fecha_smooth
-        df.attrs['enfermos_smooth'] = enfermos_smooth
-
         return df
 
     except Exception as e:
@@ -345,9 +304,6 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             font=dict(size=16, color="red")
         )
         return fig
-
-    fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
-    enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
 
     img_enferma = image_to_base64(images_paths.get('enferma', ''))
     img_muerta = image_to_base64(images_paths.get('muerta', ''))
@@ -398,39 +354,27 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA Y PUNTOS REALES
+    # ALPACAS ENFERMAS - CURVA SUAVIZADA (ESTILO EXCEL)
     # ============================================================
     
-    # 1. Puntos reales (como en Excel)
+    # Aquí usamos line_shape='spline' que aplica Curvas de Bézier exactamente como Excel
     fig.add_trace(go.Scatter(
         x=df['fecha'],
         y=df['Enfermos'],
-        mode='markers',
-        name='Datos reales',
+        mode='lines+markers', # Ponemos marcadores para que se vean los puntos reales
+        name='Alpacas enfermas',
+        line=dict(color='#8B0000', width=2.5, shape='spline', smoothing=1.3), # shape='spline' hace la magia
         marker=dict(size=6, color='#8B0000', symbol='circle'),
+        opacity=0.8,
+        fill='tozeroy',
+        fillgradient=dict(
+            type='vertical',
+            colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
+        ),
         yaxis='y2',
         hoverinfo='skip',
-        showlegend=False
+        showlegend=True
     ))
-
-    # 2. Línea suavizada (como en Excel)
-    if len(enfermos_smooth) > 0:
-        fig.add_trace(go.Scatter(
-            x=fecha_smooth,
-            y=enfermos_smooth,
-            mode='lines',
-            name='Alpacas enfermas (Tendencia)',
-            line=dict(color='#8B0000', width=2.5),
-            opacity=0.8,
-            fill='tozeroy',
-            fillgradient=dict(
-                type='vertical',
-                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
-            ),
-            yaxis='y2',
-            hoverinfo='skip',
-            showlegend=True
-        ))
 
     # ============================================================
     # ALPACAS MUERTAS
@@ -520,15 +464,18 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y_offset = 0.2
 
     if not es_movil:
-        if img_enferma is not None and len(enfermos_smooth) > 0:
-            for idx in [0, -1]:
-                images_plotly.append({
-                    'source': f"data:image/png;base64,{img_enferma}",
-                    'xref': 'x', 'yref': 'y2',
-                    'x': fecha_smooth[idx], 'y': float(enfermos_smooth[idx]),
-                    'sizex': 8, 'sizey': 8,
-                    'xanchor': 'center', 'yanchor': 'middle', 'layer': 'above'
-                })
+        if img_enferma is not None and 'Enfermos' in df.columns:
+            df_enferma_pos = df[df['Enfermos'] > 0].copy()
+            if not df_enferma_pos.empty:
+                for idx in [0, -1]:
+                    if idx < len(df_enferma_pos):
+                        images_plotly.append({
+                            'source': f"data:image/png;base64,{img_enferma}",
+                            'xref': 'x', 'yref': 'y2',
+                            'x': df_enferma_pos['fecha'].iloc[idx], 'y': float(df_enferma_pos['Enfermos'].iloc[idx]),
+                            'sizex': 8, 'sizey': 8,
+                            'xanchor': 'center', 'yanchor': 'middle', 'layer': 'above'
+                        })
 
         if img_muerta is not None and 'Muertos' in df.columns:
             df_muertos_varios = df[df['Muertos'] >= 3].copy()
@@ -565,10 +512,7 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y1_min = min_temp * 1.2 if min_temp < 0 else -5
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
-    # ELIMINAMOS LA PRECIPITACIÓN DEL CÁLCULO PARA QUE NO APLASTE LA GRÁFICA
     max_y2 = 1
-    if len(enfermos_smooth) > 0:
-        max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
     if 'Enfermos' in df.columns:
         max_y2 = max(max_y2, df['Enfermos'].max() * 1.3) 
     if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
