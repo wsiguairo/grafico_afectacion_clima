@@ -357,14 +357,13 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     # ALPACAS ENFERMAS - CURVA SUAVIZADA (ESTILO EXCEL)
     # ============================================================
     
-    # Aquí usamos line_shape='spline' que aplica Curvas de Bézier exactamente como Excel
+    # mode='lines' (sin marcadores) para que no se vean los puntos, solo la ola
     fig.add_trace(go.Scatter(
         x=df['fecha'],
         y=df['Enfermos'],
-        mode='lines+markers', # Ponemos marcadores para que se vean los puntos reales
+        mode='lines', # <--- CAMBIADO AQUÍ (quitamos 'markers')
         name='Alpacas enfermas',
         line=dict(color='#8B0000', width=2.5, shape='spline', smoothing=1.3), # shape='spline' hace la magia
-        marker=dict(size=6, color='#8B0000', symbol='circle'),
         opacity=0.8,
         fill='tozeroy',
         fillgradient=dict(
