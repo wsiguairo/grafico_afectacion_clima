@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
+from scipy.interpolate import make_interp_spline
 import warnings
 import base64
 import os
@@ -286,6 +287,59 @@ def cargar_datos(sheet_id, sheet_sintomas, sheet_temperaturas):
         
         df = df.groupby('fecha').agg(agg_dict).reset_index()
 
+        # ============================================================
+        # SUAVIZADO EXACTO (DIBUJA SOLO DONDE HAY VALOR > 0)
+        # ============================================================
+        fecha_smooth = np.array([])
+        enfermos_smooth = np.array([])
+        
+        if len(df) >= 4:
+            try:
+                df_ordenado = df.sort_values('fecha').copy()
+                
+                # Creamos una copia para filtrar solo los puntos que se dibujarán
+                # (aquellos donde Enfermos > 0)
+                df_plot = df_ordenado[df_ordenado['Enfermos'] > 0].copy()
+                
+                if len(df_plot) >= 2:
+                    # Para que la curva no "cuelgue" en el aire, añadimos un punto 
+                    # al inicio y al final de cada racha de casos con valor 0.
+                    # Esto hace que la ola suba desde 0 y vuelva a 0 suavemente,
+                    # pero SIN dibujar el segmento plano en 0.
+                    
+                    # Convertir a juliano
+                    df_plot['julian'] = df_plot['fecha'].map(pd.Timestamp.to_julian_date)
+                    
+                    # Añadir puntos de anclaje al inicio y fin
+                    primer_dia = df_plot['julian'].min()
+                    ultimo_dia = df_plot['julian'].max()
+                    
+                    x_plot = np.concatenate(([primer_dia - 0.5], df_plot['julian'].values, [ultimo_dia + 0.5]))
+                    y_plot = np.concatenate(([0], df_plot['Enfermos'].values, [0]))
+                    
+                    x_suave = np.linspace(x_plot.min(), x_plot.max(), 1000)
+                    spline = make_interp_spline(x_plot, y_plot, k=3)
+                    y_suave = spline(x_suave)
+                    
+                    # Recortamos los valores negativos por seguridad (aunque no deberían aparecer)
+                    y_suave = np.clip(y_suave, 0, None)
+                    
+                    fecha_smooth = pd.to_datetime(x_suave, unit='D', origin='julian')
+                    enfermos_smooth = y_suave
+                else:
+                    fecha_smooth = df_ordenado['fecha'].values
+                    enfermos_smooth = df_ordenado['Enfermos'].values
+                
+            except Exception as e:
+                fecha_smooth = df_ordenado['fecha'].values
+                enfermos_smooth = df_ordenado['Enfermos'].values
+        else:
+            fecha_smooth = df['fecha'].values
+            enfermos_smooth = df['Enfermos'].values
+
+        df.attrs['fecha_smooth'] = fecha_smooth
+        df.attrs['enfermos_smooth'] = enfermos_smooth
+
         return df
 
     except Exception as e:
@@ -304,6 +358,9 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
             font=dict(size=16, color="red")
         )
         return fig
+
+    fecha_smooth = df.attrs.get('fecha_smooth', np.array([]))
+    enfermos_smooth = df.attrs.get('enfermos_smooth', np.array([]))
 
     img_enferma = image_to_base64(images_paths.get('enferma', ''))
     img_muerta = image_to_base64(images_paths.get('muerta', ''))
@@ -354,26 +411,26 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - CURVA SUAVIZADA (ESTILO EXCEL)
+    # ALPACAS ENFERMAS - LÍNEA SUAVIZADA (SOLO DONDE HAY VALOR)
     # ============================================================
     
-    # mode='lines' (sin marcadores) para que no se vean los puntos, solo la ola
-    fig.add_trace(go.Scatter(
-        x=df['fecha'],
-        y=df['Enfermos'],
-        mode='lines', # <--- CAMBIADO AQUÍ (quitamos 'markers')
-        name='Alpacas enfermas',
-        line=dict(color='#8B0000', width=2.5, shape='spline', smoothing=1.3), # shape='spline' hace la magia
-        opacity=0.8,
-        fill='tozeroy',
-        fillgradient=dict(
-            type='vertical',
-            colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
-        ),
-        yaxis='y2',
-        hoverinfo='skip',
-        showlegend=True
-    ))
+    if len(enfermos_smooth) > 0:
+        fig.add_trace(go.Scatter(
+            x=fecha_smooth,
+            y=enfermos_smooth,
+            mode='lines', # Solo línea
+            name='Alpacas enfermas',
+            line=dict(color='#8B0000', width=2.5),
+            opacity=0.8,
+            fill='tozeroy',
+            fillgradient=dict(
+                type='vertical',
+                colorscale=[[0, 'rgba(139, 0, 0, 0)'], [1, 'rgba(139, 0, 0, 0.15)']]
+            ),
+            yaxis='y2',
+            hoverinfo='skip',
+            showlegend=True
+        ))
 
     # ============================================================
     # ALPACAS MUERTAS
@@ -512,6 +569,8 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
     y1_max = max(max_temp, max_wind) * 1.3 if max(max_temp, max_wind) > 0 else 15
 
     max_y2 = 1
+    if len(enfermos_smooth) > 0:
+        max_y2 = max(max_y2, max(enfermos_smooth) * 1.3)
     if 'Enfermos' in df.columns:
         max_y2 = max(max_y2, df['Enfermos'].max() * 1.3) 
     if 'Muertos' in df.columns and not df['Muertos'].dropna().empty:
