@@ -354,16 +354,22 @@ def crear_grafica(df, images_paths, zoom_meses=None, es_movil=False):
         ))
 
     # ============================================================
-    # ALPACAS ENFERMAS - LÍNEA QUE SE CORTA EN LOS CEROS
+    # ALPACAS ENFERMAS - LÍNEA QUE SE CORTA AL FINAL
     # ============================================================
     
-    # Creamos una serie donde los valores 0 se convierten en None (nulos)
-    # para que Plotly no dibuje el segmento en ese tramo.
+    # En lugar de anular todos los ceros, solo anulamos los ceros que están al final.
+    # Primero rellenamos con 0 los días sin registro para que la línea sea continua.
     df_linea = df.copy()
-    df_linea['Enfermos_plot'] = df_linea['Enfermos'].apply(lambda x: x if x > 0 else None)
+    df_linea['Enfermos_plot'] = df_linea['Enfermos'].fillna(0)
     
-    # Agregamos el trazado. Al haber None, Plotly automáticamente corta la línea
-    # y empieza a dibujar de nuevo en el siguiente valor > 0.
+    # Detectamos el índice del último valor mayor a 0
+    idx_ultimo_positivo = df_linea[df_linea['Enfermos_plot'] > 0].index.max()
+    
+    # Si hay valores positivos, cortamos la línea después de ese punto
+    if pd.notna(idx_ultimo_positivo):
+        df_linea.loc[df_linea.index > idx_ultimo_positivo, 'Enfermos_plot'] = None
+        
+    # Agregamos el trazado. Plotly cortará donde haya None (al final).
     fig.add_trace(go.Scatter(
         x=df_linea['fecha'],
         y=df_linea['Enfermos_plot'],
