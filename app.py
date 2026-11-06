@@ -804,7 +804,7 @@ def main():
                 ]
             })
 
-            # 2. BLOQUE CON ICONO/BOTÓN DE ESTADÍSTICAS BAJO LA LEYENDA
+           # 2. BLOQUE CON ICONO/BOTÓN DE ESTADÍSTICAS BAJO LA LEYENDA
             st.markdown("<br>", unsafe_allow_html=True)
             with st.expander("📊 **Ver Estadísticas Generales y Resumen del Período**", expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
@@ -839,6 +839,127 @@ def main():
                     temp_prom = df['Temperaturas minimas  (°C)'].mean() if 'Temperaturas minimas  (°C)' in df.columns else 0
                     st.write(f"- **Temperatura mínima promedio:** {temp_prom:.1f} °C")
                     st.write(f"- **Total de días con datos registrados:** {len(df)} días")
+
+                # ============================================================
+                # NUEVO: ESTADÍSTICAS POR AÑO Y ESTACIÓN (MOSTRAR/OCULTAR)
+                # ============================================================
+                st.markdown("---")
+                st.markdown("#### 📅 Análisis por Año y Estación")
+
+                mostrar_torta = st.checkbox("🥧 Mostrar gráfica de torta por año", value=True, key="chk_torta")
+                mostrar_tabla_anual = st.checkbox("📋 Mostrar tabla resumen por año", value=True, key="chk_tabla_anual")
+                mostrar_comparativo = st.checkbox("📈 Mostrar gráfica comparativa años vs estaciones", value=True, key="chk_comparativo")
+
+                df_anual = df.copy()
+                df_anual['Año'] = df_anual['fecha'].dt.year
+
+                def estacion_de_mes(mes):
+                    if mes in (12, 1, 2):
+                        return 'Verano'
+                    elif mes in (3, 4, 5):
+                        return 'Otoño'
+                    elif mes in (6, 7, 8):
+                        return 'Invierno'
+                    else:
+                        return 'Primavera'
+
+                df_anual['Estación'] = df_anual['fecha'].dt.month.apply(estacion_de_mes)
+
+                anios_disponibles = sorted(df_anual['Año'].unique().tolist())
+
+                # ---------- GRÁFICA DE TORTA POR AÑO ----------
+                if mostrar_torta and len(anios_disponibles) > 0:
+                    st.markdown("##### 🥧 Distribución de Afectación por Año")
+                    cols_torta = st.columns(min(len(anios_disponibles), 3))
+                    for i, anio in enumerate(anios_disponibles):
+                        df_anio = df_anual[df_anual['Año'] == anio]
+                        val_enfermas = int(df_anio['Enfermos'].sum()) if 'Enfermos' in df_anio.columns else 0
+                        val_muertas = int(df_anio['Muertos'].sum()) if 'Muertos' in df_anio.columns else 0
+                        val_abortos = int(df_anio['Abortos'].sum()) if 'Abortos' in df_anio.columns else 0
+                        total_anio = val_enfermas + val_muertas + val_abortos
+                        if total_anio == 0:
+                            continue
+                        fig_torta = go.Figure(data=[go.Pie(
+                            labels=['Enfermas', 'Muertas', 'Abortos'],
+                            values=[val_enfermas, val_muertas, val_abortos],
+                            hole=0.35,
+                            marker=dict(colors=['#8B0000', '#555555', '#1E90FF']),
+                            textinfo='percent+label',
+                            textfont=dict(size=11)
+                        )])
+                        fig_torta.update_layout(
+                            title=dict(text=f"<b>Año {anio}</b>", font=dict(size=13), x=0.5),
+                            height=280,
+                            margin=dict(t=40, b=10, l=10, r=10),
+                            showlegend=False,
+                            paper_bgcolor='white',
+                            plot_bgcolor='white'
+                        )
+                        with cols_torta[i % len(cols_torta)]:
+                            st.plotly_chart(fig_torta, use_container_width=True, key=f"torta_{anio}")
+
+                # ---------- TABLA RESUMEN POR AÑO ----------
+                if mostrar_tabla_anual and len(anios_disponibles) > 0:
+                    st.markdown("##### 📋 Resumen Anual Consolidado")
+                    filas = []
+                    for anio in anios_disponibles:
+                        d = df_anual[df_anual['Año'] == anio]
+                        filas.append({
+                            'Año': anio,
+                            'Alpacas Enfermas': int(d['Enfermos'].sum()) if 'Enfermos' in d.columns else 0,
+                            'Alpacas Muertas': int(d['Muertos'].sum()) if 'Muertos' in d.columns else 0,
+                            'Abortos': int(d['Abortos'].sum()) if 'Abortos' in d.columns else 0,
+                            'Precip. Acum. (mm)': round(d['Precipitacion '].sum(), 1) if 'Precipitacion ' in d.columns else 0.0,
+                            'Viento Prom. (km/h)': round(d['Vel. viento (Km/h)'].mean(), 1) if 'Vel. viento (Km/h)' in d.columns else 0.0,
+                            'Temp. Mín. Prom. (°C)': round(d['Temperaturas minimas  (°C)'].mean(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
+                            'Temp. Mín. Abs. (°C)': round(d['Temperaturas minimas  (°C)'].min(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
+                            'Días con Datos': len(d)
+                        })
+                    tabla_anual = pd.DataFrame(filas).sort_values('Año').reset_index(drop=True)
+                    st.dataframe(tabla_anual, use_container_width=True, hide_index=True)
+
+                # ---------- GRÁFICA COMPARATIVA AÑOS vs ESTACIONES ----------
+                if mostrar_comparativo and len(anios_disponibles) > 0:
+                    st.markdown("##### 📈 Comparativo Años vs Estaciones")
+                    orden_estaciones = ['Verano', 'Otoño', 'Invierno', 'Primavera']
+                    df_est = df_anual.groupby(['Año', 'Estación']).agg({
+                        'Enfermos': 'sum',
+                        'Muertos': 'sum',
+                        'Abortos': 'sum'
+                    }).reset_index()
+
+                    fig_comp = go.Figure()
+                    colores_est = {'Verano': '#FFD700', 'Otoño': '#FF8C00',
+                                   'Invierno': '#1E90FF', 'Primavera': '#32CD32'}
+                    for est in orden_estaciones:
+                        d_est = df_est[df_est['Estación'] == est]
+                        if d_est.empty:
+                            continue
+                        fig_comp.add_trace(go.Bar(
+                            x=d_est['Año'].astype(str),
+                            y=d_est['Enfermos'] + d_est['Muertos'] + d_est['Abortos'],
+                            name=est,
+                            marker_color=colores_est[est],
+                            hovertemplate=(
+                                f"<b>{est}</b><br>Año: %{{x}}<br>"
+                                "Total afectación: %{y}<extra></extra>"
+                            )
+                        ))
+                    fig_comp.update_layout(
+                        barmode='group',
+                        height=380,
+                        template='plotly_white',
+                        xaxis=dict(title='<b>Año</b>', tickfont=dict(size=11)),
+                        yaxis=dict(title='<b>Total Afectación (Enf+Muert+Abort)</b>', tickfont=dict(size=11)),
+                        legend=dict(orientation='h', x=0.5, y=-0.18, xanchor='center', yanchor='top'),
+                        margin=dict(t=20, b=60, l=50, r=20)
+                    )
+                    st.plotly_chart(fig_comp, use_container_width=True, key="comparativo_anual")
+            
+                     
+            
+            
+           
 
 if __name__ == '__main__':
     main()
