@@ -837,19 +837,7 @@ def main():
                 
                 st.markdown("---")
                 
-                # Tabla resumen rápida
-                
-                col_t1, col_t2 = st.columns(2)
-                with col_t1:
-                    precip_total = df['Precipitacion '].sum() if 'Precipitacion ' in df.columns else 0
-                    viento_prom = df['Vel. viento (Km/h)'].mean() if 'Vel. viento (Km/h)' in df.columns else 0
-                    st.write(f"- **Precipitación total acumulada:** {precip_total:.1f} mm")
-                    st.write(f"- **Velocidad promedio del viento:** {viento_prom:.1f} km/h")
-                with col_t2:
-                    temp_prom = df['Temperaturas minimas  (°C)'].mean() if 'Temperaturas minimas  (°C)' in df.columns else 0
-                    st.write(f"- **Temperatura mínima promedio:** {temp_prom:.1f} °C")
-                    st.write(f"- **Total de días con datos registrados:** {len(df)} días")
-
+               
                 # ============================================================
                 # NUEVO: ESTADÍSTICAS POR AÑO Y ESTACIÓN (MOSTRAR/OCULTAR)
                 # ============================================================
