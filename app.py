@@ -844,8 +844,8 @@ def main():
                 st.markdown("#### 📅 Análisis por Año y Estación")
 
                 mostrar_torta = st.checkbox(" Mostrar gráfica de torta por año", value=True, key="chk_torta")
-                mostrar_tabla_anual = st.checkbox("📋 Mostrar tabla resumen por año", value=True, key="chk_tabla_anual")
-                mostrar_comparativo = st.checkbox("📈 Mostrar gráfica comparativa años vs estaciones", value=True, key="chk_comparativo")
+                mostrar_tabla_anual = st.checkbox(" Mostrar tabla resumen por año", value=True, key="chk_tabla_anual")
+                mostrar_comparativo = st.checkbox(" Mostrar gráfica comparativa años vs estaciones", value=True, key="chk_comparativo")
 
                 df_anual = df.copy()
                 df_anual['Año'] = df_anual['fecha'].dt.year
@@ -896,7 +896,7 @@ def main():
                             st.plotly_chart(fig_torta, use_container_width=True, key=f"torta_{anio}")
 
                 # Resumen climático por año
-                st.markdown("##### 🌦️ Resumen de Datos Climáticos por Año:")
+                st.markdown("##### 🌦️ Resumen de Datos Climáticos por Año (Estación Representativa):")
                 df_clima = df.copy()
                 df_clima['Año'] = df_clima['fecha'].dt.year
                 anios_clima = sorted(df_clima['Año'].unique().tolist())
