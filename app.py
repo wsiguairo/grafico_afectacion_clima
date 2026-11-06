@@ -836,15 +836,14 @@ def main():
                         st.metric("❄️ Temp. Mínima Absoluta", f"{temp_min_abs:.1f} °C")
                 
                 st.markdown("---")
-                
-               
+                  
                 # ============================================================
                 # NUEVO: ESTADÍSTICAS POR AÑO Y ESTACIÓN (MOSTRAR/OCULTAR)
                 # ============================================================
                 st.markdown("---")
                 st.markdown("#### 📅 Análisis por Año y Estación")
 
-                mostrar_torta = st.checkbox("🥧 Mostrar gráfica de torta por año", value=True, key="chk_torta")
+                mostrar_torta = st.checkbox(" Mostrar gráfica de torta por año", value=True, key="chk_torta")
                 mostrar_tabla_anual = st.checkbox("📋 Mostrar tabla resumen por año", value=True, key="chk_tabla_anual")
                 mostrar_comparativo = st.checkbox("📈 Mostrar gráfica comparativa años vs estaciones", value=True, key="chk_comparativo")
 
@@ -867,7 +866,7 @@ def main():
 
                 # ---------- GRÁFICA DE TORTA POR AÑO ----------
                 if mostrar_torta and len(anios_disponibles) > 0:
-                    st.markdown("##### 🥧 Distribución de Afectación por Año")
+                    st.markdown("##### 🦙 Distribución de Afectación por Año")
                     cols_torta = st.columns(min(len(anios_disponibles), 3))
                     for i, anio in enumerate(anios_disponibles):
                         df_anio = df_anual[df_anual['Año'] == anio]
@@ -958,7 +957,5 @@ def main():
                     )
                     st.plotly_chart(fig_comp, use_container_width=True, key="comparativo_anual")
                        
-           
-
 if __name__ == '__main__':
     main()
