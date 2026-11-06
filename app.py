@@ -908,25 +908,29 @@ def main():
                         with cols_torta[i % len(cols_torta)]:
                             st.plotly_chart(fig_torta, use_container_width=True, key=f"torta_{anio}")
 
-                # ---------- TABLA RESUMEN POR AÑO ----------
-                if mostrar_tabla_anual and len(anios_disponibles) > 0:
-                    st.markdown("##### 📋 Resumen Anual Consolidado")
-                    filas = []
-                    for anio in anios_disponibles:
-                        d = df_anual[df_anual['Año'] == anio]
-                        filas.append({
-                            'Año': anio,
-                            'Alpacas Enfermas': int(d['Enfermos'].sum()) if 'Enfermos' in d.columns else 0,
-                            'Alpacas Muertas': int(d['Muertos'].sum()) if 'Muertos' in d.columns else 0,
-                            'Abortos': int(d['Abortos'].sum()) if 'Abortos' in d.columns else 0,
-                            'Precip. Acum. (mm)': round(d['Precipitacion '].sum(), 1) if 'Precipitacion ' in d.columns else 0.0,
-                            'Viento Prom. (km/h)': round(d['Vel. viento (Km/h)'].mean(), 1) if 'Vel. viento (Km/h)' in d.columns else 0.0,
-                            'Temp. Mín. Prom. (°C)': round(d['Temperaturas minimas  (°C)'].mean(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
-                            'Temp. Mín. Abs. (°C)': round(d['Temperaturas minimas  (°C)'].min(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
-                            'Días con Datos': len(d)
-                        })
-                    tabla_anual = pd.DataFrame(filas).sort_values('Año').reset_index(drop=True)
-                    st.dataframe(tabla_anual, use_container_width=True, hide_index=True)
+                # Resumen climático por año
+                st.markdown("##### 🌦️ Resumen de Datos Climáticos por Año:")
+                df_clima = df.copy()
+                df_clima['Año'] = df_clima['fecha'].dt.year
+                anios_clima = sorted(df_clima['Año'].unique().tolist())
+
+                filas_clima = []
+                for anio in anios_clima:
+                    d = df_clima[df_clima['Año'] == anio]
+                    filas_clima.append({
+                        'Año': anio,
+                        'Precip. Acum. Total (mm)': round(d['Precipitacion '].sum(), 1) if 'Precipitacion ' in d.columns else 0.0,
+                        'Viento Prom. (km/h)': round(d['Vel. viento (Km/h)'].mean(), 1) if 'Vel. viento (Km/h)' in d.columns else 0.0,
+                        'Temp. Mín. Prom. (°C)': round(d['Temperaturas minimas  (°C)'].mean(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
+                        'Temp. Mín. Abs. (°C)': round(d['Temperaturas minimas  (°C)'].min(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
+                        'Temp. Mín. Máx. (°C)': round(d['Temperaturas minimas  (°C)'].max(), 1) if 'Temperaturas minimas  (°C)' in d.columns else 0.0,
+                        'Viento Máx. (km/h)': round(d['Vel. viento (Km/h)'].max(), 1) if 'Vel. viento (Km/h)' in d.columns else 0.0,
+                        'Precip. Máx. Diaria (mm)': round(d['Precipitacion '].max(), 1) if 'Precipitacion ' in d.columns else 0.0,
+                        'Días con Datos': len(d)
+                    })
+
+                tabla_clima = pd.DataFrame(filas_clima).sort_values('Año').reset_index(drop=True)
+                st.dataframe(tabla_clima, use_container_width=True, hide_index=True)
 
                 # ---------- GRÁFICA COMPARATIVA AÑOS vs ESTACIONES ----------
                 if mostrar_comparativo and len(anios_disponibles) > 0:
