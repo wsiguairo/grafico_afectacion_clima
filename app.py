@@ -838,7 +838,7 @@ def main():
                 st.markdown("---")
                 
                 # Tabla resumen rápida
-                st.markdown("##### 📋 Resumen Promediado y Acumulado:")
+                
                 col_t1, col_t2 = st.columns(2)
                 with col_t1:
                     precip_total = df['Precipitacion '].sum() if 'Precipitacion ' in df.columns else 0
