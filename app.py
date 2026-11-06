@@ -807,23 +807,33 @@ def main():
            # 2. BLOQUE CON ICONO/BOTÓN DE ESTADÍSTICAS BAJO LA LEYENDA
             st.markdown("<br>", unsafe_allow_html=True)
             with st.expander("📊 **Ver Estadísticas Generales y Resumen del Período**", expanded=False):
-                col1, col2, col3, col4 = st.columns(4)
-                
-                with col1:
-                    total_enfermas = int(df['Enfermos'].sum()) if 'Enfermos' in df.columns else 0
-                    st.metric("🦙 Alpacas Enfermas", f"{total_enfermas:,}")
-                    
-                with col2:
-                    total_muertas = int(df['Muertos'].sum()) if 'Muertos' in df.columns else 0
-                    st.metric("💀 Alpacas Muertas", f"{total_muertas:,}")
-                    
-                with col3:
-                    total_abortos = int(df['Abortos'].sum()) if 'Abortos' in df.columns else 0
-                    st.metric("⚠️ Abortos Registrados", f"{total_abortos:,}")
-                    
-                with col4:
-                    temp_min_abs = df['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in df.columns else 0.0
-                    st.metric("❄️ Temp. Mínima Absoluta", f"{temp_min_abs:.1f} °C")
+                # ============================================================
+                # MÉTRICAS POR AÑO (en lugar de acumulado total)
+                # ============================================================
+                df_anual_metricas = df.copy()
+                df_anual_metricas['Año'] = df_anual_metricas['fecha'].dt.year
+                anios_metricas = sorted(df_anual_metricas['Año'].unique().tolist())
+
+                for anio in anios_metricas:
+                    d_anio = df_anual_metricas[df_anual_metricas['Año'] == anio]
+                    st.markdown(f"##### 📅 Año {anio}")
+                    col1, col2, col3, col4 = st.columns(4)
+
+                    with col1:
+                        total_enfermas = int(d_anio['Enfermos'].sum()) if 'Enfermos' in d_anio.columns else 0
+                        st.metric("🦙 Alpacas Enfermas", f"{total_enfermas:,}")
+
+                    with col2:
+                        total_muertas = int(d_anio['Muertos'].sum()) if 'Muertos' in d_anio.columns else 0
+                        st.metric("💀 Alpacas Muertas", f"{total_muertas:,}")
+
+                    with col3:
+                        total_abortos = int(d_anio['Abortos'].sum()) if 'Abortos' in d_anio.columns else 0
+                        st.metric("⚠️ Abortos Registrados", f"{total_abortos:,}")
+
+                    with col4:
+                        temp_min_abs = d_anio['Temperaturas minimas  (°C)'].min() if 'Temperaturas minimas  (°C)' in d_anio.columns else 0.0
+                        st.metric("❄️ Temp. Mínima Absoluta", f"{temp_min_abs:.1f} °C")
                 
                 st.markdown("---")
                 
@@ -955,10 +965,7 @@ def main():
                         margin=dict(t=20, b=60, l=50, r=20)
                     )
                     st.plotly_chart(fig_comp, use_container_width=True, key="comparativo_anual")
-            
-                     
-            
-            
+                       
            
 
 if __name__ == '__main__':
